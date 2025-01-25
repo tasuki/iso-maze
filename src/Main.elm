@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Angle exposing (Angle)
-import Block3d exposing (Block3d)
+import Block3d
 import Browser
 import Browser.Dom
 import Browser.Events
@@ -12,14 +12,14 @@ import Duration exposing (Duration)
 import Frame3d
 import Illuminance
 import Json.Decode as Decode exposing (Decoder)
-import Length exposing (Meters)
+import Length
 import List.Nonempty as NE exposing (Nonempty)
-import LuminousFlux exposing (LuminousFlux)
+import LuminousFlux
 import Pixels exposing (Pixels)
-import Point3d exposing (Point3d)
+import Point3d
 import Quantity exposing (Quantity)
 import Scene3d exposing (Entity)
-import Scene3d.Light as Light exposing (Light)
+import Scene3d.Light as Light
 import Scene3d.Material as Material
 import Sphere3d
 import Task
@@ -151,8 +151,8 @@ subscriptions model =
         ]
 
 
-createBox : ( Int, Int, Int ) -> Entity coordinates
-createBox ( x, y, z ) =
+createBox : Int -> Int -> Int -> Entity coordinates
+createBox x y z =
     let
         boxCenter =
             Point3d.centimeters
@@ -215,6 +215,13 @@ zigZag tilesPerSide =
         |> NE.toList
 
 
+zz : Int -> Int -> Int -> List (Entity WorldCoordinates)
+zz tilesPerSide shiftBack height =
+    zigZag tilesPerSide
+        |> List.map (\( x, y ) -> createBox (x + shiftBack) (y + shiftBack) height)
+
+
+playerMaterial : Material.Material coordinates { a | normals : () }
 playerMaterial =
     Material.metal
         { baseColor = Color.rgb255 255 255 255
@@ -222,16 +229,18 @@ playerMaterial =
         }
 
 
+createPlayer : Float -> Float -> Float -> List (Entity WorldCoordinates)
 createPlayer x y z =
     let
-        playerSphere xx yy zz r =
-            Sphere3d.atPoint
-                (Point3d.centimeters xx yy zz)
-                (Length.centimeters r)
+        playerSphere xcm ycm zcm r =
+            Scene3d.sphereWithShadow playerMaterial <|
+                Sphere3d.atPoint
+                    (Point3d.centimeters xcm ycm zcm)
+                    (Length.centimeters r)
     in
-    [ Scene3d.sphereWithShadow playerMaterial (playerSphere x y (z + 0.9) 1)
-    , Scene3d.sphereWithShadow playerMaterial (playerSphere x y (z + 2.4) 0.8)
-    , Scene3d.sphereWithShadow playerMaterial (playerSphere x y (z + 3.6) 0.6)
+    [ playerSphere x y (z + 0.9) 1
+    , playerSphere x y (z + 2.4) 0.8
+    , playerSphere x y (z + 3.6) 0.6
     ]
 
 
@@ -275,31 +284,16 @@ view model =
                 , intensityBelow = Illuminance.lux 0
                 }
 
-        box0 =
-            zigZag 6 |> List.map (\( x, y ) -> ( x, y, 0 ))
-
-        box1 =
-            zigZag 6 |> List.map (\( x, y ) -> ( x + 1, y + 1, 1 ))
-
-        box1bottom =
-            zigZag 6 |> List.map (\( x, y ) -> ( x + 1, y + 1, 0 ))
-
-        box2 =
-            zigZag 5 |> List.map (\( x, y ) -> ( x + 2, y + 2, 2 ))
-
-        box3 =
-            zigZag 3 |> List.map (\( x, y ) -> ( x + 3, y + 3, 3 ))
-
-        box4 =
-            zigZag 1 |> List.map (\( x, y ) -> ( x + 4, y + 4, 4 ))
-
-        box5 =
-            zigZag 0 |> List.map (\( x, y ) -> ( x + 4, y + 4, 5 ))
-
         boxes : List (Entity WorldCoordinates)
         boxes =
-            List.map createBox <|
-                List.concat [ box0, box1, box1bottom, box2, box3, box4, box5 ]
+            List.concat
+                [ zz 6 0 0
+                , zz 6 1 1
+                , zz 5 2 2
+                , zz 3 3 3
+                , zz 3 4 4
+                , zz 1 5 5
+                ]
 
         camera =
             Camera3d.perspective
