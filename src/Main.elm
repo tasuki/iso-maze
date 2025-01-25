@@ -14,6 +14,7 @@ import Illuminance
 import Json.Decode as Decode exposing (Decoder)
 import Length exposing (Meters)
 import List.Nonempty as NE exposing (Nonempty)
+import LuminousFlux exposing (LuminousFlux)
 import Pixels exposing (Pixels)
 import Point3d exposing (Point3d)
 import Quantity exposing (Quantity)
@@ -168,7 +169,7 @@ createBox ( x, y, z ) =
         boxMaterial =
             Material.metal
                 { baseColor = Color.rgb255 255 255 255
-                , roughness = 0.9
+                , roughness = 0.8
                 }
     in
     Scene3d.blockWithShadow boxMaterial
@@ -238,32 +239,40 @@ view : Model -> Browser.Document Msg
 view model =
     let
         lightLeft =
-            Light.directional (Light.castsShadows True)
-                { direction = Direction3d.xyZ (Angle.degrees 0) (Angle.degrees -20)
-                , chromaticity = Light.sunlight
-                , intensity = Illuminance.lux 1500
+            Light.point (Light.castsShadows True)
+                { position = Point3d.meters -3 0.5 0.9
+                , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
+                , intensity = LuminousFlux.lumens 150000
                 }
 
         lightRight =
-            Light.directional (Light.castsShadows True)
-                { direction = Direction3d.xyZ (Angle.degrees 90) (Angle.degrees -20)
-                , chromaticity = Light.sunlight
-                , intensity = Illuminance.lux 100
+            Light.point (Light.castsShadows True)
+                { position = Point3d.meters 0.5 -3 0.9
+                , chromaticity = Light.chromaticity { x = 0.1, y = 0.35 }
+                , intensity = LuminousFlux.lumens 2000
                 }
 
         backLight =
-            Light.directional (Light.castsShadows True)
-                { direction = Direction3d.xyZ (Angle.degrees -120) (Angle.degrees -45)
-                , chromaticity = Light.sunlight
-                , intensity = Illuminance.lux 200
+            Light.point (Light.castsShadows True)
+                { position = Point3d.meters 2 4 5
+                , chromaticity = Light.chromaticity { x = 0.3, y = 0.4 }
+                , intensity = LuminousFlux.lumens 30000
                 }
 
-        softLight =
+        softLeft =
             Light.soft
-                { upDirection = Direction3d.positiveZ
+                { upDirection = Direction3d.xyZ (Angle.degrees 90) (Angle.degrees 0)
                 , chromaticity = Light.sunlight
-                , intensityAbove = Illuminance.lux 30
-                , intensityBelow = Illuminance.lux 5
+                , intensityAbove = Illuminance.lux 300
+                , intensityBelow = Illuminance.lux 0
+                }
+
+        softRight =
+            Light.soft
+                { upDirection = Direction3d.xyZ (Angle.degrees -90) (Angle.degrees 0)
+                , chromaticity = Light.sunlight
+                , intensityAbove = Illuminance.lux 10
+                , intensityBelow = Illuminance.lux 0
                 }
 
         box0 =
@@ -301,13 +310,13 @@ view model =
                         , elevation = model.elevation
                         , distance = Length.meters 10
                         }
-                , verticalFieldOfView = Angle.degrees 7
+                , verticalFieldOfView = Angle.degrees 5
                 }
     in
     { title = "Iso Maze"
     , body =
         [ Scene3d.custom
-            { lights = Scene3d.fourLights lightLeft lightRight backLight softLight
+            { lights = Scene3d.fiveLights lightLeft lightRight backLight softLeft softRight
             , camera = camera
             , clipDepth = Length.centimeters 1
             , exposure = Scene3d.exposureValue 6
