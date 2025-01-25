@@ -240,14 +240,14 @@ view model =
     let
         lightLeft =
             Light.point (Light.castsShadows True)
-                { position = Point3d.meters -3 0.5 0.9
+                { position = Point3d.meters -3 0 0.9
                 , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
                 , intensity = LuminousFlux.lumens 150000
                 }
 
         lightRight =
             Light.point (Light.castsShadows True)
-                { position = Point3d.meters 0.5 -3 0.9
+                { position = Point3d.meters 0 -3 0.9
                 , chromaticity = Light.chromaticity { x = 0.1, y = 0.35 }
                 , intensity = LuminousFlux.lumens 2000
                 }
