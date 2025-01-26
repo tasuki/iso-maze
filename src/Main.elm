@@ -13,11 +13,12 @@ import Frame3d
 import Illuminance
 import Json.Decode as Decode exposing (Decoder)
 import Length
-import List.Nonempty as NE exposing (Nonempty)
 import LuminousFlux
+import Maze as M
 import Pixels exposing (Pixels)
 import Point3d
 import Quantity exposing (Quantity)
+import SampleMazes as SM
 import Scene3d exposing (Entity)
 import Scene3d.Light as Light
 import Scene3d.Material as Material
@@ -41,12 +42,14 @@ type alias Model =
 
 
 type Msg
-    = Resize (Quantity Int Pixels) (Quantity Int Pixels)
+    = Noop
+    | Resize (Quantity Int Pixels) (Quantity Int Pixels)
     | Tick Duration
     | MouseDown
     | MouseMove (Quantity Float Pixels) (Quantity Float Pixels)
     | MouseUp
     | VisibilityChange Browser.Events.Visibility
+    | CameraReset
 
 
 main : Program () Model Msg
@@ -59,14 +62,24 @@ main =
         }
 
 
+initialAzimuth : Float
+initialAzimuth =
+    -135
+
+
+initialElevation : Float
+initialElevation =
+    30
+
+
 init : () -> ( Model, Cmd Msg )
 init () =
     ( { width = Quantity.zero
       , height = Quantity.zero
       , elapsedTime = Quantity.zero
       , orbiting = False
-      , azimuth = Angle.degrees -135
-      , elevation = Angle.degrees 30
+      , azimuth = Angle.degrees initialAzimuth
+      , elevation = Angle.degrees initialElevation
       }
     , Task.perform
         (\{ viewport } ->
@@ -81,6 +94,9 @@ init () =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     case message of
+        Noop ->
+            ( model, Cmd.none )
+
         Resize width height ->
             ( { model | width = width, height = height }, Cmd.none )
 
@@ -125,6 +141,11 @@ update message model =
             else
                 ( model, Cmd.none )
 
+        CameraReset ->
+            ( { model | azimuth = Angle.degrees initialAzimuth, elevation = Angle.degrees initialElevation }
+            , Cmd.none
+            )
+
 
 mouseMoveDecoder : Decoder Msg
 mouseMoveDecoder =
@@ -148,77 +169,30 @@ subscriptions model =
 
           else
             Browser.Events.onMouseDown (Decode.succeed MouseDown)
+        , Browser.Events.onKeyDown (Decode.map keydown <| Decode.field "key" Decode.string)
         ]
 
 
-createBox : Int -> Int -> Int -> Entity coordinates
-createBox x y z =
-    let
-        boxCenter =
-            Point3d.centimeters
-                (toFloat (x * 10))
-                (toFloat (y * 10))
-                (toFloat (z * 5) - 2.5)
+keydown : String -> Msg
+keydown keycode =
+    case keycode of
+        "c" ->
+            CameraReset
 
-        boxDimensions =
-            ( Length.centimeters 10
-            , Length.centimeters 10
-            , Length.centimeters 5
-            )
-
-        boxMaterial =
-            Material.metal
-                { baseColor = Color.rgb255 255 255 255
-                , roughness = 0.8
-                }
-    in
-    Scene3d.blockWithShadow boxMaterial
-        (Block3d.centeredOn (Frame3d.atPoint boxCenter) boxDimensions)
+        _ ->
+            Noop
 
 
-zigZag : Int -> List ( Int, Int )
-zigZag tilesPerSide =
-    let
-        ( firstX, firstY ) =
-            if modBy 2 tilesPerSide == 0 then
-                ( -(ceiling <| toFloat tilesPerSide / 2)
-                , ceiling <| toFloat tilesPerSide / 2
-                )
 
-            else
-                ( -(ceiling <| toFloat tilesPerSide / 2)
-                , (ceiling <| toFloat tilesPerSide / 2) - 1
-                )
-
-        next : Int -> Int -> ( Int, Int )
-        next x y =
-            if x == -y then
-                ( x, y - 1 )
-
-            else
-                ( x + 1, y )
-
-        build : Nonempty ( Int, Int ) -> Nonempty ( Int, Int )
-        build acc =
-            let
-                ( x, y ) =
-                    NE.head acc
-            in
-            if x >= firstY && y <= firstX then
-                acc
-
-            else
-                build <| NE.cons (next x y) acc
-    in
-    NE.singleton ( firstX, firstY )
-        |> build
-        |> NE.toList
+-- Materials
 
 
-zz : Int -> Int -> Int -> List (Entity WorldCoordinates)
-zz tilesPerSide shiftBack height =
-    zigZag tilesPerSide
-        |> List.map (\( x, y ) -> createBox (x + shiftBack) (y + shiftBack) height)
+baseMaterial : Material.Material coordinates { a | normals : () }
+baseMaterial =
+    Material.metal
+        { baseColor = Color.rgb255 255 255 255
+        , roughness = 0.8
+        }
 
 
 playerMaterial : Material.Material coordinates { a | normals : () }
@@ -229,8 +203,78 @@ playerMaterial =
         }
 
 
-createPlayer : Float -> Float -> Float -> List (Entity WorldCoordinates)
-createPlayer x y z =
+
+-- Drawing
+
+
+drawBase : Float -> Float -> Float -> Entity coordinates
+drawBase x y z =
+    let
+        boxCenter =
+            Point3d.centimeters
+                (x * 10)
+                (y * 10)
+                (z * 5 - 5)
+
+        boxDimensions =
+            ( Length.centimeters 10
+            , Length.centimeters 10
+            , Length.centimeters <| z * 10 + 10
+            )
+    in
+    Scene3d.blockWithShadow baseMaterial
+        (Block3d.centeredOn (Frame3d.atPoint boxCenter) boxDimensions)
+
+
+drawStairs : Float -> Float -> Float -> M.Direction -> List (Entity WorldCoordinates)
+drawStairs x y z dir =
+    let
+        stepCenter xx yy zz =
+            Point3d.centimeters
+                (x * 10 + xx)
+                (y * 10 + yy)
+                (z * 10 + zz)
+
+        stepDimensions xx yy zz =
+            ( Length.centimeters xx
+            , Length.centimeters yy
+            , Length.centimeters zz
+            )
+
+        ( centerFun, dimsFun ) =
+            case dir of
+                M.SE ->
+                    ( \i -> stepCenter 0 (4.5 - toFloat i) (-5.0 - 0.5 * toFloat i)
+                    , \i -> stepDimensions 10 1 (10 - toFloat i)
+                    )
+
+                M.SW ->
+                    ( \i -> stepCenter (4.5 - toFloat i) 0 (-5.0 - 0.5 * toFloat i)
+                    , \i -> stepDimensions 1 10 (10 - toFloat i)
+                    )
+
+                M.NE ->
+                    ( \i -> stepCenter (4.5 - toFloat i) 0 (-9.5 + 0.5 * toFloat i)
+                    , \i -> stepDimensions 1 10 (1 + toFloat i)
+                    )
+
+                M.NW ->
+                    ( \i -> stepCenter 0 (4.5 - toFloat i) (-9.5 + 0.5 * toFloat i)
+                    , \i -> stepDimensions 10 1 (1 + toFloat i)
+                    )
+
+        boxes =
+            List.map (\i -> ( centerFun i, dimsFun i )) (List.range 0 9)
+
+        createBlock ( center, dimensions ) =
+            Scene3d.blockWithShadow baseMaterial
+                (Block3d.centeredOn (Frame3d.atPoint center) dimensions)
+    in
+    List.map createBlock boxes ++ [ drawBase x y (z - 1) ]
+
+
+drawPlayer : Float -> Float -> Float -> List (Entity WorldCoordinates)
+drawPlayer x y z =
     let
         playerSphere xcm ycm zcm r =
             Scene3d.sphereWithShadow playerMaterial <|
@@ -238,10 +282,25 @@ createPlayer x y z =
                     (Point3d.centimeters xcm ycm zcm)
                     (Length.centimeters r)
     in
-    [ playerSphere x y (z + 0.9) 1
-    , playerSphere x y (z + 2.4) 0.8
-    , playerSphere x y (z + 3.6) 0.6
+    [ playerSphere x y (z + 2) 2.2
+    , playerSphere x y (z + 5.5) 1.8
+    , playerSphere x y (z + 8.5) 1.4
     ]
+
+
+drawBlock : M.Block -> List (Entity WorldCoordinates)
+drawBlock block =
+    case block of
+        M.Base ( x, y, z ) ->
+            [ drawBase (toFloat x) (toFloat y) (toFloat z) ]
+
+        M.Stairs ( x, y, z ) dir ->
+            drawStairs (toFloat x) (toFloat y) (toFloat z) dir
+
+
+drawMaze : M.Maze -> List (Entity WorldCoordinates)
+drawMaze =
+    List.concatMap drawBlock
 
 
 view : Model -> Browser.Document Msg
@@ -249,14 +308,14 @@ view model =
     let
         lightLeft =
             Light.point (Light.castsShadows True)
-                { position = Point3d.meters -3 0.5 0.9
+                { position = Point3d.meters -3 0 0.9
                 , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
                 , intensity = LuminousFlux.lumens 150000
                 }
 
         lightRight =
             Light.point (Light.castsShadows True)
-                { position = Point3d.meters 0.5 -3 0.9
+                { position = Point3d.meters 0 -3 0.9
                 , chromaticity = Light.chromaticity { x = 0.1, y = 0.35 }
                 , intensity = LuminousFlux.lumens 2000
                 }
@@ -284,17 +343,6 @@ view model =
                 , intensityBelow = Illuminance.lux 0
                 }
 
-        boxes : List (Entity WorldCoordinates)
-        boxes =
-            List.concat
-                [ zz 6 0 0
-                , zz 6 1 1
-                , zz 5 2 2
-                , zz 3 3 3
-                , zz 3 4 4
-                , zz 1 5 5
-                ]
-
         camera =
             Camera3d.perspective
                 { viewpoint =
@@ -302,7 +350,7 @@ view model =
                         { focalPoint = Point3d.centimeters 0 0 30
                         , azimuth = model.azimuth
                         , elevation = model.elevation
-                        , distance = Length.meters 10
+                        , distance = Length.meters 15
                         }
                 , verticalFieldOfView = Angle.degrees 5
                 }
@@ -319,7 +367,7 @@ view model =
             , antialiasing = Scene3d.multisampling
             , dimensions = ( model.width, model.height )
             , background = Scene3d.backgroundColor Color.lightBlue
-            , entities = createPlayer 0 0 0 ++ boxes
+            , entities = drawPlayer 0 0 0 ++ drawMaze SM.roundabout
             }
         ]
     }

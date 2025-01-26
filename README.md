@@ -1,6 +1,8 @@
 # Isometric maze generator
 
-Inspired heavily by [Sean C Jackson](https://www.seancjackson.com/).
+Inspired heavily by [Sean C Jackson](https://www.seancjackson.com/), [Monument Valley](https://www.monumentvalleygame.com/), and [Townscaper](https://oskarstalberg.com/Townscaper/).
+
+See the [editor readme](README-EDITOR.md)!
 
 ## Develop
 
