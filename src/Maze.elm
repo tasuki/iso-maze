@@ -78,7 +78,7 @@ emptyMaze =
 
 toIndex : Int -> Int -> Int
 toIndex x y =
-    (y + 10) * sideSize + (x + 10)
+    (y - minTileCoord) * sideSize + (x - minTileCoord)
 
 
 fromBlocks : List Block -> Maze
@@ -139,6 +139,16 @@ createBase x y z =
 createStairs : Int -> Int -> Int -> Direction -> Block
 createStairs x y z dir =
     Stairs ( x, y, z ) dir
+
+
+blockPosition : Block -> Position
+blockPosition block =
+    case block of
+        Base pos ->
+            pos
+
+        Stairs pos _ ->
+            pos
 
 
 

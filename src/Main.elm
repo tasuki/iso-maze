@@ -8,6 +8,7 @@ import Draw as D
 import Duration exposing (Duration)
 import Json.Decode as Decode exposing (Decoder)
 import Maze as M
+import MazeEdit as ME
 import Pixels exposing (Pixels)
 import Quantity exposing (Quantity)
 import SampleMazes as SM
@@ -37,6 +38,7 @@ type Msg
     | VisibilityChange Browser.Events.Visibility
     | CameraReset
     | FocusShift M.Vector
+    | ToggleBlock
 
 
 main : Program () Model Msg
@@ -147,6 +149,9 @@ update message model =
             else
                 ( model, Cmd.none )
 
+        ToggleBlock ->
+            ( { model | maze = ME.toggleBlock model.focus model.maze }, Cmd.none )
+
 
 mouseMoveDecoder : Decoder Msg
 mouseMoveDecoder =
@@ -197,6 +202,9 @@ keydown keycode =
 
         "u" ->
             FocusShift ( 0, 0, -1 )
+
+        " " ->
+            ToggleBlock
 
         _ ->
             Noop

@@ -254,6 +254,16 @@ drawFocus ( x, y, z ) =
     ]
 
 
+backgroundFix =
+    -- jesus fucking christ, don't punch holes in my background
+    [ Scene3d.quad (Material.color Color.lightBlue)
+        (Point3d.meters -10 10 -0.099)
+        (Point3d.meters -10 -10 -0.099)
+        (Point3d.meters 10 -10 -0.099)
+        (Point3d.meters 10 10 -0.099)
+    ]
+
+
 drawScene model =
     Scene3d.custom
         { lights = lights
@@ -265,5 +275,5 @@ drawScene model =
         , antialiasing = Scene3d.multisampling
         , dimensions = ( model.width, model.height )
         , background = Scene3d.backgroundColor Color.lightBlue
-        , entities = drawPlayer model.player ++ drawFocus model.focus ++ drawMaze model.maze
+        , entities = backgroundFix ++ drawPlayer model.player ++ drawFocus model.focus ++ drawMaze model.maze
         }
