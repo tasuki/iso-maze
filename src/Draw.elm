@@ -194,7 +194,7 @@ drawBlock block =
 
 drawMaze : M.Maze -> List (Entity WorldCoordinates)
 drawMaze =
-    List.concatMap drawBlock
+    M.toBlocks >> List.concatMap drawBlock
 
 
 drawPlayer : M.Position -> List (Entity WorldCoordinates)

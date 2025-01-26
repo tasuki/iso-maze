@@ -53,8 +53,8 @@ createZigZag tilesPerSide shiftBack height =
 -- Mazes
 
 
-zigZag : M.Maze
-zigZag =
+zigZagBlocks : List M.Block
+zigZagBlocks =
     List.concat
         [ createZigZag 6 0 0
         , createZigZag 6 1 1
@@ -64,36 +64,44 @@ zigZag =
         ]
 
 
+zigZag : M.Maze
+zigZag =
+    M.fromBlocks <| zigZagBlocks
+
+
 roundabout : M.Maze
 roundabout =
-    zigZag
-        ++ [ M.createStairs -1 1 1 M.SE
-           , M.createStairs 1 -1 1 M.SW
-           , M.createStairs -1 3 2 M.SE
-           , M.createStairs 3 -1 2 M.SW
-           , M.createStairs 4 0 3 M.SE
-           , M.createStairs 0 4 3 M.SW
-           , M.createStairs 4 2 4 M.SE
-           , M.createStairs 2 4 4 M.SW
-           ]
+    M.fromBlocks <|
+        zigZagBlocks
+            ++ [ M.createStairs -1 1 1 M.SE
+               , M.createStairs 1 -1 1 M.SW
+               , M.createStairs -1 3 2 M.SE
+               , M.createStairs 3 -1 2 M.SW
+               , M.createStairs 4 0 3 M.SE
+               , M.createStairs 0 4 3 M.SW
+               , M.createStairs 4 2 4 M.SE
+               , M.createStairs 2 4 4 M.SW
+               ]
 
 
 fourStairs : M.Maze
 fourStairs =
-    [ M.createBase 0 0 1
-    , M.createStairs 0 1 1 M.NW
-    , M.createStairs 0 2 0 M.NW
-    , M.createStairs 1 0 1 M.NE
-    , M.createStairs 2 0 0 M.NE
-    , M.createStairs 0 -1 1 M.SE
-    , M.createStairs 0 -2 0 M.SE
-    , M.createStairs -1 0 1 M.SW
-    , M.createStairs -2 0 0 M.SW
-    ]
+    M.fromBlocks
+        [ M.createBase 0 0 1
+        , M.createStairs 0 1 1 M.NW
+        , M.createStairs 0 2 0 M.NW
+        , M.createStairs 1 0 1 M.NE
+        , M.createStairs 2 0 0 M.NE
+        , M.createStairs 0 -1 1 M.SE
+        , M.createStairs 0 -2 0 M.SE
+        , M.createStairs -1 0 1 M.SW
+        , M.createStairs -2 0 0 M.SW
+        ]
 
 
 maxMaze : M.Maze
 maxMaze =
-    List.concatMap (\x -> List.map (\y -> ( x, y, 0 )) (List.range -10 15)) (List.range -10 15)
+    M.mapAllCoords (\x y -> ( x, y, 0 ))
         |> List.filter M.isValidPosition
         |> List.map M.Base
+        |> M.fromBlocks
