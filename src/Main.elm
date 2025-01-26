@@ -38,6 +38,8 @@ type alias Model =
     , orbiting : Bool
     , azimuth : Angle
     , elevation : Angle
+    , maze : M.Maze
+    , player : M.Position
     , focus : M.Position
     }
 
@@ -82,6 +84,8 @@ init () =
       , orbiting = False
       , azimuth = Angle.degrees initialAzimuth
       , elevation = Angle.degrees initialElevation
+      , maze = SM.roundabout
+      , player = ( 0, 0, 0 )
       , focus = ( 0, 0, 1 )
       }
     , Task.perform
@@ -310,21 +314,6 @@ drawStairs x y z dir =
     List.map createBlock boxes ++ [ drawBase x y (z - 1) ]
 
 
-drawPlayer : Float -> Float -> Float -> List (Entity WorldCoordinates)
-drawPlayer x y z =
-    let
-        playerSphere xcm ycm zcm r =
-            Scene3d.sphereWithShadow playerMaterial <|
-                Sphere3d.atPoint
-                    (Point3d.centimeters xcm ycm zcm)
-                    (Length.centimeters r)
-    in
-    [ playerSphere x y (z + 2) 2.2
-    , playerSphere x y (z + 5.5) 1.8
-    , playerSphere x y (z + 8.5) 1.4
-    ]
-
-
 drawBlock : M.Block -> List (Entity WorldCoordinates)
 drawBlock block =
     case block of
@@ -338,6 +327,25 @@ drawBlock block =
 drawMaze : M.Maze -> List (Entity WorldCoordinates)
 drawMaze =
     List.concatMap drawBlock
+
+
+drawPlayer : M.Position -> List (Entity WorldCoordinates)
+drawPlayer ( x, y, z ) =
+    let
+        playerSphere zShift r =
+            Scene3d.sphereWithShadow playerMaterial <|
+                Sphere3d.atPoint
+                    (Point3d.centimeters
+                        (toFloat x * 10)
+                        (toFloat y * 10)
+                        (toFloat z + zShift)
+                    )
+                    (Length.centimeters r)
+    in
+    [ playerSphere 2.0 2.2
+    , playerSphere 5.5 1.8
+    , playerSphere 8.5 1.4
+    ]
 
 
 drawFocus : M.Position -> List (Entity WorldCoordinates)
@@ -442,7 +450,7 @@ view model =
             , antialiasing = Scene3d.multisampling
             , dimensions = ( model.width, model.height )
             , background = Scene3d.backgroundColor Color.lightBlue
-            , entities = drawPlayer 0 0 0 ++ drawFocus model.focus ++ drawMaze SM.roundabout
+            , entities = drawPlayer model.player ++ drawFocus model.focus ++ drawMaze model.maze
             }
         ]
     }
