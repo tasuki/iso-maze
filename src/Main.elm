@@ -38,6 +38,7 @@ type alias Model =
     , orbiting : Bool
     , azimuth : Angle
     , elevation : Angle
+    , focus : M.Position
     }
 
 
@@ -50,6 +51,7 @@ type Msg
     | MouseUp
     | VisibilityChange Browser.Events.Visibility
     | CameraReset
+    | FocusShift M.Vector
 
 
 main : Program () Model Msg
@@ -80,6 +82,7 @@ init () =
       , orbiting = False
       , azimuth = Angle.degrees initialAzimuth
       , elevation = Angle.degrees initialElevation
+      , focus = ( 0, 0, 1 )
       }
     , Task.perform
         (\{ viewport } ->
@@ -146,6 +149,17 @@ update message model =
             , Cmd.none
             )
 
+        FocusShift vector ->
+            let
+                newFocus =
+                    M.shiftPosition model.focus vector
+            in
+            if M.isValidPosition newFocus then
+                ( { model | focus = newFocus }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
 
 mouseMoveDecoder : Decoder Msg
 mouseMoveDecoder =
@@ -179,6 +193,24 @@ keydown keycode =
         "c" ->
             CameraReset
 
+        "h" ->
+            FocusShift ( -1, 0, 0 )
+
+        "l" ->
+            FocusShift ( 1, 0, 0 )
+
+        "k" ->
+            FocusShift ( 0, 1, 0 )
+
+        "j" ->
+            FocusShift ( 0, -1, 0 )
+
+        "i" ->
+            FocusShift ( 0, 0, 1 )
+
+        "u" ->
+            FocusShift ( 0, 0, -1 )
+
         _ ->
             Noop
 
@@ -201,6 +233,11 @@ playerMaterial =
         { baseColor = Color.rgb255 255 255 255
         , roughness = 0.7
         }
+
+
+selectedMaterial : Material.Material coordinates { a | normals : () }
+selectedMaterial =
+    Material.color Color.orange
 
 
 
@@ -303,6 +340,44 @@ drawMaze =
     List.concatMap drawBlock
 
 
+drawFocus : M.Position -> List (Entity WorldCoordinates)
+drawFocus ( x, y, z ) =
+    let
+        selectedSphere xmm ymm zmm =
+            Scene3d.sphere selectedMaterial <|
+                Sphere3d.atPoint
+                    (Point3d.millimeters xmm ymm zmm)
+                    (Length.millimeters 5)
+
+        xmin =
+            toFloat <| x * 100 - 50
+
+        xmax =
+            toFloat <| x * 100 + 50
+
+        ymin =
+            toFloat <| y * 100 - 50
+
+        ymax =
+            toFloat <| y * 100 + 50
+
+        zmin =
+            toFloat <| z * 100 - 100
+
+        zmax =
+            toFloat <| z * 100
+    in
+    [ selectedSphere xmin ymin zmin
+    , selectedSphere xmax ymin zmin
+    , selectedSphere xmin ymax zmin
+    , selectedSphere xmax ymax zmin
+    , selectedSphere xmin ymin zmax
+    , selectedSphere xmax ymin zmax
+    , selectedSphere xmin ymax zmax
+    , selectedSphere xmax ymax zmax
+    ]
+
+
 view : Model -> Browser.Document Msg
 view model =
     let
@@ -367,7 +442,7 @@ view model =
             , antialiasing = Scene3d.multisampling
             , dimensions = ( model.width, model.height )
             , background = Scene3d.backgroundColor Color.lightBlue
-            , entities = drawPlayer 0 0 0 ++ drawMaze SM.roundabout
+            , entities = drawPlayer 0 0 0 ++ drawFocus model.focus ++ drawMaze SM.roundabout
             }
         ]
     }

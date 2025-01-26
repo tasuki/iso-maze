@@ -92,6 +92,8 @@ fourStairs =
     ]
 
 
-maxSquare : M.Maze
-maxSquare =
-    []
+maxMaze : M.Maze
+maxMaze =
+    List.concatMap (\x -> List.map (\y -> ( x, y, 0 )) (List.range -10 15)) (List.range -10 15)
+        |> List.filter M.isValidPosition
+        |> List.map M.Base
