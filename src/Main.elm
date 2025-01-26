@@ -39,6 +39,7 @@ type Msg
     | CameraReset
     | FocusShift M.Vector
     | ToggleBlock
+    | ToggleStairs
 
 
 main : Program () Model Msg
@@ -152,6 +153,9 @@ update message model =
         ToggleBlock ->
             ( { model | maze = ME.toggleBlock model.focus model.maze }, Cmd.none )
 
+        ToggleStairs ->
+            ( { model | maze = ME.toggleStairs model.focus model.maze }, Cmd.none )
+
 
 mouseMoveDecoder : Decoder Msg
 mouseMoveDecoder =
@@ -205,6 +209,9 @@ keydown keycode =
 
         " " ->
             ToggleBlock
+
+        "s" ->
+            ToggleStairs
 
         _ ->
             Noop

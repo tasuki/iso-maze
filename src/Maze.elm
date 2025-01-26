@@ -176,3 +176,23 @@ isValidPosition ( x, y, z ) =
 shiftPosition : Position -> Vector -> Position
 shiftPosition ( x, y, z ) ( xd, yd, zd ) =
     ( x + xd, y + yd, z + zd )
+
+
+
+-- Direction
+
+
+nextDirection : Direction -> Direction
+nextDirection dir =
+    case dir of
+        SE ->
+            SW
+
+        SW ->
+            NW
+
+        NW ->
+            NE
+
+        NE ->
+            SE
