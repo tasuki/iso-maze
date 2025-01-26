@@ -17,185 +17,134 @@ import Scene3d.Material as Material
 import Sphere3d
 import Viewpoint3d
 
-
-type WorldCoordinates
-    = WorldCoordinates
-
+type WorldCoordinates = WorldCoordinates
 
 
 -- Camera
 
-
-camera azimuth elevation =
-    Camera3d.perspective
-        { viewpoint =
-            Viewpoint3d.orbitZ
-                { focalPoint = Point3d.centimeters 0 0 30
-                , azimuth = azimuth
-                , elevation = elevation
-                , distance = Length.meters 15
-                }
-        , verticalFieldOfView = Angle.degrees 5
+camera azimuth elevation = Camera3d.perspective
+    { viewpoint = Viewpoint3d.orbitZ
+        { focalPoint = Point3d.centimeters 0 0 30
+        , azimuth = azimuth
+        , elevation = elevation
+        , distance = Length.meters 15
         }
-
+    , verticalFieldOfView = Angle.degrees 5
+    }
 
 
 -- Lights
 
+lightLeft = Light.point (Light.castsShadows True)
+    { position = Point3d.meters -3 0 0.9
+    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
+    , intensity = LuminousFlux.lumens 150000
+    }
 
-lightLeft =
-    Light.point (Light.castsShadows True)
-        { position = Point3d.meters -3 0 0.9
-        , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
-        , intensity = LuminousFlux.lumens 150000
-        }
+lightRight = Light.point (Light.castsShadows True)
+    { position = Point3d.meters 0 -3 0.9
+    , chromaticity = Light.chromaticity { x = 0.1, y = 0.35 }
+    , intensity = LuminousFlux.lumens 2000
+    }
 
+backLight = Light.point (Light.castsShadows True)
+    { position = Point3d.meters 2 4 5
+    , chromaticity = Light.chromaticity { x = 0.3, y = 0.4 }
+    , intensity = LuminousFlux.lumens 30000
+    }
 
-lightRight =
-    Light.point (Light.castsShadows True)
-        { position = Point3d.meters 0 -3 0.9
-        , chromaticity = Light.chromaticity { x = 0.1, y = 0.35 }
-        , intensity = LuminousFlux.lumens 2000
-        }
+softLeft = Light.soft
+    { upDirection = Direction3d.xyZ (Angle.degrees 90) (Angle.degrees 0)
+    , chromaticity = Light.sunlight
+    , intensityAbove = Illuminance.lux 300
+    , intensityBelow = Illuminance.lux 0
+    }
 
-
-backLight =
-    Light.point (Light.castsShadows True)
-        { position = Point3d.meters 2 4 5
-        , chromaticity = Light.chromaticity { x = 0.3, y = 0.4 }
-        , intensity = LuminousFlux.lumens 30000
-        }
-
-
-softLeft =
-    Light.soft
-        { upDirection = Direction3d.xyZ (Angle.degrees 90) (Angle.degrees 0)
-        , chromaticity = Light.sunlight
-        , intensityAbove = Illuminance.lux 300
-        , intensityBelow = Illuminance.lux 0
-        }
-
-
-softRight =
-    Light.soft
-        { upDirection = Direction3d.xyZ (Angle.degrees -90) (Angle.degrees 0)
-        , chromaticity = Light.sunlight
-        , intensityAbove = Illuminance.lux 10
-        , intensityBelow = Illuminance.lux 0
-        }
-
+softRight = Light.soft
+    { upDirection = Direction3d.xyZ (Angle.degrees -90) (Angle.degrees 0)
+    , chromaticity = Light.sunlight
+    , intensityAbove = Illuminance.lux 10
+    , intensityBelow = Illuminance.lux 0
+    }
 
 lights : Scene3d.Lights coordinates
-lights =
-    Scene3d.fiveLights lightLeft lightRight backLight softLeft softRight
-
+lights = Scene3d.fiveLights lightLeft lightRight backLight softLeft softRight
 
 
 -- Materials
 
+baseMaterial = Material.metal
+    { baseColor = Color.rgb255 255 255 255
+    , roughness = 0.8
+    }
 
-baseMaterial =
-    Material.metal
-        { baseColor = Color.rgb255 255 255 255
-        , roughness = 0.8
-        }
+playerMaterial = Material.metal
+    { baseColor = Color.rgb255 255 255 255
+    , roughness = 0.7
+    }
 
-
-playerMaterial =
-    Material.metal
-        { baseColor = Color.rgb255 255 255 255
-        , roughness = 0.7
-        }
-
-
-selectedMaterial =
-    Material.color Color.orange
-
+selectedMaterial = Material.color Color.orange
 
 
 -- Drawing
 
-
 drawBase : Float -> Float -> Float -> Entity coordinates
 drawBase x y z =
     let
-        boxCenter =
-            Point3d.centimeters
-                (x * 10)
-                (y * 10)
-                (z * 5 - 5)
-
+        boxCenter = Point3d.centimeters (x * 10) (y * 10) (z * 5 - 5)
         boxDimensions =
             ( Length.centimeters 10
             , Length.centimeters 10
             , Length.centimeters <| z * 10 + 10
             )
-    in
-    Scene3d.blockWithShadow baseMaterial
+    in Scene3d.blockWithShadow baseMaterial
         (Block3d.centeredOn (Frame3d.atPoint boxCenter) boxDimensions)
-
 
 drawStairs : Float -> Float -> Float -> M.Direction -> List (Entity WorldCoordinates)
 drawStairs x y z dir =
     let
         stepCenter xx yy zz =
-            Point3d.centimeters
-                (x * 10 + xx)
-                (y * 10 + yy)
-                (z * 10 + zz)
-
+            Point3d.centimeters (x * 10 + xx) (y * 10 + yy) (z * 10 + zz)
         stepDimensions xx yy zz =
             ( Length.centimeters xx
             , Length.centimeters yy
             , Length.centimeters zz
             )
 
-        ( centerFun, dimsFun ) =
-            case dir of
-                M.SE ->
-                    ( \i -> stepCenter 0 (4.5 - toFloat i) (-5.0 - 0.5 * toFloat i)
-                    , \i -> stepDimensions 10 1 (10 - toFloat i)
-                    )
+        ( centerFun, dimsFun ) = case dir of
+            M.SE ->
+                ( \i -> stepCenter 0 (4.5 - toFloat i) (-5.0 - 0.5 * toFloat i)
+                , \i -> stepDimensions 10 1 (10 - toFloat i)
+                )
+            M.SW ->
+                ( \i -> stepCenter (4.5 - toFloat i) 0 (-5.0 - 0.5 * toFloat i)
+                , \i -> stepDimensions 1 10 (10 - toFloat i)
+                )
+            M.NE ->
+                ( \i -> stepCenter (4.5 - toFloat i) 0 (-9.5 + 0.5 * toFloat i)
+                , \i -> stepDimensions 1 10 (1 + toFloat i)
+                )
+            M.NW ->
+                ( \i -> stepCenter 0 (4.5 - toFloat i) (-9.5 + 0.5 * toFloat i)
+                , \i -> stepDimensions 10 1 (1 + toFloat i)
+                )
 
-                M.SW ->
-                    ( \i -> stepCenter (4.5 - toFloat i) 0 (-5.0 - 0.5 * toFloat i)
-                    , \i -> stepDimensions 1 10 (10 - toFloat i)
-                    )
-
-                M.NE ->
-                    ( \i -> stepCenter (4.5 - toFloat i) 0 (-9.5 + 0.5 * toFloat i)
-                    , \i -> stepDimensions 1 10 (1 + toFloat i)
-                    )
-
-                M.NW ->
-                    ( \i -> stepCenter 0 (4.5 - toFloat i) (-9.5 + 0.5 * toFloat i)
-                    , \i -> stepDimensions 10 1 (1 + toFloat i)
-                    )
-
-        boxes =
-            List.map (\i -> ( centerFun i, dimsFun i )) (List.range 0 9)
-
+        boxes = List.map (\i -> ( centerFun i, dimsFun i )) (List.range 0 9)
         createBlock ( center, dimensions ) =
             Scene3d.blockWithShadow baseMaterial
                 (Block3d.centeredOn (Frame3d.atPoint center) dimensions)
     in
     List.map createBlock boxes ++ [ drawBase x y (z - 1) ]
 
-
 drawBlock : M.Block -> List (Entity WorldCoordinates)
-drawBlock block =
-    case block of
-        M.Base ( x, y, z ) ->
-            [ drawBase (toFloat x) (toFloat y) (toFloat z) ]
-
-        M.Stairs ( x, y, z ) dir ->
-            drawStairs (toFloat x) (toFloat y) (toFloat z) dir
-
+drawBlock block = case block of
+    M.Base ( x, y, z ) ->
+        [ drawBase (toFloat x) (toFloat y) (toFloat z) ]
+    M.Stairs ( x, y, z ) dir ->
+        drawStairs (toFloat x) (toFloat y) (toFloat z) dir
 
 drawMaze : M.Maze -> List (Entity WorldCoordinates)
-drawMaze =
-    M.toBlocks >> List.concatMap drawBlock
-
+drawMaze = M.toBlocks >> List.concatMap drawBlock
 
 drawPlayer : M.Position -> List (Entity WorldCoordinates)
 drawPlayer ( x, y, z ) =
@@ -215,7 +164,6 @@ drawPlayer ( x, y, z ) =
     , playerSphere 8.5 1.4
     ]
 
-
 drawFocus : M.Position -> List (Entity WorldCoordinates)
 drawFocus ( x, y, z ) =
     let
@@ -225,23 +173,12 @@ drawFocus ( x, y, z ) =
                     (Point3d.millimeters xmm ymm zmm)
                     (Length.millimeters 5)
 
-        xmin =
-            toFloat <| x * 100 - 50
-
-        xmax =
-            toFloat <| x * 100 + 50
-
-        ymin =
-            toFloat <| y * 100 - 50
-
-        ymax =
-            toFloat <| y * 100 + 50
-
-        zmin =
-            toFloat <| z * 100 - 100
-
-        zmax =
-            toFloat <| z * 100
+        xmin = toFloat <| x * 100 -  50
+        xmax = toFloat <| x * 100 +  50
+        ymin = toFloat <| y * 100 -  50
+        ymax = toFloat <| y * 100 +  50
+        zmin = toFloat <| z * 100 - 100
+        zmax = toFloat <| z * 100
     in
     [ selectedSphere xmin ymin zmin
     , selectedSphere xmax ymin zmin
@@ -253,16 +190,14 @@ drawFocus ( x, y, z ) =
     , selectedSphere xmax ymax zmax
     ]
 
-
 backgroundFix =
     -- jesus fucking christ, don't punch holes in my background
     [ Scene3d.quad (Material.color Color.lightBlue)
-        (Point3d.meters -10 10 -0.099)
+        (Point3d.meters -10  10 -0.099)
         (Point3d.meters -10 -10 -0.099)
-        (Point3d.meters 10 -10 -0.099)
-        (Point3d.meters 10 10 -0.099)
+        (Point3d.meters  10 -10 -0.099)
+        (Point3d.meters  10  10 -0.099)
     ]
-
 
 drawScene model =
     Scene3d.custom
@@ -275,5 +210,9 @@ drawScene model =
         , antialiasing = Scene3d.multisampling
         , dimensions = ( model.width, model.height )
         , background = Scene3d.backgroundColor Color.lightBlue
-        , entities = backgroundFix ++ drawPlayer model.player ++ drawFocus model.focus ++ drawMaze model.maze
+        , entities =
+            backgroundFix ++
+            drawPlayer model.player ++
+            drawFocus model.focus ++
+            drawMaze model.maze
         }
