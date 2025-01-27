@@ -6,6 +6,8 @@ See the [editor readme](README-EDITOR.md)!
 
 ## Develop
 
+[![CI](https://github.com/tasuki/iso-maze/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tasuki/iso-maze/actions/workflows/ci.yml)
+
 On Debian 12 Bookworm:
 
 ```
