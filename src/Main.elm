@@ -18,7 +18,7 @@ import Task
 import Url exposing (Url)
 
 initialAzimuth = -135
-initialElevation = 30
+initialElevation = 50
 
 type alias Model =
     { navKey : Nav.Key

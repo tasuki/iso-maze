@@ -24,7 +24,7 @@ type WorldCoordinates = WorldCoordinates
 
 camera azimuth elevation = Camera3d.perspective
     { viewpoint = Viewpoint3d.orbitZ
-        { focalPoint = Point3d.centimeters 0 0 30
+        { focalPoint = Point3d.centimeters 0 0 50
         , azimuth = azimuth
         , elevation = elevation
         , distance = Length.meters 15
@@ -203,15 +203,6 @@ drawFocus ( x, y, z ) =
     , selectedSphere xmax ymax zmax
     ]
 
-backgroundFix =
-    -- jesus fucking christ, don't punch holes in my background
-    [ Scene3d.quad (Material.color Color.lightBlue)
-        (Point3d.meters -10  10 -0.099)
-        (Point3d.meters -10 -10 -0.099)
-        (Point3d.meters  10 -10 -0.099)
-        (Point3d.meters  10  10 -0.099)
-    ]
-
 drawScene model =
     Scene3d.custom
         { lights = lights
@@ -224,7 +215,6 @@ drawScene model =
         , dimensions = ( model.width, model.height )
         , background = Scene3d.backgroundColor Color.lightBlue
         , entities =
-            backgroundFix ++
             drawPlayer model.player ++
             drawFocus model.focus ++
             drawMaze model.maze
