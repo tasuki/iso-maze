@@ -19,10 +19,12 @@ type MazeBlock
     = EmptyBlock
     | BaseBlock Int
     | StairsBlock Int Direction
+    | BridgeBlock Int Direction
 
 type Block
     = Base Position
     | Stairs Position Direction
+    | Bridge Position Direction
 
 type alias Pos2d = ( Int, Int )
 type alias Position = ( Int, Int, Int )
@@ -51,6 +53,7 @@ set block maze =
         ( xx, yy, mazeBlock ) = case block of
             Base ( x, y, z ) -> ( x, y, BaseBlock z )
             Stairs ( x, y, z ) dir -> ( x, y, StairsBlock z dir )
+            Bridge ( x, y, z ) dir -> ( x, y, BridgeBlock z dir )
     in Array.set (toIndex xx yy) mazeBlock maze
 
 clear : Pos2d -> Maze -> Maze
@@ -71,6 +74,7 @@ toBlock ( x, y ) mazeBlock = case mazeBlock of
     EmptyBlock -> Nothing
     BaseBlock z -> Just <| Base (x, y, z)
     StairsBlock z dir -> Just <| Stairs (x, y, z) dir
+    BridgeBlock z dir -> Just <| Bridge (x, y, z) dir
 
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
@@ -89,6 +93,7 @@ blockPosition : Block -> Position
 blockPosition block = case block of
     Base pos -> pos
     Stairs pos _ -> pos
+    Bridge pos _ -> pos
 
 
 -- Position

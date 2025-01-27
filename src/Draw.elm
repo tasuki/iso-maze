@@ -88,17 +88,18 @@ selectedMaterial = Material.color Color.orange
 
 -- Drawing
 
+createBlock center dimensions =
+    Scene3d.blockWithShadow baseMaterial
+        (Block3d.centeredOn (Frame3d.atPoint center) dimensions)
+
 drawBase : Float -> Float -> Float -> Entity coordinates
 drawBase x y z =
-    let
-        boxCenter = Point3d.centimeters (x * 10) (y * 10) (z * 5 - 5)
-        boxDimensions =
-            ( Length.centimeters 10
-            , Length.centimeters 10
-            , Length.centimeters <| z * 10 + 10
-            )
-    in Scene3d.blockWithShadow baseMaterial
-        (Block3d.centeredOn (Frame3d.atPoint boxCenter) boxDimensions)
+    createBlock
+        ( Point3d.centimeters (x * 10) (y * 10) (z * 5 - 5) )
+        ( Length.centimeters 10
+        , Length.centimeters 10
+        , Length.centimeters <| z * 10 + 10
+        )
 
 drawStairs : Float -> Float -> Float -> M.Direction -> List (Entity WorldCoordinates)
 drawStairs x y z dir =
@@ -129,12 +130,22 @@ drawStairs x y z dir =
                 , \i -> stepDimensions 10 1 (1 + toFloat i)
                 )
 
-        boxes = List.map (\i -> ( centerFun i, dimsFun i )) (List.range 0 9)
-        createBlock ( center, dimensions ) =
-            Scene3d.blockWithShadow baseMaterial
-                (Block3d.centeredOn (Frame3d.atPoint center) dimensions)
+        oneBox i = createBlock (centerFun i) (dimsFun i)
     in
-    List.map createBlock boxes ++ [ drawBase x y (z - 1) ]
+    (List.map oneBox (List.range 0 9)) ++ [ drawBase x y (z - 1) ]
+
+drawBridge : Float -> Float -> Float -> M.Direction -> List (Entity WorldCoordinates)
+drawBridge x y z dir =
+    let
+        stepCenter =
+            Point3d.centimeters (x * 10) (y * 10) (z * 10 + 0.5)
+        stepDimensions =
+            ( Length.centimeters 10
+            , Length.centimeters 10
+            , Length.centimeters 1
+            )
+    in
+    [ createBlock stepCenter stepDimensions ] ++ [ drawBase x y (z - 1) ]
 
 drawBlock : M.Block -> List (Entity WorldCoordinates)
 drawBlock block = case block of
@@ -142,6 +153,8 @@ drawBlock block = case block of
         [ drawBase (toFloat x) (toFloat y) (toFloat z) ]
     M.Stairs ( x, y, z ) dir ->
         drawStairs (toFloat x) (toFloat y) (toFloat z) dir
+    M.Bridge ( x, y, z ) dir ->
+        drawBridge (toFloat x) (toFloat y) (toFloat z) dir
 
 drawMaze : M.Maze -> List (Entity WorldCoordinates)
 drawMaze = M.toBlocks >> List.concatMap drawBlock

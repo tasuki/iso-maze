@@ -47,6 +47,7 @@ type Msg
     | FocusShift M.Vector
     | ToggleBlock
     | ToggleStairs
+    | ToggleBridge
 
 main : Program () Model Msg
 main =
@@ -137,6 +138,7 @@ update message model = case message of
 
     ToggleBlock -> updateMaze ME.toggleBlock model
     ToggleStairs -> updateMaze ME.toggleStairs model
+    ToggleBridge -> updateMaze ME.toggleBridge model
 
     _ -> ( model, Cmd.none )
 
@@ -178,6 +180,7 @@ keydown keycode =
         "u" -> FocusShift (  0,  0, -1 )
         " " -> ToggleBlock
         "s" -> ToggleStairs
+        "b" -> ToggleBridge
         _ -> Noop
 
 subscriptions : Model -> Sub Msg
