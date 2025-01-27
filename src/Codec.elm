@@ -1,6 +1,7 @@
 module Codec exposing (..)
 
 import Array
+import List.Extra
 import Maze as M
 
 encode : M.Maze -> String
@@ -14,8 +15,32 @@ encode maze =
         ++ (String.fromInt cut.yOffset)
         ++ ";mz:" ++ (String.join "" <| List.map encodeBlock cut.maze)
 
-decode : String -> M.Maze
-decode _ = Array.empty
+decode : String -> Maybe M.Maze
+decode str =
+    let
+        parts = String.split ";" str
+        findPart prefix =
+            parts
+                |> List.filter (String.startsWith prefix)
+                |> List.head
+                |> Maybe.andThen (String.dropLeft (String.length prefix) >> Just)
+
+        parsePair s =
+            case String.split "," s of
+                [ a, b ] -> Maybe.map2 Tuple.pair (String.toInt a) (String.toInt b)
+                _ -> Nothing
+
+        sz = findPart "sz:" |> Maybe.andThen parsePair
+        off = findPart "off:" |> Maybe.andThen parsePair
+        mz = findPart "mz:"
+    in
+    Maybe.map5 SubMaze
+        (sz |> Maybe.map Tuple.first)
+        (sz |> Maybe.map Tuple.second)
+        (off |> Maybe.map Tuple.first)
+        (off |> Maybe.map Tuple.second)
+        (mz |> Maybe.map (String.toList >> decodeBlocks))
+        |> Maybe.map insertCutout
 
 
 -- Block encoder/decoder
@@ -39,6 +64,34 @@ encodeBlock block =
         M.StairsBlock z M.SW -> "z" ++ charFromIndex z
         M.StairsBlock z M.NE -> "Z" ++ charFromIndex z
         M.StairsBlock z M.NW -> "S" ++ charFromIndex z
+
+charToIndex : Char -> Maybe Int
+charToIndex c =
+    List.Extra.elemIndex c heightChars
+
+decodeBlock : Char -> Char -> Maybe M.MazeBlock
+decodeBlock typeChar heightChar =
+    charToIndex heightChar
+        |> Maybe.andThen (\z ->
+            case typeChar of
+                'o' -> Just (M.BaseBlock z)
+                's' -> Just (M.StairsBlock z M.SE)
+                'z' -> Just (M.StairsBlock z M.SW)
+                'Z' -> Just (M.StairsBlock z M.NE)
+                'S' -> Just (M.StairsBlock z M.NW)
+                _ -> Nothing
+        )
+
+decodeBlocks : List Char -> List M.MazeBlock
+decodeBlocks chars =
+    case chars of
+        [] -> []
+        'x' :: rest -> M.EmptyBlock :: decodeBlocks rest
+        typeChar :: heightChar :: rest ->
+            case decodeBlock typeChar heightChar of
+                Just block -> block :: decodeBlocks rest
+                Nothing -> decodeBlocks rest
+        _ -> []
 
 
 -- Cutout maze to minimum rectangle

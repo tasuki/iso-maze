@@ -94,3 +94,15 @@ encodeTest =
                     ))
                 (encode SM.roundabout)
         ]
+
+decodeTest =
+    describe "Decode"
+        [ test "Decodes assymetric" <|
+            \_ -> Expect.equal
+                (Just SM.assymetric)
+                (decode <| encode SM.assymetric)
+        , test "Decodes roundabout" <|
+            \_ -> Expect.equal
+                (Just SM.roundabout)
+                (decode <| encode SM.roundabout)
+        ]
