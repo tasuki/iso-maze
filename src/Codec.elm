@@ -51,9 +51,6 @@ type alias SubMaze =
     , maze : List M.MazeBlock
     }
 
-toSubIndex : SubMaze -> Int -> Int -> Int
-toSubIndex subMaze x y = y * subMaze.xSize + x
-
 cutout : M.Maze -> SubMaze
 cutout maze =
     let
@@ -68,6 +65,27 @@ cutout maze =
     , yOffset = limits.minY
     , maze = M.mapCoords yRange xRange getBlock |> List.filterMap identity
     }
+
+insertCutout : SubMaze -> M.Maze
+insertCutout subMaze =
+    let
+        toBlock : Int -> M.MazeBlock -> Maybe M.Block
+        toBlock i block =
+            let
+                x = (modBy subMaze.xSize i) + subMaze.xOffset
+                y = (i // subMaze.xSize) + subMaze.yOffset
+            in
+            M.toBlock ( x, y ) block
+
+        blocks : List M.Block
+        blocks =
+            List.indexedMap toBlock subMaze.maze
+                |> List.filterMap identity
+    in
+    List.foldl
+        (\block maze -> M.set block maze)
+        (M.emptyMaze M.sideSize M.sideSize)
+        blocks
 
 
 -- Limits

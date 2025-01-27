@@ -60,14 +60,15 @@ mapAllCoords = mapCoords coordsRange coordsRange
 toBlocks : Maze -> List Block
 toBlocks maze = List.filterMap (\c -> get c maze) (mapAllCoords Tuple.pair)
 
+toBlock : Pos2d -> MazeBlock -> Maybe Block
+toBlock ( x, y ) mazeBlock = case mazeBlock of
+    EmptyBlock -> Nothing
+    BaseBlock z -> Just <| Base (x, y, z)
+    StairsBlock z dir -> Just <| Stairs (x, y, z) dir
+
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
-    let
-        toBlock mazeBlock = case mazeBlock of
-            EmptyBlock -> Nothing
-            BaseBlock z -> Just <| Base ( x, y, z )
-            StairsBlock z dir -> Just <| Stairs ( x, y, z ) dir
-    in Array.get (toIndex x y) maze |> Maybe.andThen toBlock
+    Array.get (toIndex x y) maze |> Maybe.andThen (toBlock ( x, y ))
 
 
 -- Block
@@ -83,6 +84,10 @@ blockPosition block = case block of
     Base pos -> pos
     Stairs pos _ -> pos
 
+setBlockXY : Pos2d -> Block -> Block
+setBlockXY ( x, y ) block = case block of
+    Base (_, _, z) -> Base ( x, y, z )
+    Stairs (_, _, z) dir -> Stairs ( x, y, z ) dir
 
 -- Position
 

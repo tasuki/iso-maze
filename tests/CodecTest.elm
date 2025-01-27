@@ -51,6 +51,18 @@ cutoutTest =
                 (cutout SM.assymetric)
         ]
 
+insertCutoutTest =
+    describe "Insert cutout"
+        [ test "Puts the cut out roundabout back into full size maze" <|
+            \_ -> Expect.equal
+                SM.roundabout
+                (insertCutout <| cutout SM.roundabout)
+        , test "Puts the cut out assymetric back into full size maze" <|
+            \_ -> Expect.equal
+                SM.assymetric
+                (insertCutout <| cutout SM.assymetric)
+        ]
+
 removeSpaces : String -> String
 removeSpaces = String.filter (\c -> c /= ' ')
 
