@@ -11,6 +11,35 @@ decode : String -> M.Maze
 decode _ = Array.empty
 
 
+-- Cutout maze to minimum rectangle
+
+type alias SubMaze =
+    { xSize : Int
+    , ySize : Int
+    , xOffset : Int
+    , yOffset : Int
+    , maze : List M.MazeBlock
+    }
+
+toSubIndex : SubMaze -> Int -> Int -> Int
+toSubIndex subMaze x y = y * subMaze.xSize + x
+
+cutout : M.Maze -> SubMaze
+cutout maze =
+    let
+        limits = mazeLimits maze
+        xRange = List.range limits.minX limits.maxX
+        yRange = List.range limits.minY limits.maxY
+        getBlock y x = Array.get (M.toIndex x y) maze
+    in
+    { xSize = limits.maxX - limits.minX + 1
+    , ySize = limits.maxY - limits.minY + 1
+    , xOffset = limits.minX
+    , yOffset = limits.minY
+    , maze = M.mapCoords yRange xRange getBlock |> List.filterMap identity
+    }
+
+
 -- Limits
 
 type alias Limits =

@@ -33,14 +33,14 @@ type Direction = SE | SW | NE | NW
 
 -- Maze
 
-emptyMaze : Maze
-emptyMaze = Array.initialize (sideSize * sideSize) (always EmptyBlock)
+emptyMaze : Int -> Int -> Maze
+emptyMaze xSize ySize = Array.initialize (ySize * xSize) (always EmptyBlock)
 
 toIndex : Int -> Int -> Int
 toIndex x y = (y - minTileCoord) * sideSize + (x - minTileCoord)
 
 fromBlocks : List Block -> Maze
-fromBlocks blocks = List.foldl set emptyMaze blocks
+fromBlocks blocks = List.foldl set (emptyMaze sideSize sideSize) blocks
 
 set : Block -> Maze -> Maze
 set block maze =
@@ -50,9 +50,12 @@ set block maze =
             Stairs ( x, y, z ) dir -> ( x, y, StairsBlock z dir )
     in Array.set (toIndex xx yy) mazeBlock maze
 
+mapCoords : List Int -> List Int -> (Int -> Int -> a) -> List a
+mapCoords rangeY rangeX fun =
+    List.concatMap (\y -> List.map (fun y) rangeX) rangeY
+
 mapAllCoords : (Int -> Int -> a) -> List a
-mapAllCoords fun =
-    List.concatMap (\x -> List.map (fun x) coordsRange) coordsRange
+mapAllCoords = mapCoords coordsRange coordsRange
 
 toBlocks : Maze -> List Block
 toBlocks maze = List.filterMap (\c -> get c maze) (mapAllCoords Tuple.pair)
