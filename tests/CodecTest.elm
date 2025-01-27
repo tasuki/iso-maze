@@ -8,7 +8,7 @@ import SampleMazes as SM
 import Test exposing (..)
 
 
-determineLimitsTest =
+limitsTest =
     describe "Limit finder"
         [ test "Finds limits for roundabout" <|
             \_ -> Expect.equal
@@ -37,7 +37,7 @@ cutoutTest =
                     ]
                 }
                 (cutout SM.roundabout)
-        , test "Cuts out assymetric maze" <|
+        , test "Cuts out assymetric" <|
             \_ -> Expect.equal
                 { xSize = 2, ySize = 6, xOffset = 0, yOffset = -1, maze =
                     [ BaseBlock 0, EmptyBlock
@@ -49,4 +49,36 @@ cutoutTest =
                     ]
                 }
                 (cutout SM.assymetric)
+        ]
+
+removeSpaces : String -> String
+removeSpaces = String.filter (\c -> c /= ' ')
+
+encodeTest =
+    describe "Encode"
+        [ test "Encodes assymetric" <|
+            \_ -> Expect.equal
+                (removeSpaces ("sz:2,6;off:0,-1;mz:"
+                    ++ "o0x "
+                    ++ "o0x "
+                    ++ "o0x "
+                    ++ "o0x "
+                    ++ "o0o0"
+                    ++ "x o0"
+                ))
+                (encode SM.assymetric)
+        , test "Encodes the roundabout" <|
+            \_ -> Expect.equal
+                (removeSpaces ("sz:9,9;off:-3,-3;mz:"
+                    ++ "x x x x x o0o0x x "
+                    ++ "x x x x o0o0o1o1x "
+                    ++ "x x x o0z1o1z2o2o2"
+                    ++ "x x o0o0o1o1o2s3o3"
+                    ++ "x o0s1o1o1o2o2o3o3"
+                    ++ "o0o0o1o1o2o2o3s4o4"
+                    ++ "o0o1s2o2o2o3o3o4o4"
+                    ++ "x o1o2z3o3z4o4o4x "
+                    ++ "x x o2o3o3o4o4x x "
+                    ))
+                (encode SM.roundabout)
         ]

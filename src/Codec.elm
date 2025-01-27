@@ -3,12 +3,42 @@ module Codec exposing (..)
 import Array
 import Maze as M
 
-
 encode : M.Maze -> String
-encode _ = ""
+encode maze =
+    let cut = cutout maze in
+    "sz:"
+        ++ (String.fromInt cut.xSize) ++ ","
+        ++ (String.fromInt cut.ySize)
+        ++ ";off:"
+        ++ (String.fromInt cut.xOffset) ++ ","
+        ++ (String.fromInt cut.yOffset)
+        ++ ";mz:" ++ (String.join "" <| List.map encodeBlock cut.maze)
 
 decode : String -> M.Maze
 decode _ = Array.empty
+
+
+-- Block encoder/decoder
+
+heightChars : List Char
+heightChars = String.toList "0123456789abcdefghijklmnopqrstuvwxyz"
+
+charFromIndex : Int -> String
+charFromIndex drop =
+    List.drop drop heightChars
+        |> List.head
+        |> Maybe.withDefault '*'
+        |> String.fromChar
+
+encodeBlock : M.MazeBlock -> String
+encodeBlock block =
+    case block of
+        M.EmptyBlock -> "x"
+        M.BaseBlock z -> "o" ++ charFromIndex z
+        M.StairsBlock z M.SE -> "s" ++ charFromIndex z
+        M.StairsBlock z M.SW -> "z" ++ charFromIndex z
+        M.StairsBlock z M.NE -> "Z" ++ charFromIndex z
+        M.StairsBlock z M.NW -> "S" ++ charFromIndex z
 
 
 -- Cutout maze to minimum rectangle
