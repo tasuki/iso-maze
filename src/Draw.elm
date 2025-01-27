@@ -35,19 +35,19 @@ camera azimuth elevation = Camera3d.perspective
 
 -- Lights
 
-lightLeft = Light.point (Light.castsShadows True)
+lightLeft = Light.point (Light.castsShadows False)
     { position = Point3d.meters -3 0 0.9
     , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
     , intensity = LuminousFlux.lumens 150000
     }
 
-lightRight = Light.point (Light.castsShadows True)
+lightRight = Light.point (Light.castsShadows False)
     { position = Point3d.meters 0 -3 0.9
     , chromaticity = Light.chromaticity { x = 0.1, y = 0.35 }
     , intensity = LuminousFlux.lumens 2000
     }
 
-backLight = Light.point (Light.castsShadows True)
+backLight = Light.point (Light.castsShadows False)
     { position = Point3d.meters 2 4 5
     , chromaticity = Light.chromaticity { x = 0.3, y = 0.4 }
     , intensity = LuminousFlux.lumens 30000
