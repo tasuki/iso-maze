@@ -6,10 +6,10 @@
 
 ### Move focus
 
-- h SW
-- j SE
-- k NW
-- l NE
+- h NW
+- j SW
+- k NE
+- l SE
 - u Down
 - i Up
 

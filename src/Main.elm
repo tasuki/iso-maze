@@ -155,10 +155,10 @@ keydown : String -> Msg
 keydown keycode =
     case keycode of
         "c" -> CameraReset
-        "h" -> FocusShift ( -1,  0,  0 )
-        "l" -> FocusShift (  1,  0,  0 )
-        "k" -> FocusShift (  0,  1,  0 )
-        "j" -> FocusShift (  0, -1,  0 )
+        "h" -> FocusShift (  0,  1,  0 )
+        "l" -> FocusShift (  0, -1,  0 )
+        "k" -> FocusShift (  1,  0,  0 )
+        "j" -> FocusShift ( -1,  0,  0 )
         "i" -> FocusShift (  0,  0,  1 )
         "u" -> FocusShift (  0,  0, -1 )
         " " -> ToggleBlock
