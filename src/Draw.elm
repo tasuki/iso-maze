@@ -35,40 +35,39 @@ camera azimuth elevation = Camera3d.perspective
 
 -- Lights
 
-lightLeft = Light.point (Light.castsShadows False)
-    { position = Point3d.meters -3 0 0.9
+lightLeft1 = Light.point (Light.castsShadows True)
+    { position = Point3d.meters -2 3 5
     , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
     , intensity = LuminousFlux.lumens 150000
     }
 
-lightRight = Light.point (Light.castsShadows False)
-    { position = Point3d.meters 0 -3 0.9
-    , chromaticity = Light.chromaticity { x = 0.1, y = 0.35 }
-    , intensity = LuminousFlux.lumens 2000
+lightLeft2 = Light.point (Light.castsShadows True)
+    { position = Point3d.meters -2 3 6
+    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
+    , intensity = LuminousFlux.lumens 150000
     }
 
-backLight = Light.point (Light.castsShadows False)
-    { position = Point3d.meters 2 4 5
-    , chromaticity = Light.chromaticity { x = 0.3, y = 0.4 }
-    , intensity = LuminousFlux.lumens 30000
+lightLeft3 = Light.point (Light.castsShadows True)
+    { position = Point3d.meters -3 3 5
+    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
+    , intensity = LuminousFlux.lumens 150000
+    }
+
+lightLeft4 = Light.point (Light.castsShadows True)
+    { position = Point3d.meters -3 3 6
+    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
+    , intensity = LuminousFlux.lumens 150000
     }
 
 softLeft = Light.soft
-    { upDirection = Direction3d.xyZ (Angle.degrees 90) (Angle.degrees 0)
+    { upDirection = Direction3d.xyZ (Angle.degrees 55) (Angle.degrees 25)
     , chromaticity = Light.sunlight
     , intensityAbove = Illuminance.lux 300
     , intensityBelow = Illuminance.lux 0
     }
 
-softRight = Light.soft
-    { upDirection = Direction3d.xyZ (Angle.degrees -90) (Angle.degrees 0)
-    , chromaticity = Light.sunlight
-    , intensityAbove = Illuminance.lux 10
-    , intensityBelow = Illuminance.lux 0
-    }
-
 lights : Scene3d.Lights coordinates
-lights = Scene3d.fiveLights lightLeft lightRight backLight softLeft softRight
+lights = Scene3d.fiveLights lightLeft1 lightLeft2 lightLeft3 lightLeft4 softLeft
 
 
 -- Materials
