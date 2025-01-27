@@ -4,6 +4,8 @@ import Angle exposing (Angle)
 import Browser
 import Browser.Dom
 import Browser.Events as BE
+import Browser.Navigation as Nav
+import Codec
 import Draw as D
 import Duration exposing (Duration)
 import Json.Decode as Decode exposing (Decoder)
@@ -13,12 +15,14 @@ import Pixels exposing (Pixels)
 import Quantity exposing (Quantity)
 import SampleMazes as SM
 import Task
+import Url exposing (Url)
 
 initialAzimuth = -135
 initialElevation = 30
 
 type alias Model =
-    { width : Quantity Int Pixels
+    { navKey : Nav.Key
+    , width : Quantity Int Pixels
     , height : Quantity Int Pixels
     , elapsedTime : Duration
     , orbiting : Bool
@@ -31,6 +35,8 @@ type alias Model =
 
 type Msg
     = Noop
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url
     | Resize (Quantity Int Pixels) (Quantity Int Pixels)
     | Tick Duration
     | MouseDown
@@ -44,25 +50,29 @@ type Msg
 
 main : Program () Model Msg
 main =
-    Browser.document
+    Browser.application
         { init = init
         , update = update
         , subscriptions = subscriptions
         , view = view
+        , onUrlRequest = LinkClicked
+        , onUrlChange = UrlChanged
         }
 
-init : () -> ( Model, Cmd Msg )
-init () =
-    ( { width = Quantity.zero
-      , height = Quantity.zero
-      , elapsedTime = Quantity.zero
-      , orbiting = False
-      , azimuth = Angle.degrees initialAzimuth
-      , elevation = Angle.degrees initialElevation
-      , maze = SM.assymetric
-      , player = ( 0, 0, 0 )
-      , focus = ( 0, 0, 1 )
-      }
+init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init () url navKey =
+    (changeRouteTo url
+        { navKey = navKey
+        , width = Quantity.zero
+        , height = Quantity.zero
+        , elapsedTime = Quantity.zero
+        , orbiting = False
+        , azimuth = Angle.degrees initialAzimuth
+        , elevation = Angle.degrees initialElevation
+        , maze = SM.assymetric
+        , player = ( 0, 0, 0 )
+        , focus = ( 0, 0, 1 )
+        }
     , Task.perform
         (\{ viewport } -> Resize
             (Pixels.int (round viewport.width))
@@ -71,9 +81,12 @@ init () =
         Browser.Dom.getViewport
     )
 
+
+-- Update
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model = case message of
-    Noop -> ( model, Cmd.none )
+    UrlChanged url -> ( changeRouteTo url model, Cmd.none )
     Resize width height ->
         ( { model | width = width, height = height }, Cmd.none )
     Tick elapsed ->
@@ -98,9 +111,9 @@ update message model = case message of
                     |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
             in
             ( { model
-                | orbiting = True
-                , azimuth = newAzimuth
-                , elevation = newElevation
+              | orbiting = True
+              , azimuth = newAzimuth
+              , elevation = newElevation
               }
             , Cmd.none
             )
@@ -109,47 +122,49 @@ update message model = case message of
 
     CameraReset ->
         ( { model
-            | azimuth = Angle.degrees initialAzimuth
-            , elevation = Angle.degrees initialElevation
+          | azimuth = Angle.degrees initialAzimuth
+          , elevation = Angle.degrees initialElevation
           }
         , Cmd.none
         )
 
     FocusShift vector ->
-        let
-            newFocus = M.shiftPosition model.focus vector
-        in
+        let newFocus = M.shiftPosition model.focus vector in
         if M.isValidPosition newFocus then
             ( { model | focus = newFocus }, Cmd.none )
         else
             ( model, Cmd.none )
 
-    ToggleBlock ->
-        ( { model | maze = ME.toggleBlock model.focus model.maze }, Cmd.none )
-    ToggleStairs ->
-        ( { model | maze = ME.toggleStairs model.focus model.maze }, Cmd.none )
+    ToggleBlock -> updateMaze ME.toggleBlock model
+    ToggleStairs -> updateMaze ME.toggleStairs model
+
+    _ -> ( model, Cmd.none )
+
+changeRouteTo : Url.Url -> Model -> Model
+changeRouteTo url model =
+    case Maybe.andThen Codec.decode url.query of
+        Just maze -> { model | maze = maze }
+        Nothing -> model
+
+updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
+updateMaze fun model =
+    let newMaze = fun model.focus model.maze in
+    ( { model | maze = newMaze }
+    , pushUrl model.navKey newMaze
+    )
+
+pushUrl : Nav.Key -> M.Maze -> Cmd msg
+pushUrl navKey maze =
+    Nav.pushUrl navKey <| "?" ++ Codec.encode maze
+
+
+-- Subscriptions
 
 mouseMoveDecoder : Decoder Msg
 mouseMoveDecoder =
     Decode.map2 MouseMove
         (Decode.field "movementX" (Decode.map Pixels.float Decode.float))
         (Decode.field "movementY" (Decode.map Pixels.float Decode.float))
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch
-        [ BE.onResize (\width height -> Resize (Pixels.int width) (Pixels.int height))
-        -- TODO , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
-        , BE.onVisibilityChange VisibilityChange
-        , if model.orbiting then
-            Sub.batch
-                [ BE.onMouseMove mouseMoveDecoder
-                , BE.onMouseUp (Decode.succeed MouseUp)
-                ]
-          else
-            BE.onMouseDown (Decode.succeed MouseDown)
-        , BE.onKeyDown (Decode.map keydown <| Decode.field "key" Decode.string)
-        ]
 
 keydown : String -> Msg
 keydown keycode =
@@ -164,6 +179,23 @@ keydown keycode =
         " " -> ToggleBlock
         "s" -> ToggleStairs
         _ -> Noop
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ BE.onResize (\w h -> Resize (Pixels.int w) (Pixels.int h))
+        -- TODO , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
+        , BE.onVisibilityChange VisibilityChange
+        , if model.orbiting then Sub.batch
+            [ BE.onMouseMove mouseMoveDecoder
+            , BE.onMouseUp (Decode.succeed MouseUp)
+            ]
+          else BE.onMouseDown (Decode.succeed MouseDown)
+        , BE.onKeyDown (Decode.map keydown <| Decode.field "key" Decode.string)
+        ]
+
+
+-- View
 
 view : Model -> Browser.Document Msg
 view model =
