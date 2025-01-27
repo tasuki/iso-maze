@@ -15,23 +15,28 @@ encode maze =
         ++ (String.fromInt cut.yOffset)
         ++ ";mz:" ++ (String.join "" <| List.map encodeBlock cut.maze)
 
+removeSpaces : String -> String
+removeSpaces = String.filter (\c -> c /= ' ')
+
 decode : String -> Maybe M.Maze
 decode str =
     let
-        parts = String.split ";" str
-        findPart prefix =
-            parts
-                |> List.filter (String.startsWith prefix)
-                |> List.head
-                |> Maybe.andThen (String.dropLeft (String.length prefix) >> Just)
+        parts : List String
+        parts = str |> removeSpaces |> String.split ";"
 
-        parsePair s =
-            case String.split "," s of
-                [ a, b ] -> Maybe.map2 Tuple.pair (String.toInt a) (String.toInt b)
-                _ -> Nothing
+        findPart : String -> Maybe String
+        findPart prefix = parts
+            |> List.filter (String.startsWith prefix)
+            |> List.head
+            |> Maybe.andThen (String.dropLeft (String.length prefix) >> Just)
 
-        sz = findPart "sz:" |> Maybe.andThen parsePair
-        off = findPart "off:" |> Maybe.andThen parsePair
+        parseIntPair : String -> Maybe (Int, Int)
+        parseIntPair s = case String.split "," s of
+            [ a, b ] -> Maybe.map2 Tuple.pair (String.toInt a) (String.toInt b)
+            _ -> Nothing
+
+        sz = findPart "sz:" |> Maybe.andThen parseIntPair
+        off = findPart "off:" |> Maybe.andThen parseIntPair
         mz = findPart "mz:"
     in
     Maybe.map5 SubMaze
@@ -129,16 +134,10 @@ insertCutout subMaze =
                 y = (i // subMaze.xSize) + subMaze.yOffset
             in
             M.toBlock ( x, y ) block
-
-        blocks : List M.Block
-        blocks =
-            List.indexedMap toBlock subMaze.maze
-                |> List.filterMap identity
     in
-    List.foldl
-        (\block maze -> M.set block maze)
-        (M.emptyMaze M.sideSize M.sideSize)
-        blocks
+    List.indexedMap toBlock subMaze.maze
+        |> List.filterMap identity
+        |> List.foldl M.set M.emptyMaze
 
 
 -- Limits

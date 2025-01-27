@@ -1,5 +1,6 @@
 module SampleMazes exposing (..)
 
+import Codec
 import List.Nonempty as NE exposing (Nonempty)
 import Maze as M
 
@@ -95,3 +96,18 @@ assymetric =
         , M.createBase 1  3 0
         , M.createBase 1  4 0
         ]
+
+
+-- enter a new era of representing mazes
+
+ziggurat = "sz:9,9;off:-3,-3;mz:"
+    ++ "x x x x o0o0x x x "
+    ++ "x x x o0o0o1o1x x "
+    ++ "x x x o0z1o1z2o2o2"
+    ++ "x o0o0o0o1o1o1s3o2"
+    ++ "o0o0s1o1o1s2o3o3o3"
+    ++ "o0o1o1o1z2o2o3s4o3"
+    ++ "x o1s2o1o3o3o3s5o3"
+    ++ "x x o2z3o3z4z5o5o3"
+    ++ "x x o2o2o3o3o3o3o3"
+        |> Codec.decode |> Maybe.withDefault M.emptyMaze

@@ -69,7 +69,7 @@ init () url navKey =
         , orbiting = False
         , azimuth = Angle.degrees initialAzimuth
         , elevation = Angle.degrees initialElevation
-        , maze = SM.assymetric
+        , maze = SM.ziggurat
         , player = ( 0, 0, 0 )
         , focus = ( 0, 0, 1 )
         }

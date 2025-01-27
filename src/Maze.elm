@@ -33,14 +33,17 @@ type Direction = SE | SW | NE | NW
 
 -- Maze
 
-emptyMaze : Int -> Int -> Maze
-emptyMaze xSize ySize = Array.initialize (ySize * xSize) (always EmptyBlock)
+emptyMaze : Maze
+emptyMaze = emptyMazeSize sideSize sideSize
+
+emptyMazeSize : Int -> Int -> Maze
+emptyMazeSize xSize ySize = Array.initialize (ySize * xSize) (always EmptyBlock)
 
 toIndex : Int -> Int -> Int
 toIndex x y = (y - minTileCoord) * sideSize + (x - minTileCoord)
 
 fromBlocks : List Block -> Maze
-fromBlocks blocks = List.foldl set (emptyMaze sideSize sideSize) blocks
+fromBlocks blocks = List.foldl set emptyMaze blocks
 
 set : Block -> Maze -> Maze
 set block maze =

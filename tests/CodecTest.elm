@@ -63,9 +63,6 @@ insertCutoutTest =
                 (insertCutout <| cutout SM.assymetric)
         ]
 
-removeSpaces : String -> String
-removeSpaces = String.filter (\c -> c /= ' ')
-
 encodeTest =
     describe "Encode"
         [ test "Encodes assymetric" <|
@@ -91,7 +88,7 @@ encodeTest =
                     ++ "o0o1s2o2o2o3o3o4o4"
                     ++ "x o1o2z3o3z4o4o4x "
                     ++ "x x o2o3o3o4o4x x "
-                    ))
+                ))
                 (encode SM.roundabout)
         ]
 
