@@ -11,7 +11,8 @@ toggleBlock ( x, y, z ) maze =
             |> Maybe.Extra.filter (\( _, _, bz ) -> bz >= z)
             |> Maybe.Extra.unwrap z (\_ -> z - 1)
     in
-    M.set (M.Base ( x, y, newZ )) maze
+    if newZ < 0 then M.clear (x, y) maze
+    else M.set (M.Base ( x, y, newZ )) maze
 
 toggleStairs : M.Position -> M.Maze -> M.Maze
 toggleStairs ( x, y, z ) maze =

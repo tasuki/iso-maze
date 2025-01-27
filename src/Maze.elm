@@ -50,6 +50,9 @@ set block maze =
             Stairs ( x, y, z ) dir -> ( x, y, StairsBlock z dir )
     in Array.set (toIndex xx yy) mazeBlock maze
 
+clear : Pos2d -> Maze -> Maze
+clear (x, y) maze = Array.set (toIndex x y) EmptyBlock maze
+
 mapCoords : List Int -> List Int -> (Int -> Int -> a) -> List a
 mapCoords rangeY rangeX fun =
     List.concatMap (\y -> List.map (fun y) rangeX) rangeY
@@ -84,10 +87,6 @@ blockPosition block = case block of
     Base pos -> pos
     Stairs pos _ -> pos
 
-setBlockXY : Pos2d -> Block -> Block
-setBlockXY ( x, y ) block = case block of
-    Base (_, _, z) -> Base ( x, y, z )
-    Stairs (_, _, z) dir -> Stairs ( x, y, z ) dir
 
 -- Position
 
