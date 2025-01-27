@@ -59,7 +59,7 @@ init () =
       , orbiting = False
       , azimuth = Angle.degrees initialAzimuth
       , elevation = Angle.degrees initialElevation
-      , maze = SM.roundabout
+      , maze = SM.assymetric
       , player = ( 0, 0, 0 )
       , focus = ( 0, 0, 1 )
       }

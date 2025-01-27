@@ -52,7 +52,7 @@ set block maze =
 
 mapAllCoords : (Int -> Int -> a) -> List a
 mapAllCoords fun =
-    List.concatMap (\x -> List.map (\y -> fun x y) coordsRange) coordsRange
+    List.concatMap (\x -> List.map (fun x) coordsRange) coordsRange
 
 toBlocks : Maze -> List Block
 toBlocks maze = List.filterMap (\c -> get c maze) (mapAllCoords Tuple.pair)

@@ -83,3 +83,15 @@ maxMaze =
         |> List.filter M.isValidPosition
         |> List.map M.Base
         |> M.fromBlocks
+
+assymetric : M.Maze
+assymetric =
+    M.fromBlocks
+        [ M.createBase 0 -1 0
+        , M.createBase 0  0 0
+        , M.createBase 0  1 0
+        , M.createBase 0  2 0
+        , M.createBase 0  3 0
+        , M.createBase 1  3 0
+        , M.createBase 1  4 0
+        ]
