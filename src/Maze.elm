@@ -14,7 +14,11 @@ sidest = 18
 sideSize = maxTileCoord - minTileCoord + 1
 coordsRange = List.range minTileCoord maxTileCoord
 
-type alias Maze = Array MazeBlock
+type alias Maze =
+    { maze : Array MazeBlock
+    , start : Pos2d
+    , end : Pos2d
+    }
 type MazeBlock
     = EmptyBlock
     | BaseBlock Int
@@ -39,7 +43,11 @@ emptyMaze : Maze
 emptyMaze = emptyMazeSize sideSize sideSize
 
 emptyMazeSize : Int -> Int -> Maze
-emptyMazeSize xSize ySize = Array.initialize (ySize * xSize) (always EmptyBlock)
+emptyMazeSize xSize ySize =
+    { maze = Array.initialize (ySize * xSize) (always EmptyBlock)
+    , start = (0, 0)
+    , end = (0, 0)
+    }
 
 toIndex : Int -> Int -> Int
 toIndex x y = (y - minTileCoord) * sideSize + (x - minTileCoord)
@@ -54,10 +62,12 @@ set block maze =
             Base ( x, y, z ) -> ( x, y, BaseBlock z )
             Stairs ( x, y, z ) dir -> ( x, y, StairsBlock z dir )
             Bridge ( x, y, z ) dir -> ( x, y, BridgeBlock z dir )
-    in Array.set (toIndex xx yy) mazeBlock maze
+    in
+    { maze | maze = Array.set (toIndex xx yy) mazeBlock maze.maze }
 
 clear : Pos2d -> Maze -> Maze
-clear (x, y) maze = Array.set (toIndex x y) EmptyBlock maze
+clear ( x, y ) maze =
+    { maze | maze = Array.set (toIndex x y) EmptyBlock maze.maze }
 
 mapCoords : List Int -> List Int -> (Int -> Int -> a) -> List a
 mapCoords rangeY rangeX fun =
@@ -78,8 +88,17 @@ toBlock ( x, y ) mazeBlock = case mazeBlock of
 
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
-    Array.get (toIndex x y) maze |> Maybe.andThen (toBlock ( x, y ))
+    Array.get (toIndex x y) maze.maze |> Maybe.andThen (toBlock ( x, y ))
 
+getPosition : Pos2d -> Maze -> Maybe Position
+getPosition pos =
+    get pos >> Maybe.map blockPosition
+
+startPosition : Maze -> Position
+startPosition m = getPosition m.start m |> Maybe.withDefault ( 0, 0, 0 )
+
+endPosition : Maze -> Position
+endPosition m = getPosition m.end m |> Maybe.withDefault ( 0, 0, 0 )
 
 -- Block
 
@@ -117,6 +136,12 @@ isValidPosition ( x, y, z ) =
 
 shiftPosition : Position -> Vector -> Position
 shiftPosition ( x, y, z ) ( xd, yd, zd ) = ( x + xd, y + yd, z + zd )
+
+posX : Pos2d -> Int
+posX = Tuple.first
+
+posY : Pos2d -> Int
+posY = Tuple.second
 
 
 -- Direction

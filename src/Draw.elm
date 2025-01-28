@@ -181,7 +181,7 @@ drawPlayer ( x, y, z ) =
                     (Point3d.centimeters
                         (toFloat x * 10)
                         (toFloat y * 10)
-                        (toFloat z + zShift)
+                        (toFloat z * 10 + zShift)
                     )
                     (Length.centimeters r)
     in
@@ -190,8 +190,8 @@ drawPlayer ( x, y, z ) =
     , playerSphere 8.5 1.4
     ]
 
-drawGoal : M.Position -> List (Entity WorldCoordinates)
-drawGoal ( x, y, z ) =
+drawEnd : M.Position -> List (Entity WorldCoordinates)
+drawEnd ( x, y, z ) =
     let
         point = Frame3d.atPoint <| Point3d.centimeters (toFloat x * 10) (toFloat y * 10) (toFloat z * 10)
         hatPart rotation = Scene3d.blockWithShadow goalMaterial <|
@@ -245,8 +245,8 @@ drawScene model =
         , dimensions = ( model.width, model.height )
         , background = Scene3d.backgroundColor Color.lightBlue
         , entities =
-            drawGoal (0, -1, 0) ++
             drawPlayer model.player ++
             drawFocus model.focus ++
-            drawMaze model.maze
+            drawMaze model.maze ++
+            drawEnd (M.endPosition model.maze)
         }

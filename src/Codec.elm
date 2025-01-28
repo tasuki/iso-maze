@@ -13,6 +13,12 @@ encode maze =
         ++ ";off:"
         ++ (String.fromInt cut.xOffset) ++ ","
         ++ (String.fromInt cut.yOffset)
+        ++ ";st:"
+        ++ (String.fromInt <| M.posX <| maze.start) ++ ","
+        ++ (String.fromInt <| M.posY <| maze.start)
+        ++ ";end:"
+        ++ (String.fromInt <| M.posX <| maze.end) ++ ","
+        ++ (String.fromInt <| M.posY <| maze.end)
         ++ ";mz:" ++ (String.join "" <| List.map encodeBlock cut.maze)
 
 removeSpaces : String -> String
@@ -37,14 +43,17 @@ decode str =
 
         sz = findPart "sz:" |> Maybe.andThen parseIntPair
         off = findPart "off:" |> Maybe.andThen parseIntPair
+        st = findPart "st:" |> Maybe.andThen parseIntPair
+        end = findPart "end:" |> Maybe.andThen parseIntPair
         mz = findPart "mz:"
     in
-    Maybe.map5 SubMaze
+    Maybe.map4 SubMaze
         (sz |> Maybe.map Tuple.first)
         (sz |> Maybe.map Tuple.second)
         (off |> Maybe.map Tuple.first)
         (off |> Maybe.map Tuple.second)
-        (mz |> Maybe.map (String.toList >> decodeBlocks))
+        |> Maybe.andThen (\pf -> Maybe.map3 pf st end
+            (mz |> Maybe.map (String.toList >> decodeBlocks)))
         |> Maybe.map insertCutout
 
 
@@ -112,6 +121,8 @@ type alias SubMaze =
     , ySize : Int
     , xOffset : Int
     , yOffset : Int
+    , start : M.Pos2d
+    , end : M.Pos2d
     , maze : List M.MazeBlock
     }
 
@@ -121,12 +132,14 @@ cutout maze =
         limits = mazeLimits maze
         xRange = List.range limits.minX limits.maxX
         yRange = List.range limits.minY limits.maxY
-        getBlock y x = Array.get (M.toIndex x y) maze
+        getBlock y x = Array.get (M.toIndex x y) maze.maze
     in
     { xSize = limits.maxX - limits.minX + 1
     , ySize = limits.maxY - limits.minY + 1
     , xOffset = limits.minX
     , yOffset = limits.minY
+    , start = maze.start
+    , end = maze.end
     , maze = M.mapCoords yRange xRange getBlock |> List.filterMap identity
     }
 
@@ -140,10 +153,13 @@ insertCutout subMaze =
                 y = (i // subMaze.xSize) + subMaze.yOffset
             in
             M.toBlock ( x, y ) block
+
+        maze = M.emptyMaze
     in
     List.indexedMap toBlock subMaze.maze
         |> List.filterMap identity
-        |> List.foldl M.set M.emptyMaze
+        |> List.foldl M.set
+            { maze | start = subMaze.start, end = subMaze.end }
 
 
 -- Limits

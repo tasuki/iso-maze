@@ -35,6 +35,11 @@ createZigZag tilesPerSide shiftBack height =
     zeroedZigZag tilesPerSide
         |> List.map (\( x, y ) -> M.Base ( x + shiftBack, y + shiftBack, height ))
 
+setStartEnd : M.Pos2d -> M.Pos2d -> M.Maze -> M.Maze
+setStartEnd start end maze =
+    { maze | start = start, end = end }
+
+
 
 -- Mazes
 
@@ -53,29 +58,31 @@ zigZag = M.fromBlocks <| zigZagBlocks
 
 roundabout : M.Maze
 roundabout =
-    M.fromBlocks <| zigZagBlocks ++
-        [ M.createStairs -1  1 1 M.SE
-        , M.createStairs  1 -1 1 M.SW
-        , M.createStairs -1  3 2 M.SE
-        , M.createStairs  3 -1 2 M.SW
-        , M.createStairs  4  0 3 M.SE
-        , M.createStairs  0  4 3 M.SW
-        , M.createStairs  4  2 4 M.SE
-        , M.createStairs  2  4 4 M.SW
-        ]
+    setStartEnd ( 0, 0 ) ( 4, 4 ) <|
+        M.fromBlocks <| zigZagBlocks ++
+            [ M.createStairs -1  1 1 M.SE
+            , M.createStairs  1 -1 1 M.SW
+            , M.createStairs -1  3 2 M.SE
+            , M.createStairs  3 -1 2 M.SW
+            , M.createStairs  4  0 3 M.SE
+            , M.createStairs  0  4 3 M.SW
+            , M.createStairs  4  2 4 M.SE
+            , M.createStairs  2  4 4 M.SW
+            ]
 
 fourStairs : M.Maze
 fourStairs =
-    M.fromBlocks
-        [ M.createBase    0  0 1
-        , M.createStairs  0  1 1 M.NW
-        , M.createStairs  0  2 0 M.NW
-        , M.createStairs  1  0 1 M.NE
-        , M.createStairs  2  0 0 M.NE
-        , M.createStairs  0 -1 1 M.SE
-        , M.createStairs  0 -2 0 M.SE
-        , M.createStairs -1  0 1 M.SW
-        , M.createStairs -2  0 0 M.SW
+    setStartEnd ( -2, -2 ) ( 0, 0 ) <| M.fromBlocks
+        [ M.createBase   -2 -2 0
+        , M.createBase    0  0 2
+        , M.createStairs  0  1 2 M.NW
+        , M.createStairs  0  2 1 M.NW
+        , M.createStairs  1  0 2 M.NE
+        , M.createStairs  2  0 1 M.NE
+        , M.createStairs  0 -1 2 M.SE
+        , M.createStairs  0 -2 1 M.SE
+        , M.createStairs -1  0 2 M.SW
+        , M.createStairs -2  0 1 M.SW
         ]
 
 maxMaze : M.Maze
@@ -84,6 +91,7 @@ maxMaze =
         |> List.filter M.isValidPosition
         |> List.map M.Base
         |> M.fromBlocks
+        |> setStartEnd ( 0, 0 ) ( 8, 8 )
 
 assymetric : M.Maze
 assymetric =
@@ -96,11 +104,12 @@ assymetric =
         , M.createBase 1  3 0
         , M.createBase 1  4 0
         ]
+        |> setStartEnd ( 0, -1 ) ( 1, 4 )
 
 
 -- enter a new era of representing mazes
 
-ziggurat = "sz:9,9;off:-3,-3;mz:"
+ziggurat = "sz:9,9;off:-3,-3;st:0,0;end:4,4;mz:"
     ++ "x x x x o0o0x x x "
     ++ "x x x o0o0o1o1x x "
     ++ "x x x o0z1o1z2o2o2"
@@ -112,7 +121,7 @@ ziggurat = "sz:9,9;off:-3,-3;mz:"
     ++ "x x o2o2o3o3o3o3o3"
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
-prototypeFirstMaze = "sz:22,23;off:-8,-8;mz:"
+prototypeFirstMaze = "sz:22,23;off:-8,-8;st:0,14;end:9,-8;mz:"
     ++ "x x x x x x x x x x x x x o0o0o1z2o2x x x x "
     ++ "x x x x x x x x x x x x x s1o0x x S2x x x x "
     ++ "x x x x x x x x x x x o1o1o1o0x o1o1x x x x "

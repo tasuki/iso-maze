@@ -17,6 +17,7 @@ import SampleMazes as SM
 import Task
 import Url exposing (Url)
 
+defaultMaze = SM.ziggurat
 initialAzimuth = -135
 initialElevation = 50
 
@@ -70,8 +71,8 @@ init () url navKey =
         , orbiting = False
         , azimuth = Angle.degrees initialAzimuth
         , elevation = Angle.degrees initialElevation
-        , maze = SM.ziggurat
-        , player = ( 0, 0, 0 )
+        , maze = defaultMaze
+        , player = M.startPosition defaultMaze
         , focus = ( 0, 0, 1 )
         }
     , Task.perform
@@ -145,7 +146,7 @@ update message model = case message of
 changeRouteTo : Url.Url -> Model -> Model
 changeRouteTo url model =
     case Maybe.andThen Codec.decode url.query of
-        Just maze -> { model | maze = maze }
+        Just maze -> { model | maze = maze, player = M.startPosition maze }
         Nothing -> model
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
