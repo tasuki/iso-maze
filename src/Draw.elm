@@ -77,8 +77,18 @@ baseMaterial = Material.metal
     , roughness = 0.8
     }
 
+bridgeMaterial = Material.metal
+    { baseColor = Color.rgb255 255 200 200
+    , roughness = 0.8
+    }
+
 playerMaterial = Material.metal
     { baseColor = Color.rgb255 255 255 255
+    , roughness = 0.4
+    }
+
+goalMaterial = Material.metal
+    { baseColor = Color.rgb255 20 20 20
     , roughness = 0.7
     }
 
@@ -136,15 +146,17 @@ drawStairs x y z dir =
 drawBridge : Float -> Float -> Float -> M.Direction -> List (Entity WorldCoordinates)
 drawBridge x y z dir =
     let
-        stepCenter =
-            Point3d.centimeters (x * 10) (y * 10) (z * 10 + 0.5)
-        stepDimensions =
-            ( Length.centimeters 10
-            , Length.centimeters 10
-            , Length.centimeters 1
+        center = Point3d.centimeters (x * 10) (y * 10) (z * 10 + 0.5)
+        bridge = Scene3d.blockWithShadow bridgeMaterial
+            (Block3d.centeredOn
+                ( Frame3d.atPoint center )
+                ( Length.centimeters 10
+                , Length.centimeters 10
+                , Length.centimeters 1
+                )
             )
     in
-    [ createBlock stepCenter stepDimensions ] ++ [ drawBase x y (z - 1) ]
+    [ bridge ] ++ [ drawBase x y (z - 1) ]
 
 drawBlock : M.Block -> List (Entity WorldCoordinates)
 drawBlock block = case block of
@@ -174,6 +186,23 @@ drawPlayer ( x, y, z ) =
     [ playerSphere 2.0 2.2
     , playerSphere 5.5 1.8
     , playerSphere 8.5 1.4
+    ]
+
+drawGoal : M.Position -> List (Entity WorldCoordinates)
+drawGoal ( x, y, z ) =
+    let
+        point = Frame3d.atPoint <| Point3d.centimeters (toFloat x * 10) (toFloat y * 10) (toFloat z * 10)
+        hatPart rotation = Scene3d.blockWithShadow goalMaterial <|
+            Block3d.centeredOn
+                ( point |> Frame3d.rotateAroundOwn Frame3d.zAxis (Angle.degrees rotation) )
+                ( Length.centimeters 2
+                , Length.centimeters 2
+                , Length.centimeters 5
+                )
+    in
+    [ hatPart  0
+    , hatPart 30
+    , hatPart 60
     ]
 
 drawFocus : M.Position -> List (Entity WorldCoordinates)
@@ -214,6 +243,7 @@ drawScene model =
         , dimensions = ( model.width, model.height )
         , background = Scene3d.backgroundColor Color.lightBlue
         , entities =
+            drawGoal (0, -1, 0) ++
             drawPlayer model.player ++
             drawFocus model.focus ++
             drawMaze model.maze
