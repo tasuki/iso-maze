@@ -77,6 +77,11 @@ baseMaterial = Material.metal
     , roughness = 0.8
     }
 
+stairsMaterial = Material.metal
+    { baseColor = Color.rgb255 255 200 150
+    , roughness = 0.8
+    }
+
 bridgeMaterial = Material.metal
     { baseColor = Color.rgb255 255 200 200
     , roughness = 0.8
@@ -97,13 +102,13 @@ selectedMaterial = Material.color Color.orange
 
 -- Drawing
 
-createBlock center dimensions =
-    Scene3d.blockWithShadow baseMaterial
+createBlock material center dimensions =
+    Scene3d.blockWithShadow material
         (Block3d.centeredOn (Frame3d.atPoint center) dimensions)
 
-drawBase : Float -> Float -> Float -> Entity coordinates
-drawBase x y z =
-    createBlock
+drawBase : Material.Uniform coordinates -> Float -> Float -> Float -> Entity coordinates
+drawBase material x y z =
+    createBlock material
         ( Point3d.centimeters (x * 10) (y * 10) (z * 5 - 5) )
         ( Length.centimeters 10
         , Length.centimeters 10
@@ -139,29 +144,26 @@ drawStairs x y z dir =
                 , \i -> stepDimensions 10 1 (1 + toFloat i)
                 )
 
-        oneBox i = createBlock (centerFun i) (dimsFun i)
+        oneBox i = createBlock stairsMaterial (centerFun i) (dimsFun i)
     in
-    (List.map oneBox (List.range 0 9)) ++ [ drawBase x y (z - 1) ]
+    (List.map oneBox (List.range 0 9)) ++ [ drawBase stairsMaterial x y (z - 1) ]
 
 drawBridge : Float -> Float -> Float -> M.Direction -> List (Entity WorldCoordinates)
 drawBridge x y z dir =
     let
         center = Point3d.centimeters (x * 10) (y * 10) (z * 10 + 0.5)
-        bridge = Scene3d.blockWithShadow bridgeMaterial
-            (Block3d.centeredOn
-                ( Frame3d.atPoint center )
-                ( Length.centimeters 10
-                , Length.centimeters 10
-                , Length.centimeters 1
-                )
+        bridge = createBlock bridgeMaterial center
+            ( Length.centimeters 10
+            , Length.centimeters 10
+            , Length.centimeters 1
             )
     in
-    [ bridge ] ++ [ drawBase x y (z - 1) ]
+    [ bridge ] ++ [ drawBase bridgeMaterial x y (z - 1) ]
 
 drawBlock : M.Block -> List (Entity WorldCoordinates)
 drawBlock block = case block of
     M.Base ( x, y, z ) ->
-        [ drawBase (toFloat x) (toFloat y) (toFloat z) ]
+        [ drawBase baseMaterial (toFloat x) (toFloat y) (toFloat z) ]
     M.Stairs ( x, y, z ) dir ->
         drawStairs (toFloat x) (toFloat y) (toFloat z) dir
     M.Bridge ( x, y, z ) dir ->
