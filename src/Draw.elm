@@ -158,7 +158,7 @@ drawBridge x y z dir =
             , Length.centimeters 1
             )
     in
-    [ bridge ] ++ [ drawBase bridgeMaterial x y (z - 1) ]
+    [ bridge ] ++ [ drawBase baseMaterial x y (z - 1) ]
 
 drawBlock : M.Block -> List (Entity WorldCoordinates)
 drawBlock block = case block of
