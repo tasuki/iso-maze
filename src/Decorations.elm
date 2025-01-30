@@ -19,7 +19,7 @@ getRailings maze =
             case maybeNeighbor of
                 Nothing -> True
                 Just (M.Base ( _, _, nz )) -> z > nz
-                Just (M.Bridge ( _, _, nz ) _) -> z > nz
+                Just (M.Bridge ( _, _, nz )) -> z > nz
                 Just (M.Stairs ( nx, ny, nz ) _) ->
                     if z > nz then
                         True

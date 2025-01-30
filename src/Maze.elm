@@ -22,13 +22,13 @@ type alias Maze =
 type MazeBlock
     = EmptyBlock
     | BaseBlock Int
+    | BridgeBlock Int
     | StairsBlock Int Direction
-    | BridgeBlock Int Direction
 
 type Block
     = Base Position
+    | Bridge Position
     | Stairs Position Direction
-    | Bridge Position Direction
 
 type alias Pos2d = ( Int, Int )
 type alias Position = ( Int, Int, Int )
@@ -60,8 +60,8 @@ set block maze =
     let
         ( xx, yy, mazeBlock ) = case block of
             Base ( x, y, z ) -> ( x, y, BaseBlock z )
+            Bridge ( x, y, z ) -> ( x, y, BridgeBlock z )
             Stairs ( x, y, z ) dir -> ( x, y, StairsBlock z dir )
-            Bridge ( x, y, z ) dir -> ( x, y, BridgeBlock z dir )
     in
     if isValidPosition <| blockPosition block then
         { maze | maze = Array.set (toIndex xx yy) mazeBlock maze.maze }
@@ -89,8 +89,8 @@ toBlock : Pos2d -> MazeBlock -> Maybe Block
 toBlock ( x, y ) mazeBlock = case mazeBlock of
     EmptyBlock -> Nothing
     BaseBlock z -> Just <| Base (x, y, z)
+    BridgeBlock z -> Just <| Bridge (x, y, z)
     StairsBlock z dir -> Just <| Stairs (x, y, z) dir
-    BridgeBlock z dir -> Just <| Bridge (x, y, z) dir
 
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
@@ -118,6 +118,8 @@ canExit ( x, y, z ) dir maze =
         Nothing -> Nothing
         Just (Base _) ->
             Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
+        Just (Bridge _) ->
+            Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
         Just (Stairs _ stairsDir) ->
             if stairsDir == dir then
                 Just <| threedimensionalize (z - 1) <| shiftPos2d ( x, y ) dir
@@ -125,8 +127,6 @@ canExit ( x, y, z ) dir maze =
                 Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
             else
                 Nothing
-        Just (Bridge _ _) ->
-            Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
 
 move : Position -> Direction -> Maze -> Maybe Position
 move pos dir maze =
@@ -151,8 +151,8 @@ createStairs x y z dir = Stairs ( x, y, z ) dir
 blockPosition : Block -> Position
 blockPosition block = case block of
     Base pos -> pos
+    Bridge pos -> pos
     Stairs pos _ -> pos
-    Bridge pos _ -> pos
 
 
 -- Position

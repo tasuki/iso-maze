@@ -24,8 +24,4 @@ toggleStairs ( x, y, z ) maze =
 
 toggleBridge : M.Position -> M.Maze -> M.Maze
 toggleBridge ( x, y, z ) maze =
-    case M.get ( x, y ) maze of
-        Just (M.Bridge _ dir) ->
-            M.set (M.Bridge ( x, y, z ) (M.nextDirection dir)) maze
-        _ ->
-            M.set (M.Bridge ( x, y, z ) M.SE) maze
+    M.set (M.Bridge ( x, y, z )) maze

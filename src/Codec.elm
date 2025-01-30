@@ -74,14 +74,11 @@ encodeBlock block =
     case block of
         M.EmptyBlock -> "x"
         M.BaseBlock z -> "o" ++ charFromIndex z
+        M.BridgeBlock z -> "l" ++ charFromIndex z
         M.StairsBlock z M.SE -> "s" ++ charFromIndex z
         M.StairsBlock z M.SW -> "z" ++ charFromIndex z
         M.StairsBlock z M.NE -> "Z" ++ charFromIndex z
         M.StairsBlock z M.NW -> "S" ++ charFromIndex z
-        M.BridgeBlock z M.SE -> "l" ++ charFromIndex z
-        M.BridgeBlock z M.SW -> "j" ++ charFromIndex z
-        M.BridgeBlock z M.NE -> "j" ++ charFromIndex z
-        M.BridgeBlock z M.NW -> "l" ++ charFromIndex z
 
 charToIndex : Char -> Maybe Int
 charToIndex c =
@@ -97,8 +94,7 @@ decodeBlock typeChar heightChar =
                 'z' -> Just (M.StairsBlock z M.SW)
                 'Z' -> Just (M.StairsBlock z M.NE)
                 'S' -> Just (M.StairsBlock z M.NW)
-                'l' -> Just (M.BridgeBlock z M.SE)
-                'j' -> Just (M.BridgeBlock z M.SW)
+                'l' -> Just (M.BridgeBlock z)
                 _ -> Nothing
         )
 

@@ -131,8 +131,8 @@ drawStairs x y z dir =
     in
     (List.map oneBox (List.range 0 9)) ++ [ drawBase stairsMaterial x y (z - 1) ]
 
-drawBridge : Float -> Float -> Float -> M.Direction -> List (Entity WorldCoordinates)
-drawBridge x y z dir =
+drawBridge : Float -> Float -> Float -> List (Entity WorldCoordinates)
+drawBridge x y z =
     let
         center = Point3d.centimeters (x * 10) (y * 10) (z * 10 + 0.5)
         bridge = createBlock bridgeMaterial center
@@ -147,10 +147,10 @@ drawBlock : M.Block -> List (Entity WorldCoordinates)
 drawBlock block = case block of
     M.Base ( x, y, z ) ->
         [ drawBase baseMaterial (toFloat x) (toFloat y) (toFloat z) ]
+    M.Bridge ( x, y, z ) ->
+        drawBridge (toFloat x) (toFloat y) (toFloat z)
     M.Stairs ( x, y, z ) dir ->
         drawStairs (toFloat x) (toFloat y) (toFloat z) dir
-    M.Bridge ( x, y, z ) dir ->
-        drawBridge (toFloat x) (toFloat y) (toFloat z) dir
 
 drawRailing : ( M.Block, M.Direction ) -> List (Entity WorldCoordinates)
 drawRailing ( block, dir ) =
