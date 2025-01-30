@@ -35,28 +35,10 @@ camera azimuth elevation = Camera3d.perspective
 
 -- Lights
 
-lightLeft1 = Light.point (Light.castsShadows True)
+spotLight = Light.point (Light.castsShadows True)
     { position = Point3d.meters -2 3 5
     , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
-    , intensity = LuminousFlux.lumens 150000
-    }
-
-lightLeft2 = Light.point (Light.castsShadows True)
-    { position = Point3d.meters -2 3 6
-    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
-    , intensity = LuminousFlux.lumens 150000
-    }
-
-lightLeft3 = Light.point (Light.castsShadows True)
-    { position = Point3d.meters -3 3 5
-    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
-    , intensity = LuminousFlux.lumens 150000
-    }
-
-lightLeft4 = Light.point (Light.castsShadows True)
-    { position = Point3d.meters -3 3 6
-    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
-    , intensity = LuminousFlux.lumens 150000
+    , intensity = LuminousFlux.lumens 600000
     }
 
 softLeft = Light.soft
@@ -67,7 +49,7 @@ softLeft = Light.soft
     }
 
 lights : Scene3d.Lights coordinates
-lights = Scene3d.fiveLights lightLeft1 lightLeft2 lightLeft3 lightLeft4 softLeft
+lights = Scene3d.twoLights spotLight softLeft
 
 
 -- Materials
