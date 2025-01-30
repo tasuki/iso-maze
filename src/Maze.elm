@@ -63,11 +63,17 @@ set block maze =
             Stairs ( x, y, z ) dir -> ( x, y, StairsBlock z dir )
             Bridge ( x, y, z ) dir -> ( x, y, BridgeBlock z dir )
     in
-    { maze | maze = Array.set (toIndex xx yy) mazeBlock maze.maze }
+    if isValidPosition <| blockPosition block then
+        { maze | maze = Array.set (toIndex xx yy) mazeBlock maze.maze }
+    else
+        maze
 
 clear : Pos2d -> Maze -> Maze
 clear ( x, y ) maze =
-    { maze | maze = Array.set (toIndex x y) EmptyBlock maze.maze }
+    if isValidPos2d ( x, y ) then
+        { maze | maze = Array.set (toIndex x y) EmptyBlock maze.maze }
+    else
+        maze
 
 mapCoords : List Int -> List Int -> (Int -> Int -> a) -> List a
 mapCoords rangeY rangeX fun =
@@ -88,17 +94,51 @@ toBlock ( x, y ) mazeBlock = case mazeBlock of
 
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
-    Array.get (toIndex x y) maze.maze |> Maybe.andThen (toBlock ( x, y ))
+    if isValidPos2d ( x, y ) then
+        Array.get (toIndex x y) maze.maze
+            |> Maybe.andThen (toBlock ( x, y ))
+    else
+        Nothing
 
 getPosition : Pos2d -> Maze -> Maybe Position
-getPosition pos =
-    get pos >> Maybe.map blockPosition
+getPosition pos = get pos >> Maybe.map blockPosition
 
 startPosition : Maze -> Position
 startPosition m = getPosition m.start m |> Maybe.withDefault ( 0, 0, 0 )
 
 endPosition : Maze -> Position
 endPosition m = getPosition m.end m |> Maybe.withDefault ( 0, 0, 0 )
+
+canExit : Position -> Direction -> Maze -> Maybe Position
+canExit ( x, y, z ) dir maze =
+    let
+        threedimensionalize zz ( xx, yy ) = ( xx, yy, zz )
+    in
+    case get ( x, y ) maze of
+        Nothing -> Nothing
+        Just (Base _) ->
+            Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
+        Just (Stairs _ stairsDir) ->
+            if stairsDir == dir then
+                Just <| threedimensionalize (z - 1) <| shiftPos2d ( x, y ) dir
+            else if stairsDir == oppositeDirection dir then
+                Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
+            else
+                Nothing
+        Just (Bridge _ _) ->
+            Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
+
+move : Position -> Direction -> Maze -> Maybe Position
+move pos dir maze =
+    let
+        canEnter : Position -> Maybe Position
+        canEnter neighborPos =
+            canExit neighborPos (oppositeDirection dir) maze
+                |> Maybe.map (always pos)
+    in
+    canExit pos dir maze |>
+        Maybe.andThen canEnter
+
 
 -- Block
 
@@ -134,8 +174,19 @@ isValidPosition ( x, y, z ) =
     else
         True
 
+isValidPos2d : Pos2d -> Bool
+isValidPos2d ( x, y ) = isValidPosition ( x, y, 0 )
+
 shiftPosition : Position -> Vector -> Position
 shiftPosition ( x, y, z ) ( xd, yd, zd ) = ( x + xd, y + yd, z + zd )
+
+shiftPos2d : Pos2d -> Direction -> Pos2d
+shiftPos2d ( x, y ) dir =
+    case dir of
+        SE -> ( x, y - 1 )
+        SW -> ( x - 1, y )
+        NW -> ( x, y + 1 )
+        NE -> ( x + 1, y )
 
 posX : Pos2d -> Int
 posX = Tuple.first
@@ -146,9 +197,19 @@ posY = Tuple.second
 
 -- Direction
 
+allDirections : List Direction
+allDirections = [ SE, SW, NW, NE ]
+
 nextDirection : Direction -> Direction
 nextDirection dir = case dir of
     SE -> SW
     SW -> NW
     NW -> NE
     NE -> SE
+
+oppositeDirection : Direction -> Direction
+oppositeDirection dir = case dir of
+    SE -> NW
+    SW -> NE
+    NW -> SE
+    NE -> SW

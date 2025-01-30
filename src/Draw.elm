@@ -4,6 +4,7 @@ import Angle
 import Block3d
 import Camera3d
 import Color
+import Decorations as D
 import Direction3d
 import Frame3d
 import Illuminance
@@ -151,6 +152,34 @@ drawBlock block = case block of
     M.Bridge ( x, y, z ) dir ->
         drawBridge (toFloat x) (toFloat y) (toFloat z) dir
 
+drawRailing : ( M.Block, M.Direction ) -> List (Entity WorldCoordinates)
+drawRailing ( block, dir ) =
+    let
+        ( x, y, z ) = M.blockPosition block
+        createRailing ( xd, yd ) = createBlock baseMaterial
+            (Point3d.centimeters
+                (toFloat x * 10 + xd)
+                (toFloat y * 10 + yd)
+                (toFloat z * 10 + 0.2)
+            )
+            ( Length.centimeters 0.5
+            , Length.centimeters 0.5
+            , Length.centimeters 0.5
+            )
+
+        baseCoords = [-4, -2, 0, 2, 4]
+        generateCoordsX xd = List.map (\yd -> (xd, yd)) baseCoords
+        generateCoordsY yd = List.map (\xd -> (xd, yd)) baseCoords
+
+        centers : List ( Float, Float )
+        centers = case dir of
+            M.SE -> generateCoordsY -4
+            M.SW -> generateCoordsX -4
+            M.NW -> generateCoordsY 4
+            M.NE -> generateCoordsX 4
+    in
+    List.map createRailing centers
+
 drawMaze : M.Maze -> List (Entity WorldCoordinates)
 drawMaze = M.toBlocks >> List.concatMap drawBlock
 
@@ -230,5 +259,6 @@ drawScene model =
             drawPlayer model.player ++
             drawFocus model.focus ++
             drawMaze model.maze ++
-            drawEnd (M.endPosition model.maze)
+            drawEnd (M.endPosition model.maze) ++
+            List.concatMap drawRailing (D.getRailings model.maze)
         }
