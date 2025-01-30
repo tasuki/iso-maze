@@ -25,3 +25,11 @@ toggleStairs ( x, y, z ) maze =
 toggleBridge : M.Position -> M.Maze -> M.Maze
 toggleBridge ( x, y, z ) maze =
     M.set (M.Bridge ( x, y, z )) maze
+
+placeStart : M.Position -> M.Maze -> M.Maze
+placeStart ( x, y, z ) maze =
+    { maze | start = ( x, y ) }
+
+placeEnd : M.Position -> M.Maze -> M.Maze
+placeEnd ( x, y, z ) maze =
+    { maze | end = ( x, y ) }

@@ -49,6 +49,8 @@ type Msg
     | ToggleBlock
     | ToggleStairs
     | ToggleBridge
+    | PlaceStart
+    | PlaceEnd
 
 main : Program () Model Msg
 main =
@@ -140,6 +142,8 @@ update message model = case message of
     ToggleBlock -> updateMaze ME.toggleBlock model
     ToggleStairs -> updateMaze ME.toggleStairs model
     ToggleBridge -> updateMaze ME.toggleBridge model
+    PlaceStart -> updateMaze ME.placeStart model
+    PlaceEnd -> updateMaze ME.placeEnd model
 
     _ -> ( model, Cmd.none )
 
@@ -182,6 +186,8 @@ keydown keycode =
         " " -> ToggleBlock
         "s" -> ToggleStairs
         "b" -> ToggleBridge
+        "a" -> PlaceStart
+        "z" -> PlaceEnd
         _ -> Noop
 
 subscriptions : Model -> Sub Msg
