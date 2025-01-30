@@ -127,7 +127,7 @@ cutout maze =
     let
         limits = mazeLimits maze
         xRange = List.range limits.minX limits.maxX
-        yRange = List.range limits.minY limits.maxY
+        yRange = List.reverse <| List.range limits.minY limits.maxY
         getBlock y x = Array.get (M.toIndex x y) maze.maze
     in
     { xSize = limits.maxX - limits.minX + 1
@@ -146,7 +146,7 @@ insertCutout subMaze =
         toBlock i block =
             let
                 x = (modBy subMaze.xSize i) + subMaze.xOffset
-                y = (i // subMaze.xSize) + subMaze.yOffset
+                y = (subMaze.ySize - 1) - (i // subMaze.xSize) + subMaze.yOffset
             in
             M.toBlock ( x, y ) block
 
