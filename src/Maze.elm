@@ -1,6 +1,7 @@
 module Maze exposing (..)
 
 import Array exposing (Array)
+import Maybe.Extra
 
 minTileCoord = -10
 maxTileCoord = 15
@@ -109,35 +110,58 @@ startPosition m = getPosition m.start m |> Maybe.withDefault ( 0, 0, 0 )
 endPosition : Maze -> Position
 endPosition m = getPosition m.end m |> Maybe.withDefault ( 0, 0, 0 )
 
-canExit : Position -> Direction -> Maze -> Maybe Position
-canExit ( x, y, z ) dir maze =
-    let
-        threedimensionalize zz ( xx, yy ) = ( xx, yy, zz )
-    in
-    case get ( x, y ) maze of
-        Nothing -> Nothing
-        Just (Base _) ->
-            Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
-        Just (Bridge _) ->
-            Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
-        Just (Stairs _ stairsDir) ->
-            if stairsDir == dir then
-                Just <| threedimensionalize (z - 1) <| shiftPos2d ( x, y ) dir
-            else if stairsDir == oppositeDirection dir then
-                Just <| threedimensionalize z <| shiftPos2d ( x, y ) dir
+exitHeight : Direction -> Int -> Block -> Maybe Int
+exitHeight dir playerHeight block =
+    case block of
+        Base ( _, _, z ) ->
+            if playerHeight == z then
+                Just playerHeight
+            else
+                Nothing
+        Bridge ( _, _, z ) ->
+            if playerHeight == z || playerHeight == z - 1 then
+                Just playerHeight
+            else
+                Nothing
+        Stairs ( _, _, z ) stairsDir ->
+            if playerHeight == z && stairsDir == dir then
+                Just <| playerHeight - 1
+            else if playerHeight == z && stairsDir == oppositeDirection dir then
+                Just <| playerHeight
             else
                 Nothing
 
+moveInHeight : Int -> Block -> Int
+moveInHeight enterHeight block =
+    case block of
+        Stairs ( _, _, nz ) _ -> nz
+        _ -> enterHeight
+
 move : Position -> Direction -> Maze -> Maybe Position
-move pos dir maze =
+move ( x, y, z ) dir maze =
+    -- I spent aeons writing this >.<
     let
-        canEnter : Position -> Maybe Position
-        canEnter neighborPos =
-            canExit neighborPos (oppositeDirection dir) maze
-                |> Maybe.map (always pos)
+        oldExitHeight : Maybe Int
+        oldExitHeight = Maybe.andThen (exitHeight dir z) (get ( x, y ) maze)
+
+        newPos2d : Pos2d
+        newPos2d = shiftPos2d ( x, y ) dir
+
+        newBlock : Maybe Block
+        newBlock = get newPos2d maze
+
+        newHeight : Maybe Int
+        newHeight = Maybe.map2 moveInHeight oldExitHeight newBlock
+
+        newExitHeight : Maybe Int
+        newExitHeight =
+            Maybe.map2 (exitHeight (oppositeDirection dir)) newHeight newBlock
+                |> Maybe.andThen identity
     in
-    canExit pos dir maze |>
-        Maybe.andThen canEnter
+    Maybe.map2 (==) oldExitHeight newExitHeight
+        |> Maybe.Extra.filter identity
+        |> Maybe.andThen (\_ -> newHeight)
+        |> Maybe.map (\nz -> ( posX newPos2d, posY newPos2d, nz ))
 
 
 -- Block

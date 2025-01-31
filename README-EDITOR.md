@@ -20,3 +20,20 @@
 - b: bridge
 - a: place snowman
 - z: place hat
+
+
+## Other development notes, eg weird vim things...
+
+Concat maze from Elm to short string:
+
+```
+s/.*=\s*"\|++\s*"\|\(\n\|\s\|"\)//g
+```
+
+Expand shorthand maze to nicely formatted Elm:
+
+```
+let chunk_size = matchstr(getline('.'), 'sz:\zs\d\+,') * 2
+s/^\(.*mz:\)/maze = "\1"\r/
+execute ":s/x/x /g | :s/\\(.\\{" . chunk_size . "}\\)/    ++ \"\\1\"\r/g"
+```
