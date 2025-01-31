@@ -9,36 +9,22 @@ import Maybe.Extra
 getRailings : M.Maze -> List ( M.Block, M.Direction )
 getRailings maze =
     let
-        canMoveStairs : M.Position -> M.Direction -> Bool
-        canMoveStairs pos dir =
-            M.canExit pos dir maze
-                |> Maybe.Extra.isJust
-
-        isAbove : Int -> M.Direction -> Maybe M.Block -> Bool
-        isAbove z dir maybeNeighbor =
-            case maybeNeighbor of
-                Nothing -> True
-                Just (M.Base ( _, _, nz )) -> z > nz
-                Just (M.Bridge ( _, _, nz )) -> z > nz
-                Just (M.Stairs ( nx, ny, nz ) _) ->
-                    if z > nz then
-                        True
-                    else if z == nz then
-                        not <| canMoveStairs ( nx, ny, nz ) dir
-                    else
-                        False
-
-        hasRailing : ( M.Block, M.Direction ) -> Bool
-        hasRailing ( block, dir ) =
-            case block of
-                M.Base ( x, y, z ) ->
-                    M.get (M.shiftPos2d ( x, y ) dir) maze
-                        |> isAbove z dir
-                _ -> False
+        isAbove : (M.Block, M.Direction) -> Bool
+        isAbove ( block, dir ) =
+            let ( x, y, z ) = M.blockPosition block in
+            case M.move ( x, y, z ) dir maze of
+                Just _ -> False -- can move
+                Nothing -> -- can't move
+                    case M.get (M.shiftPos2d ( x, y ) dir) maze of
+                        Just (M.Base ( _, _, nz )) -> z > nz
+                        Just (M.Bridge ( _, _, nz )) -> z > nz
+                        -- supposing no stairs from bridge! don't do that!
+                        Just (M.Stairs ( _, _, nz ) _) -> z + 1 > nz
+                        Nothing -> True
 
         determineRailings : M.Block -> List ( M.Block, M.Direction )
         determineRailings block =
             List.map (Tuple.pair block) M.allDirections
-                |> List.filter hasRailing
+                |> List.filter isAbove
     in
     M.toBlocks maze |> List.concatMap determineRailings

@@ -156,20 +156,36 @@ drawRailing : ( M.Block, M.Direction ) -> List (Entity WorldCoordinates)
 drawRailing ( block, dir ) =
     let
         ( x, y, z ) = M.blockPosition block
+
+        baseCoords = case block of
+            M.Stairs _ _ ->
+                [ -4.5, -3.5, -2.5, -1.5, -0.5
+                ,  0.5,  1.5,  2.5,  3.5,  4.5 ]
+            _ -> [-4, -2, 0, 2, 4]
+
+        generateCoordsX xd = List.map (\yd -> (xd, yd)) baseCoords
+        generateCoordsY yd = List.map (\xd -> (xd, yd)) baseCoords
+
+        zd xd yd = case block of
+            M.Base _ -> 0.2
+            M.Bridge _ -> 1.2
+            M.Stairs _ stairsDir ->
+                case stairsDir of
+                    M.SE -> yd - 4.3
+                    M.SW -> xd - 4.3
+                    M.NW -> -4.3 - yd
+                    M.NE -> -4.3 - xd
+
         createRailing ( xd, yd ) = createBlock baseMaterial
             (Point3d.centimeters
                 (toFloat x * 10 + xd)
                 (toFloat y * 10 + yd)
-                (toFloat z * 10 + 0.2)
+                (toFloat z * 10 + (zd xd yd))
             )
             ( Length.centimeters 0.5
             , Length.centimeters 0.5
             , Length.centimeters 0.5
             )
-
-        baseCoords = [-4, -2, 0, 2, 4]
-        generateCoordsX xd = List.map (\yd -> (xd, yd)) baseCoords
-        generateCoordsY yd = List.map (\xd -> (xd, yd)) baseCoords
 
         centers : List ( Float, Float )
         centers = case dir of
