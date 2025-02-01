@@ -17,8 +17,11 @@ toggleBlock ( x, y, z ) maze =
 toggleStairs : M.Position -> M.Maze -> M.Maze
 toggleStairs ( x, y, z ) maze =
     case M.get ( x, y ) maze of
-        Just (M.Stairs _ dir) ->
-            M.set (M.Stairs ( x, y, z ) (M.nextDirection dir)) maze
+        Just (M.Stairs ( _, _, oz ) dir) ->
+            if oz == z then
+                M.set (M.Stairs ( x, y, z ) (M.nextDirection dir)) maze
+            else
+                M.set (M.Stairs ( x, y, z ) dir) maze
         _ ->
             M.set (M.Stairs ( x, y, z ) M.SE) maze
 
