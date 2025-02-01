@@ -3,6 +3,10 @@ module MazeEdit exposing (..)
 import Maybe.Extra
 import Maze as M
 
+type Mode
+    = Running
+    | Editing
+
 toggleBlock : M.Position -> M.Maze -> M.Maze
 toggleBlock ( x, y, z ) maze =
     let

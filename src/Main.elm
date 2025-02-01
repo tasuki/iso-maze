@@ -29,6 +29,7 @@ type alias Model =
     , orbiting : Bool
     , azimuth : Angle
     , elevation : Angle
+    , mode : ME.Mode
     , maze : M.Maze
     , player : M.Position
     , focus : M.Position
@@ -46,11 +47,13 @@ type Msg
     | VisibilityChange BE.Visibility
     | CameraReset
     | FocusShift M.Vector
+    | ToggleMode
     | ToggleBlock
     | ToggleStairs
     | ToggleBridge
     | PlaceStart
     | PlaceEnd
+    | Go M.Direction
 
 main : Program () Model Msg
 main =
@@ -73,6 +76,7 @@ init () url navKey =
         , orbiting = False
         , azimuth = Angle.degrees initialAzimuth
         , elevation = Angle.degrees initialElevation
+        , mode = ME.Running
         , maze = defaultMaze
         , player = M.startPosition defaultMaze
         , focus = ( 0, 0, 1 )
@@ -139,11 +143,27 @@ update message model = case message of
         else
             ( model, Cmd.none )
 
+    ToggleMode ->
+        ( { model | mode =
+            if model.mode == ME.Running then ME.Editing
+            else ME.Running
+          }
+        , Cmd.none
+        )
     ToggleBlock -> updateMaze ME.toggleBlock model
     ToggleStairs -> updateMaze ME.toggleStairs model
     ToggleBridge -> updateMaze ME.toggleBridge model
     PlaceStart -> updateMaze ME.placeStart model
     PlaceEnd -> updateMaze ME.placeEnd model
+
+    Go dir ->
+        let
+            newPos : M.Position
+            newPos = M.move model.player dir model.maze
+                |> Maybe.withDefault model.player
+        in
+        ( { model | player = newPos }, Cmd.none )
+
 
     _ -> ( model, Cmd.none )
 
@@ -173,22 +193,38 @@ mouseMoveDecoder =
         (Decode.field "movementX" (Decode.map Pixels.float Decode.float))
         (Decode.field "movementY" (Decode.map Pixels.float Decode.float))
 
-keydown : String -> Msg
-keydown keycode =
-    case keycode of
-        "c" -> CameraReset
-        "h" -> FocusShift (  0,  1,  0 )
-        "l" -> FocusShift (  0, -1,  0 )
-        "k" -> FocusShift (  1,  0,  0 )
-        "j" -> FocusShift ( -1,  0,  0 )
-        "i" -> FocusShift (  0,  0,  1 )
-        "u" -> FocusShift (  0,  0, -1 )
-        " " -> ToggleBlock
-        "s" -> ToggleStairs
-        "b" -> ToggleBridge
-        "a" -> PlaceStart
-        "z" -> PlaceEnd
-        _ -> Noop
+keydown : ME.Mode -> String -> Msg
+keydown mode keycode =
+    case mode of
+        ME.Running ->
+            case keycode of
+                "e" -> ToggleMode
+                "c" -> CameraReset
+                "r" -> Go M.NW
+                "v" -> Go M.SW
+                "o" -> Go M.NE
+                "m" -> Go M.SE
+                "ArrowLeft"  -> Go M.NW
+                "ArrowDown"  -> Go M.SW
+                "ArrowUp"    -> Go M.NE
+                "ArrowRight" -> Go M.SE
+                _   -> Noop
+        ME.Editing ->
+            case keycode of
+                "e" -> ToggleMode
+                "c" -> CameraReset
+                "h" -> FocusShift (  0,  1,  0 )
+                "l" -> FocusShift (  0, -1,  0 )
+                "k" -> FocusShift (  1,  0,  0 )
+                "j" -> FocusShift ( -1,  0,  0 )
+                "i" -> FocusShift (  0,  0,  1 )
+                "u" -> FocusShift (  0,  0, -1 )
+                " " -> ToggleBlock
+                "s" -> ToggleStairs
+                "b" -> ToggleBridge
+                "a" -> PlaceStart
+                "z" -> PlaceEnd
+                _   -> Noop
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -201,7 +237,7 @@ subscriptions model =
             , BE.onMouseUp (Decode.succeed MouseUp)
             ]
           else BE.onMouseDown (Decode.succeed MouseDown)
-        , BE.onKeyDown (Decode.map keydown <| Decode.field "key" Decode.string)
+        , BE.onKeyDown (Decode.map (keydown model.mode) <| Decode.field "key" Decode.string)
         ]
 
 

@@ -11,6 +11,7 @@ import Illuminance
 import Length
 import LuminousFlux
 import Maze as M
+import MazeEdit as ME
 import Point3d
 import Scene3d exposing (Entity)
 import Scene3d.Light as Light
@@ -199,9 +200,13 @@ drawRailing ( block, dir ) =
 drawMaze : M.Maze -> List (Entity WorldCoordinates)
 drawMaze = M.toBlocks >> List.concatMap drawBlock
 
-drawPlayer : M.Position -> List (Entity WorldCoordinates)
-drawPlayer ( x, y, z ) =
+drawPlayer : M.Position -> M.Maze -> List (Entity WorldCoordinates)
+drawPlayer ( x, y, z ) maze =
     let
+        zd = case M.get ( x, y ) maze of
+            Just (M.Stairs _ _) -> -5
+            _ -> 0
+
         playerSphere zShift r =
             Scene3d.sphereWithShadow playerMaterial <|
                 Sphere3d.atPoint
@@ -212,9 +217,9 @@ drawPlayer ( x, y, z ) =
                     )
                     (Length.centimeters r)
     in
-    [ playerSphere 2.0 2.2
-    , playerSphere 5.5 1.8
-    , playerSphere 8.5 1.4
+    [ playerSphere (2.0 + zd) 2.2
+    , playerSphere (5.5 + zd) 1.8
+    , playerSphere (8.5 + zd) 1.4
     ]
 
 drawEnd : M.Position -> List (Entity WorldCoordinates)
@@ -234,8 +239,8 @@ drawEnd ( x, y, z ) =
     , hatPart 60
     ]
 
-drawFocus : M.Position -> List (Entity WorldCoordinates)
-drawFocus ( x, y, z ) =
+drawFocus : ME.Mode -> M.Position -> List (Entity WorldCoordinates)
+drawFocus mode ( x, y, z ) =
     let
         selectedSphere xmm ymm zmm =
             Scene3d.sphere selectedMaterial <|
@@ -250,15 +255,18 @@ drawFocus ( x, y, z ) =
         zmin = toFloat <| z * 100 - 100
         zmax = toFloat <| z * 100
     in
-    [ selectedSphere xmin ymin zmin
-    , selectedSphere xmax ymin zmin
-    , selectedSphere xmin ymax zmin
-    , selectedSphere xmax ymax zmin
-    , selectedSphere xmin ymin zmax
-    , selectedSphere xmax ymin zmax
-    , selectedSphere xmin ymax zmax
-    , selectedSphere xmax ymax zmax
-    ]
+    case mode of
+        ME.Running -> []
+        ME.Editing ->
+            [ selectedSphere xmin ymin zmin
+            , selectedSphere xmax ymin zmin
+            , selectedSphere xmin ymax zmin
+            , selectedSphere xmax ymax zmin
+            , selectedSphere xmin ymin zmax
+            , selectedSphere xmax ymin zmax
+            , selectedSphere xmin ymax zmax
+            , selectedSphere xmax ymax zmax
+            ]
 
 drawScene model =
     Scene3d.custom
@@ -272,8 +280,8 @@ drawScene model =
         , dimensions = ( model.width, model.height )
         , background = Scene3d.backgroundColor Color.lightBlue
         , entities =
-            drawPlayer model.player ++
-            drawFocus model.focus ++
+            drawPlayer model.player model.maze ++
+            drawFocus model.mode model.focus ++
             drawMaze model.maze ++
             drawEnd (M.endPosition model.maze) ++
             List.concatMap drawRailing (D.getRailings model.maze)
