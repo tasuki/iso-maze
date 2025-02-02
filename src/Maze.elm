@@ -110,6 +110,10 @@ startPosition m = getPosition m.start m |> Maybe.withDefault ( 0, 0, 0 )
 endPosition : Maze -> Position
 endPosition m = getPosition m.end m |> Maybe.withDefault ( 0, 0, 0 )
 
+isAtEnd : Position -> Maze -> Bool
+isAtEnd pos maze =
+    pos == endPosition maze
+
 exitHeight : Direction -> Int -> Block -> Maybe Int
 exitHeight dir playerHeight block =
     case block of

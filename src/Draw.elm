@@ -222,16 +222,18 @@ drawPlayer ( x, y, z ) maze =
     , playerSphere (8.5 + zd) 1.4
     ]
 
-drawEnd : M.Position -> List (Entity WorldCoordinates)
-drawEnd ( x, y, z ) =
+drawEnd : M.Position -> Bool -> List (Entity WorldCoordinates)
+drawEnd ( x, y, z ) isAtEnd =
     let
-        point = Frame3d.atPoint <| Point3d.centimeters (toFloat x * 10) (toFloat y * 10) (toFloat z * 10)
+        zd = if isAtEnd then 9.5 else 0
+        point = Frame3d.atPoint <|
+            Point3d.centimeters (toFloat x * 10) (toFloat y * 10) (toFloat z * 10 + 1 + zd)
         hatPart rotation = Scene3d.blockWithShadow goalMaterial <|
             Block3d.centeredOn
                 ( point |> Frame3d.rotateAroundOwn Frame3d.zAxis (Angle.degrees rotation) )
-                ( Length.centimeters 2
-                , Length.centimeters 2
-                , Length.centimeters 5
+                ( Length.centimeters 1.6
+                , Length.centimeters 1.6
+                , Length.centimeters 1.6
                 )
     in
     [ hatPart  0
@@ -283,6 +285,6 @@ drawScene model =
             drawPlayer model.player model.maze ++
             drawFocus model.mode model.focus ++
             drawMaze model.maze ++
-            drawEnd (M.endPosition model.maze) ++
+            drawEnd (M.endPosition model.maze) (M.isAtEnd model.player model.maze) ++
             List.concatMap drawRailing (D.getRailings model.maze)
         }
