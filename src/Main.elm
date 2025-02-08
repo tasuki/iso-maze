@@ -19,7 +19,7 @@ import Url exposing (Url)
 
 defaultMaze = SM.ziggurat
 initialAzimuth = -135
-initialElevation = 50
+initialElevation = 54.736 -- (90 - 35.264), where 35.264 == arctan(1/sqrt(2))
 
 type alias Model =
     { navKey : Nav.Key

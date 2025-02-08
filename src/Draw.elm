@@ -24,15 +24,25 @@ type WorldCoordinates = WorldCoordinates
 
 -- Camera
 
-camera azimuth elevation = Camera3d.perspective
-    { viewpoint = Viewpoint3d.orbitZ
-        { focalPoint = Point3d.centimeters 0 0 50
+camera azimuth elevation =
+    Camera3d.perspective
+        { viewpoint = viewpoint 50 azimuth elevation
+        , verticalFieldOfView = Angle.degrees 5
+        }
+
+cameraOrtho azimuth elevation =
+    Camera3d.orthographic
+        { viewpoint = viewpoint 70 azimuth elevation
+        , viewportHeight = Length.meters 1.4
+        }
+
+viewpoint focalHeight azimuth elevation =
+    Viewpoint3d.orbitZ
+        { focalPoint = Point3d.centimeters 0 0 focalHeight
         , azimuth = azimuth
         , elevation = elevation
         , distance = Length.meters 15
         }
-    , verticalFieldOfView = Angle.degrees 5
-    }
 
 
 -- Lights
@@ -273,7 +283,7 @@ drawFocus mode ( x, y, z ) =
 drawScene model =
     Scene3d.custom
         { lights = lights
-        , camera = camera model.azimuth model.elevation
+        , camera = cameraOrtho model.azimuth model.elevation
         , clipDepth = Length.centimeters 1
         , exposure = Scene3d.exposureValue 6
         , toneMapping = Scene3d.hableFilmicToneMapping

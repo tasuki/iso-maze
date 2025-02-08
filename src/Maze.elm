@@ -9,8 +9,9 @@ maxTileCoord = 15
 minHeight = 0
 maxHeight = 10
 
-nearest = -3
 sidest = 18
+nearest = -3
+furthest = 16
 
 sideSize = maxTileCoord - minTileCoord + 1
 coordsRange = List.range minTileCoord maxTileCoord
@@ -199,6 +200,8 @@ isValidPosition ( x, y, z ) =
         False -- too near player
     else if x - y > sidest || y - x > sidest then
         False -- too far to the side
+    else if x + y > furthest then
+        False -- too far
     else
         True
 
