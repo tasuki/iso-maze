@@ -33,7 +33,7 @@ camera azimuth elevation =
 cameraOrtho azimuth elevation =
     Camera3d.orthographic
         { viewpoint = viewpoint 70 azimuth elevation
-        , viewportHeight = Length.meters 1.4
+        , viewportHeight = Length.meters 3
         }
 
 viewpoint focalHeight azimuth elevation =
@@ -47,10 +47,16 @@ viewpoint focalHeight azimuth elevation =
 
 -- Lights
 
-spotLight = Light.point (Light.castsShadows True)
+spotLightOld = Light.point (Light.castsShadows True)
     { position = Point3d.meters -2 3 5
     , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
     , intensity = LuminousFlux.lumens 600000
+    }
+
+spotLight = Light.directional (Light.castsShadows True)
+    { direction = Direction3d.xyZ (Angle.degrees -55) (Angle.degrees -65)
+    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
+    , intensity = Illuminance.lux 1000
     }
 
 softLeft = Light.soft
@@ -227,9 +233,9 @@ drawPlayer ( x, y, z ) maze =
                     )
                     (Length.centimeters r)
     in
-    [ playerSphere (2.0 + zd) 2.2
-    , playerSphere (5.5 + zd) 1.8
-    , playerSphere (8.5 + zd) 1.4
+    [ playerSphere ( 4 + zd) 3.5
+    , playerSphere (11 + zd) 2.5
+    , playerSphere (17 + zd) 2
     ]
 
 drawEnd : M.Position -> Bool -> List (Entity WorldCoordinates)
