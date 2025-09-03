@@ -53,13 +53,13 @@ leftLightChroma = Light.chromaticity { x = 0.47, y = 0.4 }
 spotLight = Light.point (Light.castsShadows False)
     { position = Point3d.meters -2 3 5
     , chromaticity = leftLightChroma
-    , intensity = LuminousFlux.lumens 100000
+    , intensity = LuminousFlux.lumens 130000
     }
 
 spotLightSh = Light.point (Light.castsShadows True)
     { position = Point3d.meters -2 3 5
     , chromaticity = leftLightChroma
-    , intensity = LuminousFlux.lumens 100000
+    , intensity = LuminousFlux.lumens 130000
     }
 
 fillLightAbove = Light.soft
@@ -76,7 +76,7 @@ lights = Scene3d.threeLights spotLight spotLightSh fillLightAbove
 -- Materials
 
 baseMaterial = Material.matte <| Color.rgb255 255 255 255
-stairsMaterial = Material.matte <| Color.rgb255 255 230 200
+stairsMaterial = Material.matte <| Color.rgb255 255 210 180
 bridgeMaterial = Material.matte <| Color.rgb255 200 100 100
 railingMaterial = Material.matte <| Color.rgb255 200 200 200
 
