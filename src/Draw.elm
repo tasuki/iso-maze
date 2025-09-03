@@ -9,6 +9,7 @@ import Direction3d
 import Frame3d
 import Illuminance
 import Length
+import Luminance
 import LuminousFlux
 import Maze as M
 import MazeEdit as ME
@@ -32,7 +33,7 @@ camera azimuth elevation =
 
 cameraOrtho azimuth elevation =
     Camera3d.orthographic
-        { viewpoint = viewpoint 70 azimuth elevation
+        { viewpoint = viewpoint 55 azimuth elevation
         , viewportHeight = Length.meters 1.4
         }
 
@@ -47,51 +48,46 @@ viewpoint focalHeight azimuth elevation =
 
 -- Lights
 
-spotLight = Light.point (Light.castsShadows True)
+leftLightChroma = Light.chromaticity { x = 0.47, y = 0.4 }
+
+spotLight = Light.point (Light.castsShadows False)
     { position = Point3d.meters -2 3 5
-    , chromaticity = Light.chromaticity { x = 0.5, y = 0.4 }
-    , intensity = LuminousFlux.lumens 600000
+    , chromaticity = leftLightChroma
+    , intensity = LuminousFlux.lumens 100000
     }
 
-softLeft = Light.soft
+spotLightSh = Light.point (Light.castsShadows True)
+    { position = Point3d.meters -2 3 5
+    , chromaticity = leftLightChroma
+    , intensity = LuminousFlux.lumens 100000
+    }
+
+fillLightAbove = Light.soft
     { upDirection = Direction3d.xyZ (Angle.degrees 55) (Angle.degrees 25)
     , chromaticity = Light.sunlight
-    , intensityAbove = Illuminance.lux 300
+    , intensityAbove = Illuminance.lux 250
     , intensityBelow = Illuminance.lux 0
     }
 
 lights : Scene3d.Lights coordinates
-lights = Scene3d.twoLights spotLight softLeft
+lights = Scene3d.threeLights spotLight spotLightSh fillLightAbove
 
 
 -- Materials
 
-baseMaterial = Material.metal
-    { baseColor = Color.rgb255 255 255 255
-    , roughness = 0.8
-    }
-
-stairsMaterial = Material.metal
-    { baseColor = Color.rgb255 255 200 150
-    , roughness = 0.8
-    }
-
-bridgeMaterial = Material.metal
-    { baseColor = Color.rgb255 255 200 200
-    , roughness = 0.8
-    }
+baseMaterial = Material.matte <| Color.rgb255 255 255 255
+stairsMaterial = Material.matte <| Color.rgb255 255 230 200
+bridgeMaterial = Material.matte <| Color.rgb255 200 100 100
+railingMaterial = Material.matte <| Color.rgb255 200 200 200
 
 playerMaterial = Material.metal
-    { baseColor = Color.rgb255 255 255 255
-    , roughness = 0.4
+    { baseColor = Color.rgb255 160 240 255
+    , roughness = 0.5
     }
-
 goalMaterial = Material.metal
     { baseColor = Color.rgb255 20 20 20
-    , roughness = 0.7
+    , roughness = 0.5
     }
-
-selectedMaterial = Material.color Color.orange
 
 
 -- Drawing
@@ -187,7 +183,7 @@ drawRailing ( block, dir ) =
                     M.NW -> -4.3 - yd
                     M.NE -> -4.3 - xd
 
-        createRailing ( xd, yd ) = createBlock baseMaterial
+        createRailing ( xd, yd ) = createBlock railingMaterial
             (Point3d.centimeters
                 (toFloat x * 10 + xd)
                 (toFloat y * 10 + yd)
@@ -255,7 +251,7 @@ drawFocus : ME.Mode -> M.Position -> List (Entity WorldCoordinates)
 drawFocus mode ( x, y, z ) =
     let
         selectedSphere xmm ymm zmm =
-            Scene3d.sphere selectedMaterial <|
+            Scene3d.sphere (Material.color Color.orange) <|
                 Sphere3d.atPoint
                     (Point3d.millimeters xmm ymm zmm)
                     (Length.millimeters 5)
