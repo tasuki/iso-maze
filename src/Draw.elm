@@ -9,7 +9,6 @@ import Direction3d
 import Frame3d
 import Illuminance
 import Length
-import Luminance
 import LuminousFlux
 import Maze as M
 import MazeEdit as ME
@@ -189,8 +188,8 @@ drawRailing ( block, dir ) =
                 (toFloat y * 10 + yd)
                 (toFloat z * 10 + (zd xd yd))
             )
-            ( Length.centimeters 0.5
-            , Length.centimeters 0.5
+            ( Length.centimeters 0.3
+            , Length.centimeters 0.3
             , Length.centimeters 0.5
             )
 
