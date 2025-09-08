@@ -5,9 +5,7 @@ import Block3d
 import Camera3d
 import Color
 import Decorations as D
-import Direction3d
 import Frame3d
-import Illuminance
 import Length
 import LuminousFlux
 import Maze as M
@@ -47,41 +45,59 @@ viewpoint focalHeight azimuth elevation =
 
 -- Lights
 
-leftLightChroma = Light.chromaticity { x = 0.47, y = 0.4 }
+leftLightChroma = Light.chromaticity { x = 0.4, y = 0.4 }
+rightLightChroma = Light.chromaticity { x = 0.2, y = 0.3 }
 
-spotLight = Light.point (Light.castsShadows False)
+spotLeft : Light.Light c Bool
+spotLeft = Light.point (Light.castsShadows True)
     { position = Point3d.meters -2 3 5
     , chromaticity = leftLightChroma
-    , intensity = LuminousFlux.lumens 130000
+    , intensity = LuminousFlux.lumens 30000
     }
 
-spotLightSh = Light.point (Light.castsShadows True)
-    { position = Point3d.meters -2 3 5
+fillLeft : Light.Light c Bool
+fillLeft = Light.point (Light.castsShadows False)
+    { position = Point3d.meters -1 -0.5 1.5
     , chromaticity = leftLightChroma
-    , intensity = LuminousFlux.lumens 130000
+    , intensity = LuminousFlux.lumens 3000
     }
 
-fillLightAbove = Light.soft
-    { upDirection = Direction3d.xyZ (Angle.degrees 55) (Angle.degrees 25)
+fillRight : Light.Light c Bool
+fillRight = Light.point (Light.castsShadows False)
+    { position = Point3d.meters -0.5 -1 1.5
+    , chromaticity = rightLightChroma
+    , intensity = LuminousFlux.lumens 2000
+    }
+
+fillAbove : Light.Light c Bool
+fillAbove = Light.point (Light.castsShadows False)
+    { position = Point3d.meters 1 1 3
     , chromaticity = Light.sunlight
-    , intensityAbove = Illuminance.lux 250
-    , intensityBelow = Illuminance.lux 0
+    , intensity = LuminousFlux.lumens 20000
     }
 
-lights : Scene3d.Lights coordinates
-lights = Scene3d.threeLights spotLight spotLightSh fillLightAbove
+playerLight : M.Position -> M.Maze -> Light.Light c Never
+playerLight ( x, y, z ) maze = Light.point (Light.neverCastsShadows)
+    { position = (playerPos (x, y, z) 4 maze)
+    , chromaticity = Light.sunlight
+    , intensity = LuminousFlux.lumens 20
+    }
+
+lights : Light.Light c Never -> Scene3d.Lights c
+lights pLight = Scene3d.fiveLights fillAbove fillRight fillLeft spotLeft pLight
 
 
 -- Materials
 
 baseMaterial = Material.matte <| Color.rgb255 255 255 255
-stairsMaterial = Material.matte <| Color.rgb255 255 210 180
+stairsMaterial = Material.matte <| Color.rgb255 255 200 170
 bridgeMaterial = Material.matte <| Color.rgb255 200 100 100
 railingMaterial = Material.matte <| Color.rgb255 200 200 200
 
-playerMaterial = Material.metal
-    { baseColor = Color.rgb255 160 240 255
-    , roughness = 0.5
+playerMaterial = Material.pbr
+    { baseColor = Color.rgb255 255 255 255
+    , roughness = 0.9
+    , metallic = 0
     }
 goalMaterial = Material.metal
     { baseColor = Color.rgb255 20 20 20
@@ -95,7 +111,7 @@ createBlock material center dimensions =
     Scene3d.blockWithShadow material
         (Block3d.centeredOn (Frame3d.atPoint center) dimensions)
 
-drawBase : Material.Uniform coordinates -> Float -> Float -> Float -> Entity coordinates
+drawBase : Material.Uniform c -> Float -> Float -> Float -> Entity c
 drawBase material x y z =
     createBlock material
         ( Point3d.centimeters (x * 10) (y * 10) (z * 5 - 5) )
@@ -205,26 +221,31 @@ drawRailing ( block, dir ) =
 drawMaze : M.Maze -> List (Entity WorldCoordinates)
 drawMaze = M.toBlocks >> List.concatMap drawBlock
 
+playerPos : M.Position -> Float -> M.Maze -> Point3d.Point3d Length.Meters c
+playerPos ( x, y, z ) zOffset maze =
+    let
+        zStairsFix = case M.get ( x, y ) maze of
+            Just (M.Stairs _ _) -> -5
+            _ -> 0
+    in
+    Point3d.centimeters
+        (toFloat x * 10)
+        (toFloat y * 10)
+        (toFloat z * 10 + zOffset + zStairsFix)
+
 drawPlayer : M.Position -> M.Maze -> List (Entity WorldCoordinates)
 drawPlayer ( x, y, z ) maze =
     let
-        zd = case M.get ( x, y ) maze of
-            Just (M.Stairs _ _) -> -5
-            _ -> 0
-
-        playerSphere zShift r =
+        playerSphere : Float -> Float -> Entity c
+        playerSphere zOffset r =
             Scene3d.sphereWithShadow playerMaterial <|
                 Sphere3d.atPoint
-                    (Point3d.centimeters
-                        (toFloat x * 10)
-                        (toFloat y * 10)
-                        (toFloat z * 10 + zShift)
-                    )
+                    (playerPos (x, y, z) zOffset maze)
                     (Length.centimeters r)
     in
-    [ playerSphere (2.0 + zd) 2.2
-    , playerSphere (5.5 + zd) 1.8
-    , playerSphere (8.5 + zd) 1.4
+    [ playerSphere 2.0 2.2
+    , playerSphere 5.5 1.8
+    , playerSphere 8.5 1.4
     ]
 
 drawEnd : M.Position -> Bool -> List (Entity WorldCoordinates)
@@ -277,7 +298,7 @@ drawFocus mode ( x, y, z ) =
 
 drawScene model =
     Scene3d.custom
-        { lights = lights
+        { lights = lights (playerLight model.player model.maze)
         , camera = cameraOrtho model.azimuth model.elevation
         , clipDepth = Length.centimeters 1
         , exposure = Scene3d.exposureValue 6
