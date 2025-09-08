@@ -72,15 +72,15 @@ fillRight = Light.point (Light.castsShadows False)
 fillAbove : Light.Light c Bool
 fillAbove = Light.point (Light.castsShadows False)
     { position = Point3d.meters 1 1 3
-    , chromaticity = Light.sunlight
-    , intensity = LuminousFlux.lumens 20000
+    , chromaticity = leftLightChroma
+    , intensity = LuminousFlux.lumens 10000
     }
 
 playerLight : M.Position -> M.Maze -> Light.Light c Never
 playerLight ( x, y, z ) maze = Light.point (Light.neverCastsShadows)
     { position = (playerPos (x, y, z) 4 maze)
     , chromaticity = Light.sunlight
-    , intensity = LuminousFlux.lumens 20
+    , intensity = LuminousFlux.lumens 5
     }
 
 lights : Light.Light c Never -> Scene3d.Lights c
@@ -302,7 +302,7 @@ drawScene model =
         , camera = cameraOrtho model.azimuth model.elevation
         , clipDepth = Length.centimeters 1
         , exposure = Scene3d.exposureValue 6
-        , toneMapping = Scene3d.hableFilmicToneMapping
+        , toneMapping = Scene3d.noToneMapping
         , whiteBalance = Light.fluorescent
         , antialiasing = Scene3d.multisampling
         , dimensions = ( model.width, model.height )
