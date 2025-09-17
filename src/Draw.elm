@@ -52,21 +52,21 @@ spotLeft : Light.Light c Bool
 spotLeft = Light.point (Light.castsShadows True)
     { position = Point3d.meters -2 3 5
     , chromaticity = leftLightChroma
-    , intensity = LuminousFlux.lumens 30000
+    , intensity = LuminousFlux.lumens 20000
     }
 
 fillLeft : Light.Light c Bool
 fillLeft = Light.point (Light.castsShadows False)
     { position = Point3d.meters -1 -0.5 1.5
     , chromaticity = leftLightChroma
-    , intensity = LuminousFlux.lumens 3000
+    , intensity = LuminousFlux.lumens 5000
     }
 
 fillRight : Light.Light c Bool
 fillRight = Light.point (Light.castsShadows False)
     { position = Point3d.meters -0.5 -1 1.5
     , chromaticity = rightLightChroma
-    , intensity = LuminousFlux.lumens 2000
+    , intensity = LuminousFlux.lumens 1500
     }
 
 fillAbove : Light.Light c Bool
