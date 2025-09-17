@@ -80,7 +80,7 @@ playerLight : M.Position -> M.Maze -> Light.Light c Never
 playerLight ( x, y, z ) maze = Light.point (Light.neverCastsShadows)
     { position = (playerPos (x, y, z) 4 maze)
     , chromaticity = Light.sunlight
-    , intensity = LuminousFlux.lumens 5
+    , intensity = LuminousFlux.lumens 2
     }
 
 lights : Light.Light c Never -> Scene3d.Lights c
