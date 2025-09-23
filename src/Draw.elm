@@ -308,9 +308,10 @@ drawScene model =
         , dimensions = ( model.width, model.height )
         , background = Scene3d.backgroundColor Color.lightBlue
         , entities =
-            drawPlayer model.player model.maze ++
-            drawFocus model.mode model.focus ++
-            drawMaze model.maze ++
-            drawEnd (M.endPosition model.maze) (M.isAtEnd model.player model.maze) ++
-            List.concatMap drawRailing (D.getRailings model.maze)
+            [ drawPlayer model.player model.maze
+            , drawFocus model.mode model.focus
+            , drawMaze model.maze
+            , drawEnd (M.endPosition model.maze) (M.isAtEnd model.player model.maze)
+            , List.concatMap drawRailing (D.getRailings model.maze)
+            ] |> List.foldl (++) []
         }
