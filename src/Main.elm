@@ -6,7 +6,7 @@ import Browser.Dom
 import Browser.Events as BE
 import Browser.Navigation as Nav
 import Codec
-import Draw as D
+import Draw
 import Duration exposing (Duration)
 import Json.Decode as Decode exposing (Decoder)
 import Maze as M
@@ -246,5 +246,5 @@ subscriptions model =
 view : Model -> Browser.Document Msg
 view model =
     { title = "Iso Maze"
-    , body = [ D.drawScene model ]
+    , body = [ Draw.drawScene model ]
     }

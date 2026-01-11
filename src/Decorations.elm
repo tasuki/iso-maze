@@ -1,7 +1,6 @@
 module Decorations exposing (..)
 
 import Maze as M
-import Maybe.Extra
 
 -- The general idea is that the maze can be shown with various decorations
 -- which depend on the overall shape of the maze. Here goes the logic...
