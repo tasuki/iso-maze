@@ -1,2 +1,4 @@
+dist/
 elm-stuff/
-iso-maze.js
+node_modules/
+.gitignore

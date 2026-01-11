@@ -8,11 +8,10 @@ See the [editor readme](README-EDITOR.md)!
 
 [![CI](https://github.com/tasuki/iso-maze/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tasuki/iso-maze/actions/workflows/ci.yml)
 
-On Debian 12 Bookworm:
+On Debian 13 Trixie:
 
 ```
-sudo apt install npm uglifyjs
-sudo npm install -g elm@latest-0.19.1 elm-test elm-format serve
+sudo apt install npm
 ```
 
-To develop, run `make develop`, see http://localhost:8423/
+To develop, run `make develop`.
