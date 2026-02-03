@@ -16,7 +16,7 @@ port renderThreeJS : E.Value -> Cmd msg
 drawScene : { a | azimuth : Angle.Angle, elevation : Angle.Angle, maze : M.Maze, player : M.Position, focus : M.Position } -> H.Html msg
 drawScene model =
     H.div
-        [ HA.id "three-container"
+        [ HA.id "three-canvas"
         , HA.style "width" "100%"
         , HA.style "height" "100vh"
         ]
