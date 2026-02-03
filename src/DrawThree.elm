@@ -117,7 +117,18 @@ encodeRailing ( block, dir ) =
         , ( "z", E.int z )
         , ( "direction", E.string (directionToString dir) )
         , ( "blockType", E.string (blockTypeToString block) )
+        , ( "blockDirection", encodeBlockDirection block )
         ]
+
+
+encodeBlockDirection : M.Block -> E.Value
+encodeBlockDirection b =
+    case b of
+        M.Stairs _ dir ->
+            E.string (directionToString dir)
+
+        _ ->
+            E.null
 
 
 blockTypeToString : M.Block -> String

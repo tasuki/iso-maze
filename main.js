@@ -42,26 +42,30 @@ function initThree() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    const spotLeft = new THREE.PointLight(0xffffff, 50);
+    const spotLeft = new THREE.PointLight(0xffffff, 40);
     spotLeft.position.set(-2, 3, 5);
+    spotLeft.castShadow = true;
+    spotLeft.shadow.mapSize.width = 2048;
+    spotLeft.shadow.mapSize.height = 2048;
+    spotLeft.shadow.camera.near = 0.5;
+    spotLeft.shadow.camera.far = 20;
     scene.add(spotLeft);
 
-    const fillLeft = new THREE.PointLight(0xffffff, 10);
+    const fillLeft = new THREE.PointLight(0xffffff, 5);
     fillLeft.position.set(-1, -0.5, 1.5);
     scene.add(fillLeft);
 
-    const fillRight = new THREE.PointLight(0xffffff, 5);
+    const fillRight = new THREE.PointLight(0xffffff, 2);
     fillRight.position.set(-0.5, -1, 1.5);
     scene.add(fillRight);
 
-    const fillAbove = new THREE.PointLight(0xffffff, 25);
+    const fillAbove = new THREE.PointLight(0xffffff, 15);
     fillAbove.position.set(1, 1, 3);
     scene.add(fillAbove);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    scene.add(ambientLight);
 
     isInitialized = true;
 }
@@ -110,6 +114,8 @@ function updateScene(data) {
     function addMesh(geo, mat, x, y, z) {
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         scene.add(mesh);
         return mesh;
     }
@@ -164,10 +170,24 @@ function updateScene(data) {
             if (r.blockType === 'base') return 0.2;
             if (r.blockType === 'bridge') return 1.2;
             if (r.blockType === 'stairs') {
-                if (r.direction === 'SE') return yd - 4.3;
-                if (r.direction === 'SW') return xd - 4.3;
-                if (r.direction === 'NW') return -4.3 - yd;
-                if (r.direction === 'NE') return -4.3 - xd;
+                const bd = r.blockDirection;
+                if (bd === 'NW') {
+                    if (r.direction === 'NE' || r.direction === 'SW') return -yd - 4.3;
+                    if (r.direction === 'NW') return -4 - 4.3;
+                    if (r.direction === 'SE') return -(-4) - 4.3;
+                } else if (bd === 'NE') {
+                    if (r.direction === 'NW' || r.direction === 'SE') return -xd - 4.3;
+                    if (r.direction === 'NE') return -4 - 4.3;
+                    if (r.direction === 'SW') return -(-4) - 4.3;
+                } else if (bd === 'SE') {
+                    if (r.direction === 'NE' || r.direction === 'SW') return yd - 4.3;
+                    if (r.direction === 'SE') return -4 - 4.3;
+                    if (r.direction === 'NW') return -(-4) - 4.3;
+                } else if (bd === 'SW') {
+                    if (r.direction === 'NW' || r.direction === 'SE') return xd - 4.3;
+                    if (r.direction === 'SW') return -4 - 4.3;
+                    if (r.direction === 'NE') return -(-4) - 4.3;
+                }
             }
             return 0;
         };
