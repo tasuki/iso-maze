@@ -6,7 +6,7 @@ import Browser.Dom
 import Browser.Events as BE
 import Browser.Navigation as Nav
 import Codec
-import Draw
+import DrawThree
 import Duration exposing (Duration)
 import Json.Decode as Decode exposing (Decoder)
 import Maze as M
@@ -93,79 +93,122 @@ init () url navKey =
 -- Update
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update message model = case message of
-    UrlChanged url -> ( changeRouteTo url model, Cmd.none )
-    Resize width height ->
-        ( { model | width = width, height = height }, Cmd.none )
-    Tick elapsed ->
-        ( { model | elapsedTime = model.elapsedTime |> Quantity.plus elapsed }
-        , Cmd.none
-        )
+update message model =
+    let
+        ( newModel, cmd ) =
+            updateModel message model
+    in
+    ( newModel, Cmd.batch [ cmd, DrawThree.renderThreeJS (DrawThree.sceneData newModel) ] )
 
-    MouseDown -> ( { model | orbiting = True }, Cmd.none )
-    MouseUp -> ( { model | orbiting = False }, Cmd.none )
 
-    VisibilityChange BE.Visible -> ( model, Cmd.none )
-    VisibilityChange BE.Hidden -> ( { model | orbiting = False }, Cmd.none )
+updateModel : Msg -> Model -> ( Model, Cmd Msg )
+updateModel message model =
+    case message of
+        UrlChanged url ->
+            ( changeRouteTo url model, Cmd.none )
 
-    MouseMove dx dy ->
-        if model.orbiting then
-            let
-                rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-                newAzimuth = model.azimuth
-                    |> Quantity.minus (dx |> Quantity.at rotationRate)
-                newElevation = model.elevation
-                    |> Quantity.plus (dy |> Quantity.at rotationRate)
-                    |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
-            in
+        Resize width height ->
+            ( { model | width = width, height = height }, Cmd.none )
+
+        Tick elapsed ->
+            ( { model | elapsedTime = model.elapsedTime |> Quantity.plus elapsed }
+            , Cmd.none
+            )
+
+        MouseDown ->
+            ( { model | orbiting = True }, Cmd.none )
+
+        MouseUp ->
+            ( { model | orbiting = False }, Cmd.none )
+
+        VisibilityChange BE.Visible ->
+            ( model, Cmd.none )
+
+        VisibilityChange BE.Hidden ->
+            ( { model | orbiting = False }, Cmd.none )
+
+        MouseMove dx dy ->
+            if model.orbiting then
+                let
+                    rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+
+                    newAzimuth =
+                        model.azimuth
+                            |> Quantity.minus (dx |> Quantity.at rotationRate)
+
+                    newElevation =
+                        model.elevation
+                            |> Quantity.plus (dy |> Quantity.at rotationRate)
+                            |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
+                in
+                ( { model
+                    | orbiting = True
+                    , azimuth = newAzimuth
+                    , elevation = newElevation
+                  }
+                , Cmd.none
+                )
+
+            else
+                ( model, Cmd.none )
+
+        CameraReset ->
             ( { model
-              | orbiting = True
-              , azimuth = newAzimuth
-              , elevation = newElevation
+                | azimuth = Angle.degrees initialAzimuth
+                , elevation = Angle.degrees initialElevation
               }
             , Cmd.none
             )
-        else
+
+        FocusShift vector ->
+            let
+                newFocus =
+                    M.shiftPosition model.focus vector
+            in
+            if M.isValidPosition newFocus then
+                ( { model | focus = newFocus }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
+        ToggleMode ->
+            ( { model
+                | mode =
+                    if model.mode == ME.Running then
+                        ME.Editing
+
+                    else
+                        ME.Running
+              }
+            , Cmd.none
+            )
+
+        ToggleBlock ->
+            updateMaze ME.toggleBlock model
+
+        ToggleStairs ->
+            updateMaze ME.toggleStairs model
+
+        ToggleBridge ->
+            updateMaze ME.toggleBridge model
+
+        PlaceStart ->
+            updateMaze ME.placeStart model
+
+        PlaceEnd ->
+            updateMaze ME.placeEnd model
+
+        Go dir ->
+            let
+                newPos : M.Position
+                newPos =
+                    M.move model.player dir model.maze
+                        |> Maybe.withDefault model.player
+            in
+            ( { model | player = newPos }, Cmd.none )
+
+        _ ->
             ( model, Cmd.none )
-
-    CameraReset ->
-        ( { model
-          | azimuth = Angle.degrees initialAzimuth
-          , elevation = Angle.degrees initialElevation
-          }
-        , Cmd.none
-        )
-
-    FocusShift vector ->
-        let newFocus = M.shiftPosition model.focus vector in
-        if M.isValidPosition newFocus then
-            ( { model | focus = newFocus }, Cmd.none )
-        else
-            ( model, Cmd.none )
-
-    ToggleMode ->
-        ( { model | mode =
-            if model.mode == ME.Running then ME.Editing
-            else ME.Running
-          }
-        , Cmd.none
-        )
-    ToggleBlock -> updateMaze ME.toggleBlock model
-    ToggleStairs -> updateMaze ME.toggleStairs model
-    ToggleBridge -> updateMaze ME.toggleBridge model
-    PlaceStart -> updateMaze ME.placeStart model
-    PlaceEnd -> updateMaze ME.placeEnd model
-
-    Go dir ->
-        let
-            newPos : M.Position
-            newPos = M.move model.player dir model.maze
-                |> Maybe.withDefault model.player
-        in
-        ( { model | player = newPos }, Cmd.none )
-
-
-    _ -> ( model, Cmd.none )
 
 changeRouteTo : Url.Url -> Model -> Model
 changeRouteTo url model =
@@ -246,5 +289,5 @@ subscriptions model =
 view : Model -> Browser.Document Msg
 view model =
     { title = "Iso Maze"
-    , body = [ Draw.drawScene model ]
+    , body = [ DrawThree.drawScene model ]
     }
