@@ -1,9 +1,12 @@
 import * as THREE from 'three';
+import * as PP from 'postprocessing';
+import { N8AOPostPass } from 'n8ao';
+
 import { Elm } from './src/Main.elm';
 
 const app = Elm.Main.init();
 
-let scene, camera, renderer, container;
+let scene, camera, renderer, container, composer;
 let isInitialized = false;
 
 // Set Z as up
@@ -39,13 +42,21 @@ function initThree() {
     );
     camera.up.set(0, 0, 1);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer = new THREE.WebGLRenderer({ antialias: false });
     container.appendChild(renderer.domElement);
 
+    const n8aoPass = new N8AOPostPass(scene, camera, container.clientWidth, container.clientHeight);
+    n8aoPass.configuration.aoRadius = 1.0;
+    n8aoPass.configuration.distanceFalloff = 1.0;
+    n8aoPass.configuration.intensity = 5.0;
+
+    // Postprocessing
+    composer = new PP.EffectComposer(renderer);
+    composer.setSize(container.clientWidth, container.clientHeight, false);
+    composer.addPass(new PP.RenderPass(scene, camera));
+    composer.addPass(n8aoPass);
+    const smaa = new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })
+    composer.addPass(new PP.EffectPass(camera, smaa));
 
     const leftColor = 0xffffcc;
     const rightColor = 0x0099ff;
@@ -80,7 +91,7 @@ function initThree() {
 
 function render() {
     if (!isInitialized) return;
-    renderer.render(scene, camera);
+    composer.render(scene, camera);
 }
 
 window.addEventListener('resize', () => {
@@ -92,13 +103,15 @@ window.addEventListener('resize', () => {
     camera.top = viewSize / 2;
     camera.bottom = -viewSize / 2;
     camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    composer.setSize(container.clientWidth, container.clientHeight);
     render();
 });
 
 app.ports.renderThreeJS.subscribe(data => {
     if (!isInitialized) {
-        initThree();
+        setTimeout(function() {
+            initThree();
+        }, 1);
     }
     updateScene(data);
 });
