@@ -46,7 +46,10 @@ function initThree() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    const spotLeft = new THREE.PointLight(0xffffff, 40);
+    const leftColor = 0xffccaa;
+    const rightColor = 0xaaaaff;
+
+    const spotLeft = new THREE.PointLight(leftColor, 40);
     spotLeft.position.set(-2, 3, 5);
     spotLeft.castShadow = true;
     spotLeft.shadow.mapSize.width = 2048;
@@ -55,17 +58,21 @@ function initThree() {
     spotLeft.shadow.camera.far = 20;
     scene.add(spotLeft);
 
-    const fillLeft = new THREE.PointLight(0xffffff, 5);
+    const fillLeft = new THREE.PointLight(leftColor, 10);
     fillLeft.position.set(-1, -0.5, 1.5);
     scene.add(fillLeft);
 
-    const fillRight = new THREE.PointLight(0xffffff, 2);
+    const fillRight = new THREE.PointLight(rightColor, 3);
     fillRight.position.set(-0.5, -1, 1.5);
     scene.add(fillRight);
 
-    const fillAbove = new THREE.PointLight(0xffffff, 15);
+    const fillAbove = new THREE.PointLight(leftColor, 20);
     fillAbove.position.set(1, 1, 3);
     scene.add(fillAbove);
+
+    const playerLight = new THREE.PointLight(0xffffff, 0.05);
+    playerLight.name = 'playerLight';
+    scene.add(playerLight);
 
     isInitialized = true;
 }
@@ -218,6 +225,11 @@ function updateScene(data) {
     drawSphere(2.0, 2.2);
     drawSphere(5.5, 1.8);
     drawSphere(8.5, 1.4);
+
+    const pLight = scene.getObjectByName('playerLight');
+    if (pLight) {
+        pLight.position.set(p.x * scale, p.y * scale, (p.z + 0.4) * scale + zStairsFix);
+    }
 
     // Goal
     const g = data.goal;
