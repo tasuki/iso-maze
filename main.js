@@ -46,10 +46,11 @@ function initThree() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    const leftColor = 0xffccaa;
-    const rightColor = 0xaaaaff;
 
-    const spotLeft = new THREE.PointLight(leftColor, 40);
+    const leftColor = 0xffffcc;
+    const rightColor = 0x0099ff;
+
+    const spotLeft = new THREE.PointLight(leftColor, 20);
     spotLeft.position.set(-2, 3, 5);
     spotLeft.castShadow = true;
     spotLeft.shadow.mapSize.width = 2048;
@@ -58,19 +59,19 @@ function initThree() {
     spotLeft.shadow.camera.far = 20;
     scene.add(spotLeft);
 
-    const fillLeft = new THREE.PointLight(leftColor, 10);
+    const fillLeft = new THREE.PointLight(leftColor, 5);
     fillLeft.position.set(-1, -0.5, 1.5);
     scene.add(fillLeft);
 
-    const fillRight = new THREE.PointLight(rightColor, 3);
+    const fillRight = new THREE.PointLight(rightColor, 4);
     fillRight.position.set(-0.5, -1, 1.5);
     scene.add(fillRight);
 
-    const fillAbove = new THREE.PointLight(leftColor, 20);
+    const fillAbove = new THREE.PointLight(leftColor, 10);
     fillAbove.position.set(1, 1, 3);
     scene.add(fillAbove);
 
-    const playerLight = new THREE.PointLight(0xffffff, 0.05);
+    const playerLight = new THREE.PointLight(0xffffff, 0.03);
     playerLight.name = 'playerLight';
     scene.add(playerLight);
 
