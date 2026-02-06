@@ -7,7 +7,6 @@ import { Elm } from './src/Main.elm';
 const app = Elm.Main.init();
 
 let scene, camera, renderer, container, composer;
-let isInitialized = false;
 
 // Set Z as up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -23,71 +22,29 @@ const materials = {
     focus: new THREE.MeshBasicMaterial({ color: 0xffaa00, roughness: 0.0, metalness: 0.0 }),
 };
 
-function initThree() {
-    container = document.getElementById('three-container');
-    if (!container || container.clientWidth === 0) {
-        requestAnimationFrame(initThree);
-        return;
-    }
+// Scene & Lights
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0xaaddee); // Light Blue
 
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xaaddee); // Light Blue
+const fillLeft = new THREE.PointLight(0xffcc99, 30);
+fillLeft.position.set(-2, 0, 3);
+scene.add(fillLeft);
 
-    const aspect = container.clientWidth / container.clientHeight;
-    const viewSize = 1.4;
-    camera = new THREE.OrthographicCamera(
-        -aspect * viewSize / 2, aspect * viewSize / 2,
-        viewSize / 2, -viewSize / 2,
-        1, 1000
-    );
-    camera.up.set(0, 0, 1);
+const fillRight = new THREE.PointLight(0x66bbff, 15);
+fillRight.position.set(0, -2, 3);
+scene.add(fillRight);
 
-    renderer = new THREE.WebGLRenderer({ antialias: false });
-    container.appendChild(renderer.domElement);
+const fillAbove = new THREE.PointLight(0xffffff, 40);
+fillAbove.position.set(2, 2, 6);
+scene.add(fillAbove);
 
-    const n8aoPass = new N8AOPostPass(scene, camera, container.clientWidth, container.clientHeight);
-    n8aoPass.configuration.aoRadius = 1.0;
-    n8aoPass.configuration.distanceFalloff = 1.0;
-    n8aoPass.configuration.intensity = 5.0;
+const playerLight = new THREE.PointLight(0xffffff, 0.03);
+playerLight.name = 'playerLight';
+scene.add(playerLight);
 
-    // Postprocessing
-    composer = new PP.EffectComposer(renderer);
-    composer.setSize(container.clientWidth, container.clientHeight, false);
-    composer.addPass(new PP.RenderPass(scene, camera));
-    composer.addPass(n8aoPass);
-    const smaa = new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })
-    composer.addPass(new PP.EffectPass(camera, smaa));
 
-    const topColor = 0xffffff;
-    const leftColor = 0xffcc99;
-    const rightColor = 0x66bbff;
-
-    const fillLeft = new THREE.PointLight(leftColor, 30);
-    fillLeft.position.set(-2, 0, 3);
-    scene.add(fillLeft);
-
-    const fillRight = new THREE.PointLight(rightColor, 15);
-    fillRight.position.set(0, -2, 3);
-    scene.add(fillRight);
-
-    const fillAbove = new THREE.PointLight(topColor, 40);
-    fillAbove.position.set(2, 2, 6);
-    scene.add(fillAbove);
-
-    const playerLight = new THREE.PointLight(0xffffff, 0.03);
-    playerLight.name = 'playerLight';
-    scene.add(playerLight);
-
-    isInitialized = true;
-}
-
-function render() {
-    if (!isInitialized) return;
-    composer.render(scene, camera);
-}
-
-window.addEventListener('resize', () => {
-    if (!isInitialized) return;
+// Camera
+function updateCamera() {
     const aspect = container.clientWidth / container.clientHeight;
     const viewSize = 1.4;
     camera.left = -aspect * viewSize / 2;
@@ -95,16 +52,53 @@ window.addEventListener('resize', () => {
     camera.top = viewSize / 2;
     camera.bottom = -viewSize / 2;
     camera.updateProjectionMatrix();
-    composer.setSize(container.clientWidth, container.clientHeight);
+    // composer.setSize(container.clientWidth, container.clientHeight);
+}
+container = document.getElementById('three-container');
+camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 1000);
+updateCamera();
+camera.up.set(0, 0, 1);
+
+// Renderer
+function updateRenderer() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(container.clientWidth, container.clientHeight);
+}
+renderer = new THREE.WebGLRenderer({ antialias: false });
+updateRenderer();
+container.appendChild(renderer.domElement);
+
+// Ambient Occlusion
+const n8aoPass = new N8AOPostPass(scene, camera, container.clientWidth, container.clientHeight);
+n8aoPass.configuration.aoRadius = 1.0;
+n8aoPass.configuration.distanceFalloff = 1.0;
+n8aoPass.configuration.intensity = 5.0;
+
+// Postprocessing
+composer = new PP.EffectComposer(renderer);
+composer.setSize(container.clientWidth, container.clientHeight, false);
+composer.addPass(new PP.RenderPass(scene, camera));
+composer.addPass(n8aoPass);
+const smaa = new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })
+composer.addPass(new PP.EffectPass(camera, smaa));
+
+function render() {
+    composer.render();
+}
+setTimeout(function() {
+    // somehow this fixes aliasing on first frame...
+    render();
+}, 1);
+
+window.addEventListener('resize', () => {
+    updateCamera();
+    updateRenderer();
     render();
 });
 
+
 app.ports.renderThreeJS.subscribe(data => {
-    if (!isInitialized) {
-        setTimeout(function() {
-            initThree();
-        }, 1);
-    }
     updateScene(data);
 });
 
@@ -167,8 +161,6 @@ function drawRailings(railings) {
 }
 
 function updateScene(data) {
-    if (!isInitialized) return;
-
     // Remove and dispose of old meshes and geometries
     const toRemove = [];
     scene.traverse(child => {
