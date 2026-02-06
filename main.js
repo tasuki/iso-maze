@@ -112,12 +112,21 @@ function updateScene(data) {
 
     // Boxes
     data.boxes.forEach(b => {
-        const geo = new THREE.BoxGeometry(b.sizeX * unitScale, b.sizeY * unitScale, b.sizeZ * unitScale);
+        const geo = new THREE.BoxGeometry(
+            b.sizeX * unitScale,
+            b.sizeY * unitScale,
+            b.sizeZ * unitScale,
+        );
         const mesh = new THREE.Mesh(geo, materials[b.material]);
-        mesh.position.set(b.x * unitScale, b.y * unitScale, b.z * unitScale);
+        mesh.position.set(
+            b.x * unitScale,
+            b.y * unitScale,
+            b.z * unitScale,
+        );
         if (b.rotationZ) {
             mesh.rotation.z = b.rotationZ * Math.PI / 180;
         }
+        mesh.renderOrder = -(b.x + b.y); // no tears
         scene.add(mesh);
     });
 
