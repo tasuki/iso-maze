@@ -15,12 +15,12 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 // Reuse Materials
 const materials = {
     base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 }),
-    stairs: new THREE.MeshStandardMaterial({ color: 0xffc8aa, roughness: 1.0 }),
-    bridge: new THREE.MeshStandardMaterial({ color: 0xc86464, roughness: 1.0 }),
-    railing: new THREE.MeshStandardMaterial({ color: 0xc8c8c8, roughness: 1.0 }),
+    stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 1.0 }),
+    bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 1.0 }),
+    railing: new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 1.0 }),
     player: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 }),
-    goal: new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.5, metalness: 0.5 }),
-    focus: new THREE.MeshBasicMaterial({ color: 0xffa500, transparent: true, opacity: 0.5 })
+    goal: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.5 }),
+    focus: new THREE.MeshBasicMaterial({ color: 0xffaa00, roughness: 0.0, metalness: 0.0 }),
 };
 
 function initThree() {
@@ -31,7 +31,7 @@ function initThree() {
     }
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xadd8e6); // Light Blue
+    scene.background = new THREE.Color(0xaaddee); // Light Blue
 
     const aspect = container.clientWidth / container.clientHeight;
     const viewSize = 1.4;
@@ -58,28 +58,20 @@ function initThree() {
     const smaa = new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })
     composer.addPass(new PP.EffectPass(camera, smaa));
 
-    const leftColor = 0xffffcc;
-    const rightColor = 0x0099ff;
+    const topColor = 0xffffff;
+    const leftColor = 0xffcc99;
+    const rightColor = 0x66bbff;
 
-    const spotLeft = new THREE.PointLight(leftColor, 20);
-    spotLeft.position.set(-2, 3, 5);
-    spotLeft.castShadow = true;
-    spotLeft.shadow.mapSize.width = 2048;
-    spotLeft.shadow.mapSize.height = 2048;
-    spotLeft.shadow.camera.near = 0.5;
-    spotLeft.shadow.camera.far = 20;
-    scene.add(spotLeft);
-
-    const fillLeft = new THREE.PointLight(leftColor, 5);
-    fillLeft.position.set(-1, -0.5, 1.5);
+    const fillLeft = new THREE.PointLight(leftColor, 30);
+    fillLeft.position.set(-2, 0, 3);
     scene.add(fillLeft);
 
-    const fillRight = new THREE.PointLight(rightColor, 4);
-    fillRight.position.set(-0.5, -1, 1.5);
+    const fillRight = new THREE.PointLight(rightColor, 15);
+    fillRight.position.set(0, -2, 3);
     scene.add(fillRight);
 
-    const fillAbove = new THREE.PointLight(leftColor, 10);
-    fillAbove.position.set(1, 1, 3);
+    const fillAbove = new THREE.PointLight(topColor, 40);
+    fillAbove.position.set(2, 2, 6);
     scene.add(fillAbove);
 
     const playerLight = new THREE.PointLight(0xffffff, 0.03);
@@ -116,73 +108,19 @@ app.ports.renderThreeJS.subscribe(data => {
     updateScene(data);
 });
 
-function updateScene(data) {
-    if (!isInitialized) return;
+const scale = 0.1;
 
-    // Remove and dispose of old meshes and geometries
-    const toRemove = [];
-    scene.traverse(child => {
-        if (child.isMesh) {
-            toRemove.push(child);
-            if (child.geometry) child.geometry.dispose();
-            // Materials are reused, so don't dispose them here
-        }
-    });
-    toRemove.forEach(m => scene.remove(m));
+function addMesh(geo, mat, x, y, z) {
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    return mesh;
+}
 
-    const scale = 0.1;
-
-    function addMesh(geo, mat, x, y, z) {
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(x, y, z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        scene.add(mesh);
-        return mesh;
-    }
-
-    // Blocks
-    data.blocks.forEach(b => {
-        if (b.type === 'base') {
-            const h = (b.z + 1) * scale;
-            const geo = new THREE.BoxGeometry(scale, scale, h);
-            addMesh(geo, materials.base, b.x * scale, b.y * scale, (b.z * 0.5 - 0.5) * scale);
-        } else if (b.type === 'bridge') {
-            const h = b.z * scale;
-            const geo = new THREE.BoxGeometry(scale, scale, h);
-            addMesh(geo, materials.base, b.x * scale, b.y * scale, (b.z * 0.5 - 1.0) * scale);
-
-            const bgeo = new THREE.BoxGeometry(scale, scale, 0.01);
-            addMesh(bgeo, materials.bridge, b.x * scale, b.y * scale, b.z * scale + 0.005);
-        } else if (b.type === 'stairs') {
-            const h = b.z * scale;
-            const geo = new THREE.BoxGeometry(scale, scale, h);
-            addMesh(geo, materials.stairs, b.x * scale, b.y * scale, (b.z * 0.5 - 1.0) * scale);
-
-            for (let i = 0; i < 10; i++) {
-                let sw, sd, sh, cx, cy, cz;
-                if (b.direction === 'NW') {
-                    sw = 10; sd = 1; sh = (1 + i);
-                    cx = 0; cy = (4.5 - i); cz = (-9.5 + 0.5 * i);
-                } else if (b.direction === 'NE') {
-                    sw = 1; sd = 10; sh = (1 + i);
-                    cx = (4.5 - i); cy = 0; cz = (-9.5 + 0.5 * i);
-                } else if (b.direction === 'SE') {
-                    sw = 10; sd = 1; sh = (10 - i);
-                    cx = 0; cy = (4.5 - i); cz = (-5.0 - 0.5 * i);
-                } else if (b.direction === 'SW') {
-                    sw = 1; sd = 10; sh = (10 - i);
-                    cx = (4.5 - i); cy = 0; cz = (-5.0 - 0.5 * i);
-                }
-
-                const sgeo = new THREE.BoxGeometry(sw * 0.01, sd * 0.01, sh * 0.01);
-                addMesh(sgeo, materials.stairs, (b.x + cx * 0.1) * scale, (b.y + cy * 0.1) * scale, (b.z + cz * 0.1) * scale);
-            }
-        }
-    });
-
-    // Railings
-    data.railings.forEach(r => {
+function drawRailings(railings) {
+    railings.forEach(r => {
         const baseCoords = r.blockType === 'stairs'
             ? [-4.5, -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5]
             : [-4, -2, 0, 2, 4];
@@ -226,6 +164,64 @@ function updateScene(data) {
             addMesh(rgeo, materials.railing, (r.x + xd * 0.1) * scale, (r.y + yd * 0.1) * scale, (r.z + getZd(xd, yd) * 0.1) * scale);
         });
     });
+}
+
+function updateScene(data) {
+    if (!isInitialized) return;
+
+    // Remove and dispose of old meshes and geometries
+    const toRemove = [];
+    scene.traverse(child => {
+        if (child.isMesh) {
+            toRemove.push(child);
+            if (child.geometry) child.geometry.dispose();
+            // Materials are reused, so don't dispose them here
+        }
+    });
+    toRemove.forEach(m => scene.remove(m));
+
+    // Blocks
+    data.blocks.forEach(b => {
+        if (b.type === 'base') {
+            const h = (b.z + 1) * scale;
+            const geo = new THREE.BoxGeometry(scale, scale, h);
+            addMesh(geo, materials.base, b.x * scale, b.y * scale, (b.z * 0.5 - 0.5) * scale);
+        } else if (b.type === 'bridge') {
+            const h = b.z * scale;
+            const geo = new THREE.BoxGeometry(scale, scale, h);
+            addMesh(geo, materials.base, b.x * scale, b.y * scale, (b.z * 0.5 - 1.0) * scale);
+
+            const bgeo = new THREE.BoxGeometry(scale, scale, 0.01);
+            addMesh(bgeo, materials.bridge, b.x * scale, b.y * scale, b.z * scale + 0.005);
+        } else if (b.type === 'stairs') {
+            const h = b.z * scale;
+            const geo = new THREE.BoxGeometry(scale, scale, h);
+            addMesh(geo, materials.stairs, b.x * scale, b.y * scale, (b.z * 0.5 - 1.0) * scale);
+
+            for (let i = 0; i < 10; i++) {
+                let sw, sd, sh, cx, cy, cz;
+                if (b.direction === 'NW') {
+                    sw = 10; sd = 1; sh = (1 + i);
+                    cx = 0; cy = (4.5 - i); cz = (-9.5 + 0.5 * i);
+                } else if (b.direction === 'NE') {
+                    sw = 1; sd = 10; sh = (1 + i);
+                    cx = (4.5 - i); cy = 0; cz = (-9.5 + 0.5 * i);
+                } else if (b.direction === 'SE') {
+                    sw = 10; sd = 1; sh = (10 - i);
+                    cx = 0; cy = (4.5 - i); cz = (-5.0 - 0.5 * i);
+                } else if (b.direction === 'SW') {
+                    sw = 1; sd = 10; sh = (10 - i);
+                    cx = (4.5 - i); cy = 0; cz = (-5.0 - 0.5 * i);
+                }
+
+                const sgeo = new THREE.BoxGeometry(sw * 0.01, sd * 0.01, sh * 0.01);
+                addMesh(sgeo, materials.stairs, (b.x + cx * 0.1) * scale, (b.y + cy * 0.1) * scale, (b.z + cz * 0.1) * scale);
+            }
+        }
+    });
+
+    // Railings
+    // drawRailings(data.railings);
 
     // Player
     const p = data.player;
@@ -242,7 +238,7 @@ function updateScene(data) {
 
     const pLight = scene.getObjectByName('playerLight');
     if (pLight) {
-        pLight.position.set(p.x * scale, p.y * scale, (p.z + 0.4) * scale + zStairsFix);
+        pLight.position.set(p.x * scale, p.y * scale, (p.z + 0.9) * scale + zStairsFix);
     }
 
     // Goal
