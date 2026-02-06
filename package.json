@@ -14,7 +14,9 @@
     "devDependencies": {
         "elm": "^0.19.1-5",
         "elm-test": "^0.19.1-revision12",
+        "rollup-plugin-visualizer": "^6.0.5",
+        "vite": "^7.1.3",
         "vite-plugin-elm": "^3.0.0",
-        "vite": "^7.1.3"
+        "vite-plugin-singlefile": "^2.3.0"
     }
 }
