@@ -17,14 +17,14 @@ const materials = {
     stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 1.0 }),
     bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 1.0 }),
     railing: new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 1.0 }),
-    player: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 }),
+    player: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 }),
     goal: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.5 }),
-    focus: new THREE.MeshBasicMaterial({ color: 0xffaa00, roughness: 0.0, metalness: 0.0 }),
+    focus: new THREE.MeshStandardMaterial({ color: 0xff9900, emissive: 0xff9900, emissiveIntensity: 1 }),
 };
 
 // Scene & Lights
 scene = new THREE.Scene();
-scene.background = new THREE.Color(0xaaddee); // Light Blue
+scene.background = new THREE.Color(0xaaddee);
 
 const fillLeft = new THREE.PointLight(0xffcc99, 30);
 fillLeft.position.set(-2, 0, 3);
@@ -39,7 +39,6 @@ fillAbove.position.set(2, 2, 6);
 scene.add(fillAbove);
 
 const playerLight = new THREE.PointLight(0xffffff, 0.03);
-playerLight.name = 'playerLight';
 scene.add(playerLight);
 
 
@@ -71,25 +70,20 @@ container.appendChild(renderer.domElement);
 
 // Ambient Occlusion
 const n8aoPass = new N8AOPostPass(scene, camera, container.clientWidth, container.clientHeight);
-n8aoPass.configuration.aoRadius = 1.0;
-n8aoPass.configuration.distanceFalloff = 1.0;
-n8aoPass.configuration.intensity = 5.0;
+n8aoPass.configuration.aoRadius = 0.5;
+n8aoPass.configuration.distanceFalloff = 1.5;
+n8aoPass.configuration.intensity = 7.0;
 
 // Postprocessing
 composer = new PP.EffectComposer(renderer);
 composer.setSize(container.clientWidth, container.clientHeight, false);
 composer.addPass(new PP.RenderPass(scene, camera));
 composer.addPass(n8aoPass);
-const smaa = new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })
-composer.addPass(new PP.EffectPass(camera, smaa));
+composer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })));
 
-function render() {
-    composer.render();
-}
-setTimeout(function() {
-    // somehow this fixes aliasing on first frame...
-    render();
-}, 1);
+function render() { composer.render(); }
+// somehow this fixes aliasing on first frame...
+setTimeout(function() { render(); }, 1);
 
 window.addEventListener('resize', () => {
     updateCamera();
@@ -107,8 +101,6 @@ const scale = 0.1;
 function addMesh(geo, mat, x, y, z) {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
     scene.add(mesh);
     return mesh;
 }
@@ -228,10 +220,7 @@ function updateScene(data) {
     drawSphere(5.5, 1.8);
     drawSphere(8.5, 1.4);
 
-    const pLight = scene.getObjectByName('playerLight');
-    if (pLight) {
-        pLight.position.set(p.x * scale, p.y * scale, (p.z + 0.9) * scale + zStairsFix);
-    }
+    playerLight.position.set(p.x * scale, p.y * scale, (p.z + 0.5) * scale + zStairsFix);
 
     // Goal
     const g = data.goal;
@@ -246,7 +235,7 @@ function updateScene(data) {
     // Focus
     if (data.mode === 'editing') {
         const f = data.focus;
-        const fgeo = new THREE.SphereGeometry(0.005, 8, 8);
+        const fgeo = new THREE.SphereGeometry(0.01, 8, 8);
         const offsets = [
             [-5,-5,-10], [5,-5,-10], [-5,5,-10], [5,5,-10],
             [-5,-5,0], [5,-5,0], [-5,5,0], [5,5,0]
