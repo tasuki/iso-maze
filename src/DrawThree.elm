@@ -7,10 +7,36 @@ import Html.Attributes as HA
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
-import Quantity
 
 
 port renderThreeJS : E.Value -> Cmd msg
+
+
+type alias Box =
+    { x : Float
+    , y : Float
+    , z : Float
+    , width : Float
+    , depth : Float
+    , height : Float
+    , material : String
+    , rotationZ : Float
+    }
+
+
+type alias Sphere =
+    { x : Float
+    , y : Float
+    , z : Float
+    , radius : Float
+    , material : String
+    }
+
+
+type alias Scene =
+    { boxes : List Box
+    , spheres : List Sphere
+    }
 
 
 drawScene : { a | azimuth : Angle.Angle, elevation : Angle.Angle, maze : M.Maze, player : M.Position, focus : M.Position } -> H.Html msg
@@ -25,6 +51,13 @@ drawScene model =
 
 sceneData : { a | azimuth : Angle.Angle, elevation : Angle.Angle, maze : M.Maze, player : M.Position, focus : M.Position, mode : ME.Mode } -> E.Value
 sceneData model =
+    let
+        ( x, y, z ) =
+            model.player
+
+        pLightPos =
+            playerPos ( x, y, z ) 5 model.maze
+    in
     E.object
         [ ( "camera"
           , E.object
@@ -32,113 +65,349 @@ sceneData model =
                 , ( "elevation", E.float (Angle.inDegrees model.elevation) )
                 ]
           )
-        , ( "player", encodePosition model.player )
-        , ( "focus", encodePosition model.focus )
-        , ( "blocks", E.list encodeBlock (M.toBlocks model.maze) )
-        , ( "railings", E.list encodeRailing (D.getRailings model.maze) )
-        , ( "goal", encodePosition (M.endPosition model.maze) )
-        , ( "mode", encodeMode model.mode )
-        ]
-
-
-encodeMode : ME.Mode -> E.Value
-encodeMode mode =
-    case mode of
-        ME.Running ->
-            E.string "running"
-
-        ME.Editing ->
-            E.string "editing"
-
-
-encodePosition : ( Int, Int, Int ) -> E.Value
-encodePosition ( x, y, z ) =
-    E.object
-        [ ( "x", E.float (toFloat x) )
-        , ( "y", E.float (toFloat y) )
-        , ( "z", E.float (toFloat z) )
-        ]
-
-
-encodeBlock : M.Block -> E.Value
-encodeBlock b =
-    case b of
-        M.Base ( x, y, z ) ->
-            E.object
-                [ ( "type", E.string "base" )
-                , ( "x", E.int x )
-                , ( "y", E.int y )
-                , ( "z", E.int z )
+        , ( "playerLight"
+          , E.object
+                [ ( "x", E.float pLightPos.x )
+                , ( "y", E.float pLightPos.y )
+                , ( "z", E.float pLightPos.z )
                 ]
+          )
+        , ( "boxes", E.list encodeBox (allBoxes model) )
+        , ( "spheres", E.list encodeSphere (allSpheres model) )
+        ]
+
+
+allBoxes : { a | maze : M.Maze, player : M.Position, focus : M.Position, mode : ME.Mode } -> List Box
+allBoxes model =
+    List.concat
+        [ List.concatMap drawBlock (M.toBlocks model.maze)
+        , drawEnd (M.endPosition model.maze) (M.isAtEnd model.player model.maze)
+        -- , List.concatMap drawRailing (D.getRailings model.maze)
+        ]
+
+
+allSpheres : { a | maze : M.Maze, player : M.Position, focus : M.Position, mode : ME.Mode } -> List Sphere
+allSpheres model =
+    List.concat
+        [ drawPlayer model.player model.maze
+        , drawFocus model.mode model.focus
+        ]
+
+
+encodeBox : Box -> E.Value
+encodeBox b =
+    E.object
+        [ ( "x", E.float b.x )
+        , ( "y", E.float b.y )
+        , ( "z", E.float b.z )
+        , ( "width", E.float b.width )
+        , ( "depth", E.float b.depth )
+        , ( "height", E.float b.height )
+        , ( "material", E.string b.material )
+        , ( "rotationZ", E.float b.rotationZ )
+        ]
+
+
+encodeSphere : Sphere -> E.Value
+encodeSphere s =
+    E.object
+        [ ( "x", E.float s.x )
+        , ( "y", E.float s.y )
+        , ( "z", E.float s.z )
+        , ( "radius", E.float s.radius )
+        , ( "material", E.string s.material )
+        ]
+
+
+-- Materials (Names used in main.js)
+
+
+baseMat : String
+baseMat =
+    "base"
+
+
+stairsMat : String
+stairsMat =
+    "stairs"
+
+
+bridgeMat : String
+bridgeMat =
+    "bridge"
+
+
+railingMat : String
+railingMat =
+    "railing"
+
+
+playerMat : String
+playerMat =
+    "player"
+
+
+goalMat : String
+goalMat =
+    "goal"
+
+
+focusMat : String
+focusMat =
+    "focus"
+
+
+
+-- Drawing (Internal helpers)
+
+
+playerPos : M.Position -> Float -> M.Maze -> { x : Float, y : Float, z : Float }
+playerPos ( x, y, z ) zOffset maze =
+    let
+        zStairsFix =
+            case M.get ( x, y ) maze of
+                Just (M.Stairs _ _) ->
+                    -5
+
+                _ ->
+                    0
+    in
+    { x = toFloat x * 10
+    , y = toFloat y * 10
+    , z = toFloat z * 10 + zOffset + zStairsFix
+    }
+
+
+drawBase : String -> Float -> Float -> Float -> Box
+drawBase material x y z =
+    { x = x * 10
+    , y = y * 10
+    , z = z * 5 - 5
+    , width = 10
+    , depth = 10
+    , height = z * 10 + 10
+    , material = material
+    , rotationZ = 0
+    }
+
+
+drawBlock : M.Block -> List Box
+drawBlock block =
+    case block of
+        M.Base ( x, y, z ) ->
+            [ drawBase baseMat (toFloat x) (toFloat y) (toFloat z) ]
 
         M.Bridge ( x, y, z ) ->
-            E.object
-                [ ( "type", E.string "bridge" )
-                , ( "x", E.int x )
-                , ( "y", E.int y )
-                , ( "z", E.int z )
-                ]
+            [ { x = toFloat x * 10
+              , y = toFloat y * 10
+              , z = toFloat z * 10 + 0.5
+              , width = 10
+              , depth = 10
+              , height = 1
+              , material = bridgeMat
+              , rotationZ = 0
+              }
+            , drawBase baseMat (toFloat x) (toFloat y) (toFloat z - 1)
+            ]
 
         M.Stairs ( x, y, z ) dir ->
-            E.object
-                [ ( "type", E.string "stairs" )
-                , ( "x", E.int x )
-                , ( "y", E.int y )
-                , ( "z", E.int z )
-                , ( "direction", E.string (directionToString dir) )
-                ]
+            let
+                fx =
+                    toFloat x
+
+                fy =
+                    toFloat y
+
+                fz =
+                    toFloat z
+
+                stepBox cx cy cz sw sd sh =
+                    { x = fx * 10 + cx
+                    , y = fy * 10 + cy
+                    , z = fz * 10 + cz
+                    , width = sw
+                    , depth = sd
+                    , height = sh
+                    , material = stairsMat
+                    , rotationZ = 0
+                    }
+
+                ( centerFun, dimsFun ) =
+                    case dir of
+                        M.SE ->
+                            ( \i -> ( 0, 4.5 - toFloat i, -5.0 - 0.5 * toFloat i )
+                            , \i -> ( 10, 1, 10 - toFloat i )
+                            )
+
+                        M.SW ->
+                            ( \i -> ( 4.5 - toFloat i, 0, -5.0 - 0.5 * toFloat i )
+                            , \i -> ( 1, 10, 10 - toFloat i )
+                            )
+
+                        M.NE ->
+                            ( \i -> ( 4.5 - toFloat i, 0, -9.5 + 0.5 * toFloat i )
+                            , \i -> ( 1, 10, 1 + toFloat i )
+                            )
+
+                        M.NW ->
+                            ( \i -> ( 0, 4.5 - toFloat i, -9.5 + 0.5 * toFloat i )
+                            , \i -> ( 10, 1, 1 + toFloat i )
+                            )
+
+                oneBox i =
+                    let
+                        ( cx, cy, cz ) =
+                            centerFun i
+
+                        ( sw, sd, sh ) =
+                            dimsFun i
+                    in
+                    stepBox cx cy cz sw sd sh
+            in
+            List.map oneBox (List.range 0 9) ++ [ drawBase stairsMat fx fy (fz - 1) ]
 
 
-directionToString : M.Direction -> String
-directionToString d =
-    case d of
-        M.NE ->
-            "NE"
+drawEnd : M.Position -> Bool -> List Box
+drawEnd ( x, y, z ) isAtEnd =
+    let
+        zd =
+            if isAtEnd then
+                9.5
 
-        M.NW ->
-            "NW"
+            else
+                0
 
-        M.SE ->
-            "SE"
+        hatPart rotation =
+            { x = toFloat x * 10
+            , y = toFloat y * 10
+            , z = toFloat z * 10 + 1 + zd
+            , width = 1.6
+            , depth = 1.6
+            , height = 1.6
+            , material = goalMat
+            , rotationZ = rotation
+            }
+    in
+    [ hatPart 0, hatPart 30, hatPart 60 ]
 
-        M.SW ->
-            "SW"
+
+drawPlayer : M.Position -> M.Maze -> List Sphere
+drawPlayer ( x, y, z ) maze =
+    let
+        playerSphere zOffset r =
+            let
+                p =
+                    playerPos ( x, y, z ) zOffset maze
+            in
+            { x = p.x, y = p.y, z = p.z, radius = r, material = playerMat }
+    in
+    [ playerSphere 2.0 2.2
+    , playerSphere 5.5 1.8
+    , playerSphere 8.5 1.4
+    ]
 
 
-encodeRailing : ( M.Block, M.Direction ) -> E.Value
-encodeRailing ( block, dir ) =
+drawFocus : ME.Mode -> M.Position -> List Sphere
+drawFocus mode ( x, y, z ) =
+    case mode of
+        ME.Running ->
+            []
+
+        ME.Editing ->
+            let
+                xmin =
+                    toFloat x * 10 - 5
+
+                xmax =
+                    toFloat x * 10 + 5
+
+                ymin =
+                    toFloat y * 10 - 5
+
+                ymax =
+                    toFloat y * 10 + 5
+
+                zmin =
+                    toFloat z * 10 - 10
+
+                zmax =
+                    toFloat z * 10
+
+                s xpos ypos zpos =
+                    { x = xpos, y = ypos, z = zpos, radius = 0.5, material = focusMat }
+            in
+            [ s xmin ymin zmin
+            , s xmax ymin zmin
+            , s xmin ymax zmin
+            , s xmax ymax zmin
+            , s xmin ymin zmax
+            , s xmax ymin zmax
+            , s xmin ymax zmax
+            , s xmax ymax zmax
+            ]
+
+
+drawRailing : ( M.Block, M.Direction ) -> List Box
+drawRailing ( block, dir ) =
     let
         ( x, y, z ) =
             M.blockPosition block
+
+        baseCoords =
+            case block of
+                M.Stairs _ _ ->
+                    [ -4.5, -3.5, -2.5, -1.5, -0.5
+                    , 0.5, 1.5, 2.5, 3.5, 4.5
+                    ]
+
+                _ ->
+                    [ -4, -2, 0, 2, 4 ]
+
+        zd xd yd =
+            case block of
+                M.Base _ ->
+                    0.2
+
+                M.Bridge _ ->
+                    1.2
+
+                M.Stairs _ stairsDir ->
+                    case stairsDir of
+                        M.SE ->
+                            yd - 4.3
+
+                        M.SW ->
+                            xd - 4.3
+
+                        M.NW ->
+                            -4.3 - yd
+
+                        M.NE ->
+                            -4.3 - xd
+
+        createRailing ( xd, yd ) =
+            { x = toFloat x * 10 + xd
+            , y = toFloat y * 10 + yd
+            , z = toFloat z * 10 + zd xd yd
+            , width = 0.3
+            , depth = 0.3
+            , height = 0.5
+            , material = railingMat
+            , rotationZ = 0
+            }
+
+        centers =
+            case dir of
+                M.SE ->
+                    List.map (\c -> ( c, -4 )) baseCoords
+
+                M.SW ->
+                    List.map (\c -> ( -4, c )) baseCoords
+
+                M.NW ->
+                    List.map (\c -> ( c, 4 )) baseCoords
+
+                M.NE ->
+                    List.map (\c -> ( 4, c )) baseCoords
     in
-    E.object
-        [ ( "x", E.int x )
-        , ( "y", E.int y )
-        , ( "z", E.int z )
-        , ( "direction", E.string (directionToString dir) )
-        , ( "blockType", E.string (blockTypeToString block) )
-        , ( "blockDirection", encodeBlockDirection block )
-        ]
-
-
-encodeBlockDirection : M.Block -> E.Value
-encodeBlockDirection b =
-    case b of
-        M.Stairs _ dir ->
-            E.string (directionToString dir)
-
-        _ ->
-            E.null
-
-
-blockTypeToString : M.Block -> String
-blockTypeToString b =
-    case b of
-        M.Base _ ->
-            "base"
-
-        M.Bridge _ ->
-            "bridge"
-
-        M.Stairs _ _ ->
-            "stairs"
+    List.map createRailing centers
