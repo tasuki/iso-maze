@@ -15,6 +15,6 @@ export default defineConfig({
     ],
     server: {
         port: 8423,
-        hmr: false,
+        // hmr: false, // breaks elm reload
     },
 });
