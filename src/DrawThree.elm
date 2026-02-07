@@ -1,9 +1,6 @@
-port module DrawThree exposing (drawScene, renderThreeJS, sceneData)
+port module DrawThree exposing (renderThreeJS, sceneData)
 
 import Angle
-import Decorations as D
-import Html as H
-import Html.Attributes as HA
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
@@ -42,14 +39,6 @@ type alias Sphere =
     }
 
 
-drawScene : m -> H.Html msg
-drawScene _ =
-    H.div
-        [ HA.id "three-container"
-        , HA.style "width" "100%"
-        , HA.style "height" "100vh"
-        ]
-        []
 
 
 sceneData : Model m -> E.Value

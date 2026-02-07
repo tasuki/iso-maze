@@ -7,8 +7,12 @@ import Browser.Events as BE
 import Browser.Navigation as Nav
 import Codec
 import DrawThree
+import DocumentDecoders as DD
 import Duration exposing (Duration)
-import Json.Decode as Decode exposing (Decoder)
+import Html as H
+import Html.Attributes as HA
+import Html.Events as HE
+import Json.Decode as Decode
 import Maze as M
 import MazeEdit as ME
 import Pixels exposing (Pixels)
@@ -26,6 +30,8 @@ type alias Model =
     , width : Quantity Int Pixels
     , height : Quantity Int Pixels
     , elapsedTime : Duration
+    , pointerStart : Maybe DD.DocumentCoords
+    , pointerLast : Maybe DD.DocumentCoords
     , orbiting : Bool
     , azimuth : Angle
     , elevation : Angle
@@ -41,9 +47,10 @@ type Msg
     | UrlChanged Url
     | Resize (Quantity Int Pixels) (Quantity Int Pixels)
     | Tick Duration
-    | MouseDown
-    | MouseMove (Quantity Float Pixels) (Quantity Float Pixels)
-    | MouseUp
+    | Started DD.DocumentCoords
+    | Moved DD.DocumentCoords
+    | Finished DD.DocumentCoords
+    | ClearTouch
     | VisibilityChange BE.Visibility
     | CameraReset
     | FocusShift M.Vector
@@ -73,6 +80,8 @@ init () url navKey =
         , width = Quantity.zero
         , height = Quantity.zero
         , elapsedTime = Quantity.zero
+        , pointerStart = Nothing
+        , pointerLast = Nothing
         , orbiting = False
         , azimuth = Angle.degrees initialAzimuth
         , elevation = Angle.degrees initialElevation
@@ -115,42 +124,70 @@ updateModel message model =
             , Cmd.none
             )
 
-        MouseDown ->
-            ( { model | orbiting = True }, Cmd.none )
+        Started dc ->
+            ( { model
+                | orbiting =
+                    if model.mode == ME.Editing then True
+                    else False
+                , pointerStart = Just dc
+                , pointerLast = Just dc
+            }, Cmd.none )
 
-        MouseUp ->
-            ( { model | orbiting = False }, Cmd.none )
+        Moved dc ->
+            case (model.orbiting, model.pointerLast) of
+                (True, Just lastDc) ->
+                    let
+                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+                        newAzimuth =
+                            model.azimuth
+                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+                        newElevation =
+                            model.elevation
+                                |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
+                                |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
+                    in
+                    ( { model
+                        | pointerLast = Just dc
+                        , azimuth = newAzimuth
+                        , elevation = newElevation
+                      }
+                    , Cmd.none
+                    )
+                _ ->
+                    ( model, Cmd.none )
+
+        Finished dc ->
+            if model.mode == ME.Editing then
+                ( { model
+                    | orbiting = False
+                    , pointerStart = Nothing
+                    , pointerLast = Nothing
+                }, Cmd.none )
+            else
+                case model.pointerStart of
+                    Nothing -> ( model, Cmd.none )
+                    Just startDc ->
+                        let
+                            up = dc.y - startDc.y < 0
+                            left = dc.x - startDc.x < 0
+                            msg =
+                                if up then
+                                    if left then Go M.NW
+                                    else Go M.NE
+                                else
+                                    if left then Go M.SW
+                                    else Go M.SE
+                        in
+                        updateModel msg model
+
+        ClearTouch ->
+            ( model, Cmd.none )
 
         VisibilityChange BE.Visible ->
             ( model, Cmd.none )
 
         VisibilityChange BE.Hidden ->
             ( { model | orbiting = False }, Cmd.none )
-
-        MouseMove dx dy ->
-            if model.orbiting then
-                let
-                    rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-
-                    newAzimuth =
-                        model.azimuth
-                            |> Quantity.minus (dx |> Quantity.at rotationRate)
-
-                    newElevation =
-                        model.elevation
-                            |> Quantity.plus (dy |> Quantity.at rotationRate)
-                            |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
-                in
-                ( { model
-                    | orbiting = True
-                    , azimuth = newAzimuth
-                    , elevation = newElevation
-                  }
-                , Cmd.none
-                )
-
-            else
-                ( model, Cmd.none )
 
         CameraReset ->
             ( { model
@@ -230,12 +267,6 @@ pushUrl navKey maze =
 
 -- Subscriptions
 
-mouseMoveDecoder : Decoder Msg
-mouseMoveDecoder =
-    Decode.map2 MouseMove
-        (Decode.field "movementX" (Decode.map Pixels.float Decode.float))
-        (Decode.field "movementY" (Decode.map Pixels.float Decode.float))
-
 keydown : ME.Mode -> String -> Msg
 keydown mode keycode =
     case mode of
@@ -243,10 +274,6 @@ keydown mode keycode =
             case keycode of
                 "e" -> ToggleMode
                 "c" -> CameraReset
-                "r" -> Go M.NW
-                "v" -> Go M.SW
-                "o" -> Go M.NE
-                "m" -> Go M.SE
                 "ArrowLeft"  -> Go M.NW
                 "ArrowDown"  -> Go M.SW
                 "ArrowUp"    -> Go M.NE
@@ -275,11 +302,6 @@ subscriptions model =
         [ BE.onResize (\w h -> Resize (Pixels.int w) (Pixels.int h))
         -- TODO , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
         , BE.onVisibilityChange VisibilityChange
-        , if model.orbiting then Sub.batch
-            [ BE.onMouseMove mouseMoveDecoder
-            , BE.onMouseUp (Decode.succeed MouseUp)
-            ]
-          else BE.onMouseDown (Decode.succeed MouseDown)
         , BE.onKeyDown (Decode.map (keydown model.mode) <| Decode.field "key" Decode.string)
         ]
 
@@ -288,6 +310,31 @@ subscriptions model =
 
 view : Model -> Browser.Document Msg
 view model =
+    let
+        alwaysWatch =
+            [ HE.on "mousedown" <| DD.decodeMouse Started
+            , HE.on "mouseup" <| DD.decodeMouse Finished
+            , HE.on "touchstart" <| DD.decodeTouch Started
+            , HE.on "touchend" <| DD.decodeChangedTouch Finished
+            , HE.on "touchcancel" <| DD.decodeChangedTouch Finished
+            , HE.preventDefaultOn "touchmove" <| DD.decodeSingleTouch ClearTouch Moved
+            ]
+        watchNow =
+            if model.mode == ME.Editing && model.orbiting then
+                alwaysWatch ++
+                    [ HE.on "mousemove" <| DD.decodeMouse Moved
+                    ]
+            else alwaysWatch
+    in
     { title = "Iso Maze"
-    , body = [ DrawThree.drawScene model ]
+    , body =
+        [ H.div
+            (watchNow ++
+                [ HA.id "three-container"
+                , HA.style "width" "100%"
+                , HA.style "height" "100vh"
+                ]
+            )
+            []
+        ]
     }
