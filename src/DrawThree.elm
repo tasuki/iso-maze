@@ -1,11 +1,18 @@
-port module DrawThree exposing (renderThreeJS, sceneData)
+port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS, sceneData)
 
 import Angle
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
+import Pixels exposing (Pixels)
+import Quantity exposing (Quantity)
+
 
 port renderThreeJS : E.Value -> Cmd msg
+
+
+initialAzimuth = -135
+initialElevation = 45
 
 
 type alias Model m =
@@ -16,6 +23,8 @@ type alias Model m =
         , player : M.Position
         , focus : M.Position
         , mode : ME.Mode
+        , width : Quantity Int Pixels
+        , height : Quantity Int Pixels
     }
 
 type alias Box =
@@ -29,7 +38,6 @@ type alias Box =
     , rotationZ : Float
     }
 
-
 type alias Sphere =
     { x : Float
     , y : Float
@@ -39,19 +47,26 @@ type alias Sphere =
     }
 
 
-
-
 sceneData : Model m -> E.Value
 sceneData model =
     let
         ( x, y, z ) = model.player
         pLightPos = playerPos ( x, y, z ) 5 model.maze
+        config = computeCameraConfig model
     in
     E.object
         [ ( "camera"
           , E.object
                 [ ( "azimuth", E.float (Angle.inDegrees model.azimuth) )
                 , ( "elevation", E.float (Angle.inDegrees model.elevation) )
+                , ( "viewSize", E.float config.viewSize )
+                , ( "focalPoint"
+                  , E.object
+                        [ ( "x", E.float config.focalPoint.x )
+                        , ( "y", E.float config.focalPoint.y )
+                        , ( "z", E.float config.focalPoint.z )
+                        ]
+                  )
                 ]
           )
         , ( "playerLight"
@@ -65,7 +80,6 @@ sceneData model =
         , ( "spheres", E.list encodeSphere (allSpheres model) )
         ]
 
-
 allBoxes : Model m -> List Box
 allBoxes model =
     List.concat
@@ -74,14 +88,12 @@ allBoxes model =
         -- , List.concatMap drawRailing (D.getRailings model.maze)
         ]
 
-
 allSpheres : Model m -> List Sphere
 allSpheres model =
     List.concat
         [ drawPlayer model.player model.maze
         , drawFocus model.mode model.focus
         ]
-
 
 encodeBox : Box -> E.Value
 encodeBox b =
@@ -96,7 +108,6 @@ encodeBox b =
         , ( "rotationZ", E.float b.rotationZ )
         ]
 
-
 encodeSphere : Sphere -> E.Value
 encodeSphere s =
     E.object
@@ -110,7 +121,6 @@ encodeSphere s =
 
 -- Drawing (Internal helpers)
 
-
 playerPos : M.Position -> Float -> M.Maze -> { x : Float, y : Float, z : Float }
 playerPos ( x, y, z ) zOffset maze =
     let
@@ -123,7 +133,6 @@ playerPos ( x, y, z ) zOffset maze =
     , z = toFloat z * 10 + zOffset + zStairsFix
     }
 
-
 drawBase : String -> Float -> Float -> Float -> Box
 drawBase material x y z =
     { x = x * 10
@@ -135,7 +144,6 @@ drawBase material x y z =
     , material = material
     , rotationZ = 0
     }
-
 
 drawBlock : M.Block -> List Box
 drawBlock block =
@@ -205,11 +213,8 @@ drawEnd : M.Position -> Bool -> List Box
 drawEnd ( x, y, z ) isAtEnd =
     let
         zd =
-            if isAtEnd then
-                9.5
-
-            else
-                0
+            if isAtEnd then 9.5
+            else 0
 
         hatPart rotation =
             { x = toFloat x * 10
@@ -308,3 +313,85 @@ drawRailing ( block, dir ) =
             M.NE -> List.map (\c -> ( 4, c )) baseCoords
     in
     List.map createRailing centers
+
+
+type alias CameraConfig =
+    { viewSize : Float
+    , focalPoint : { x : Float, y : Float, z : Float }
+    }
+
+computeCameraConfig : Model m -> CameraConfig
+computeCameraConfig model =
+    let
+        blockToPoints block =
+            let
+                ( bx, by, bz ) = M.blockPosition block
+                fx = toFloat bx * 10
+                fy = toFloat by * 10
+                fz = toFloat bz * 10
+            in
+            -- Floor is at -10, head space up to fz + 15
+            [ ( fx - 5, fy - 5, -10 )
+            , ( fx + 5, fy - 5, -10 )
+            , ( fx - 5, fy + 5, -10 )
+            , ( fx + 5, fy + 5, -10 )
+            , ( fx - 5, fy - 5, fz + 15 )
+            , ( fx + 5, fy - 5, fz + 15 )
+            , ( fx - 5, fy + 5, fz + 15 )
+            , ( fx + 5, fy + 5, fz + 15 )
+            ]
+
+        points = case List.concatMap blockToPoints <| M.toBlocks model.maze of
+            [] -> [ ( 0, 0, 0 ) ]
+            ps -> ps
+
+        a = Angle.degrees initialAzimuth |> Angle.inRadians
+        e = Angle.degrees initialElevation |> Angle.inRadians
+
+        -- Basis vectors (matching Three.js with camera.up = 0,0,1)
+        r = { x = -(sin a), y = cos a, z = 0 }
+        u = { x = -(cos a * sin e), y = -(sin a * sin e), z = cos e }
+
+        project ( px, py, pz ) =
+            ( px * r.x + py * r.y + pz * r.z
+            , px * u.x + py * u.y + pz * u.z
+            )
+        projected = List.map project points
+        rs = List.map Tuple.first projected
+        us = List.map Tuple.second projected
+
+        minR = List.minimum rs |> Maybe.withDefault 0
+        maxR = List.maximum rs |> Maybe.withDefault 0
+        minU = List.minimum us |> Maybe.withDefault 0
+        maxU = List.maximum us |> Maybe.withDefault 0
+
+        w = maxR - minR
+        h = maxU - minU
+        midR = (minR + maxR) / 2
+        midU = (minU + maxU) / 2
+
+        -- Mapping back to 3D focal point
+        focal3d =
+            { x = midR * r.x + midU * u.x
+            , y = midR * r.y + midU * u.y
+            , z = midR * r.z + midU * u.z
+            }
+
+        widthPx = model.width |> Quantity.unwrap |> toFloat
+        heightPx = model.height |> Quantity.unwrap |> toFloat
+
+        aspect =
+            if heightPx > 0 then widthPx / heightPx
+            else 1.0
+
+        -- Apply padding (0.9 factor means 5% on each side)
+        paddingFactor = 0.9
+        viewSize = max h (w / aspect) / paddingFactor
+    in
+    { viewSize = viewSize * 0.01
+    , focalPoint =
+        { x = focal3d.x * 0.01
+        , y = focal3d.y * 0.01
+        , z = focal3d.z * 0.01
+        }
+    }

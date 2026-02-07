@@ -43,19 +43,21 @@ scene.add(playerLight);
 
 
 // Camera
+let lastViewSize = 1.4;
+let lastFocalPoint = new THREE.Vector3(0, 0, 0.55);
+
 function updateCamera() {
     const aspect = container.clientWidth / container.clientHeight;
-    const viewSize = 1.4;
-    camera.left = -aspect * viewSize / 2;
-    camera.right = aspect * viewSize / 2;
-    camera.top = viewSize / 2;
-    camera.bottom = -viewSize / 2;
+    camera.left = -aspect * lastViewSize / 2;
+    camera.right = aspect * lastViewSize / 2;
+    camera.top = lastViewSize / 2;
+    camera.bottom = -lastViewSize / 2;
     camera.updateProjectionMatrix();
 }
 container = document.getElementById('three-container');
 camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 1000);
-updateCamera();
 camera.up.set(0, 0, 1);
+updateCamera();
 
 // Renderer
 function updateRenderer() {
@@ -91,8 +93,8 @@ function render() { composer.render(); }
 setTimeout(function() { render(); }, 1);
 
 window.addEventListener('resize', () => {
-    updateCamera();
     updateRenderer();
+    updateCamera();
     render();
 });
 
@@ -155,12 +157,19 @@ function updateScene(data) {
     // Camera
     const azimuth = data.camera.azimuth * Math.PI / 180;
     const elevation = data.camera.elevation * Math.PI / 180;
-    const distance = 15;
-    const focalPoint = new THREE.Vector3(0, 0, 0.55);
-    camera.position.x = focalPoint.x + distance * Math.cos(azimuth) * Math.cos(elevation);
-    camera.position.y = focalPoint.y + distance * Math.sin(azimuth) * Math.cos(elevation);
-    camera.position.z = focalPoint.z + distance * Math.sin(elevation);
-    camera.lookAt(focalPoint);
+    lastFocalPoint = new THREE.Vector3(
+        data.camera.focalPoint.x,
+        data.camera.focalPoint.y,
+        data.camera.focalPoint.z
+    );
+    lastViewSize = data.camera.viewSize;
 
+    const distance = 15;
+    camera.position.x = lastFocalPoint.x + distance * Math.cos(azimuth) * Math.cos(elevation);
+    camera.position.y = lastFocalPoint.y + distance * Math.sin(azimuth) * Math.cos(elevation);
+    camera.position.z = lastFocalPoint.z + distance * Math.sin(elevation);
+    camera.lookAt(lastFocalPoint);
+
+    updateCamera();
     render();
 }

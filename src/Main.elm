@@ -6,7 +6,7 @@ import Browser.Dom
 import Browser.Events as BE
 import Browser.Navigation as Nav
 import Codec
-import DrawThree
+import DrawThree as D
 import DocumentDecoders as DD
 import Duration exposing (Duration)
 import Html as H
@@ -22,8 +22,6 @@ import Task
 import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
-initialAzimuth = -135
-initialElevation = 45 -- 54.736 -- (90 - 35.264), where 35.264 == arctan(1/sqrt(2))
 
 type alias Model =
     { navKey : Nav.Key
@@ -83,8 +81,8 @@ init () url navKey =
         , pointerStart = Nothing
         , pointerLast = Nothing
         , orbiting = False
-        , azimuth = Angle.degrees initialAzimuth
-        , elevation = Angle.degrees initialElevation
+        , azimuth = Angle.degrees D.initialAzimuth
+        , elevation = Angle.degrees D.initialElevation
         , mode = ME.Running
         , maze = defaultMaze
         , player = M.startPosition defaultMaze
@@ -107,7 +105,7 @@ update message model =
         ( newModel, cmd ) =
             updateModel message model
     in
-    ( newModel, Cmd.batch [ cmd, DrawThree.renderThreeJS (DrawThree.sceneData newModel) ] )
+    ( newModel, Cmd.batch [ cmd, D.renderThreeJS (D.sceneData newModel) ] )
 
 
 updateModel : Msg -> Model -> ( Model, Cmd Msg )
@@ -191,8 +189,8 @@ updateModel message model =
 
         CameraReset ->
             ( { model
-                | azimuth = Angle.degrees initialAzimuth
-                , elevation = Angle.degrees initialElevation
+                | azimuth = Angle.degrees D.initialAzimuth
+                , elevation = Angle.degrees D.initialElevation
               }
             , Cmd.none
             )
