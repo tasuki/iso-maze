@@ -17,9 +17,9 @@ const materials = {
     stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 1.0 }),
     bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 1.0 }),
     railing: new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 1.0 }),
-    player: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 }),
+    player: new THREE.MeshStandardMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.5 }),
     goal: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.5 }),
-    focus: new THREE.MeshStandardMaterial({ color: 0xff9900, emissive: 0xff9900, emissiveIntensity: 1 }),
+    focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
 };
 
 // Scene & Lights
@@ -51,7 +51,6 @@ function updateCamera() {
     camera.top = viewSize / 2;
     camera.bottom = -viewSize / 2;
     camera.updateProjectionMatrix();
-    // composer.setSize(container.clientWidth, container.clientHeight);
 }
 container = document.getElementById('three-container');
 camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 1000);
@@ -74,11 +73,17 @@ n8aoPass.configuration.aoRadius = 0.5;
 n8aoPass.configuration.distanceFalloff = 1.5;
 n8aoPass.configuration.intensity = 7.0;
 
+const bloomEffect = new PP.BloomEffect({
+    intensity: 2,
+    luminanceThreshold: 1,
+    mipmapBlur: true,
+});
+
 // Postprocessing
-composer = new PP.EffectComposer(renderer);
-composer.setSize(container.clientWidth, container.clientHeight, false);
+composer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 composer.addPass(new PP.RenderPass(scene, camera));
 composer.addPass(n8aoPass);
+composer.addPass(new PP.EffectPass(camera, bloomEffect));
 composer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })));
 
 function render() { composer.render(); }
