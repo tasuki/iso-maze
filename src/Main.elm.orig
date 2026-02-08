@@ -48,7 +48,7 @@ type Msg
     | Started DD.DocumentCoords
     | Moved DD.DocumentCoords
     | Finished DD.DocumentCoords
-    | Cancelled DD.DocumentCoords
+    | ClearTouch
     | VisibilityChange BE.Visibility
     | CameraReset
     | FocusShift M.Vector
@@ -124,24 +124,21 @@ updateModel message model =
 
         Started dc ->
             ( { model
-                | orbiting = model.mode == ME.Editing
+                | orbiting =
+                    if model.mode == ME.Editing then True
+                    else False
                 , pointerStart = Just dc
                 , pointerLast = Just dc
-              }
-            , Cmd.none
-            )
+            }, Cmd.none )
 
         Moved dc ->
-            case ( model.orbiting, model.pointerLast ) of
-                ( True, Just lastDc ) ->
+            case (model.orbiting, model.pointerLast) of
+                (True, Just lastDc) ->
                     let
-                        rotationRate =
-                            Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-
+                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
                         newAzimuth =
                             model.azimuth
                                 |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
-
                         newElevation =
                             model.elevation
                                 |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
@@ -154,20 +151,23 @@ updateModel message model =
                       }
                     , Cmd.none
                     )
-
                 _ ->
                     ( model, Cmd.none )
 
         Finished dc ->
-            case ( model.mode, model.pointerStart ) of
-                ( ME.Running, Just startDc ) ->
-                    movePlayer { model | orbiting = False, pointerStart = Nothing, pointerLast = Nothing } startDc dc
+            if model.mode == ME.Editing then
+                ( { model
+                    | orbiting = False
+                    , pointerStart = Nothing
+                    , pointerLast = Nothing
+                }, Cmd.none )
+            else
+                case model.pointerStart of
+                    Nothing -> ( model, Cmd.none )
+                    Just startDc -> movePlayer model startDc dc
 
-                _ ->
-                    updateModel (Cancelled dc) model
-
-        Cancelled _ ->
-            ( { model | orbiting = False, pointerStart = Nothing, pointerLast = Nothing }, Cmd.none )
+        ClearTouch ->
+            ( model, Cmd.none )
 
         VisibilityChange BE.Visible ->
             ( model, Cmd.none )
@@ -318,20 +318,33 @@ subscriptions model =
 
 -- View
 
-
 view : Model -> Browser.Document Msg
 view model =
+    let
+        alwaysWatch =
+            [ HE.on "mousedown" <| DD.decodeMouse Started
+            , HE.on "mouseup" <| DD.decodeMouse Finished
+            , HE.on "touchstart" <| DD.decodeTouch Started
+            , HE.on "touchend" <| DD.decodeChangedTouch Finished
+            , HE.on "touchcancel" <| DD.decodeChangedTouch Finished
+            , HE.preventDefaultOn "touchmove" <| DD.decodeSingleTouch ClearTouch Moved
+            ]
+        watchNow =
+            if model.mode == ME.Editing && model.orbiting then
+                alwaysWatch ++
+                    [ HE.on "mousemove" <| DD.decodeMouse Moved
+                    ]
+            else alwaysWatch
+    in
     { title = "Iso Maze"
     , body =
         [ H.div
-            [ HE.on "pointerdown" <| DD.decodePrimary Started
-            , HE.on "pointerup" <| DD.decodePrimary Finished
-            , HE.on "pointercancel" <| DD.decodePrimary Cancelled
-            , HE.preventDefaultOn "pointermove" <| Decode.map (\m -> ( m, True )) (DD.decodePrimary Moved)
-            , HA.id "three-container"
-            , HA.style "width" "100%"
-            , HA.style "height" "100vh"
-            ]
+            (watchNow ++
+                [ HA.id "three-container"
+                , HA.style "width" "100%"
+                , HA.style "height" "100vh"
+                ]
+            )
             []
         ]
     }
