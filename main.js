@@ -3,6 +3,7 @@ import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 
 import { Elm } from './src/Main.elm';
+import { PlayerAnimator } from './animation.js';
 
 const app = Elm.Main.init();
 
@@ -107,14 +108,23 @@ composer.addPass(n8aoPass);
 composer.addPass(new PP.EffectPass(camera, bloomEffect));
 composer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })));
 
-function render() { composer.render(); }
-// somehow this fixes aliasing on first frame...
-setTimeout(function() { render(); }, 1);
+const playerAnimator = new PlayerAnimator();
+
+let lastTime = performance.now();
+function animate() {
+    requestAnimationFrame(animate);
+    const time = performance.now();
+    const deltaTime = (time - lastTime) / 1000;
+    lastTime = time;
+
+    playerAnimator.update(deltaTime);
+    composer.render();
+}
+requestAnimationFrame(animate);
 
 window.addEventListener('resize', () => {
     updateRenderer();
     updateCamera();
-    render();
 });
 
 
@@ -125,6 +135,8 @@ app.ports.renderThreeJS.subscribe(data => {
 function updateScene(data) {
     const unitScale = 0.01;
     const currentMeshKeys = new Set();
+    const playerTargets = [];
+    const playerMeshes = [];
 
     // Boxes
     data.boxes.forEach((b) => {
@@ -172,8 +184,18 @@ function updateScene(data) {
                 mesh.geometry = geo;
             }
         }
-        mesh.position.set(s.x * unitScale, s.y * unitScale, s.z * unitScale);
+
+        if (s.material === 'player') {
+            playerTargets.push(new THREE.Vector3(s.x * unitScale, s.y * unitScale, s.z * unitScale));
+            playerMeshes.push(mesh);
+        } else {
+            mesh.position.set(s.x * unitScale, s.y * unitScale, s.z * unitScale);
+        }
     });
+
+    if (playerTargets.length > 0) {
+        playerAnimator.updateTargets(playerTargets, playerMeshes, playerLight);
+    }
 
     // Cleanup
     for (const [key, mesh] of meshCache.entries()) {
@@ -184,14 +206,6 @@ function updateScene(data) {
         }
     }
 
-    // Player Light
-    if (data.playerLight) {
-        playerLight.position.set(
-            data.playerLight.x * unitScale,
-            data.playerLight.y * unitScale,
-            data.playerLight.z * unitScale,
-        );
-    }
 
     // Camera
     const azimuth = data.camera.azimuth * Math.PI / 180;
@@ -210,5 +224,4 @@ function updateScene(data) {
     camera.lookAt(lastFocalPoint);
 
     updateCamera();
-    render();
 }
