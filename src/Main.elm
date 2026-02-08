@@ -15,8 +15,8 @@ import Html.Events as HE
 import Json.Decode as Decode
 import Maze as M
 import MazeEdit as ME
-import Pixels exposing (Pixels)
-import Quantity exposing (Quantity)
+import Pixels
+import Quantity
 import SampleMazes as SM
 import Task
 import Url exposing (Url)
@@ -25,8 +25,8 @@ defaultMaze = SM.ziggurat2
 
 type alias Model =
     { navKey : Nav.Key
-    , width : Quantity Int Pixels
-    , height : Quantity Int Pixels
+    , widthPx : Int
+    , heightPx : Int
     , elapsedTime : Duration
     , pointerStart : Maybe DD.DocumentCoords
     , pointerLast : Maybe DD.DocumentCoords
@@ -43,7 +43,7 @@ type Msg
     = Noop
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url
-    | Resize (Quantity Int Pixels) (Quantity Int Pixels)
+    | Resize Int Int
     | Tick Duration
     | Started DD.DocumentCoords
     | Moved DD.DocumentCoords
@@ -75,8 +75,8 @@ init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url navKey =
     (changeRouteTo url
         { navKey = navKey
-        , width = Quantity.zero
-        , height = Quantity.zero
+        , widthPx = 0
+        , heightPx = 0
         , elapsedTime = Quantity.zero
         , pointerStart = Nothing
         , pointerLast = Nothing
@@ -90,8 +90,8 @@ init () url navKey =
         }
     , Task.perform
         (\{ viewport } -> Resize
-            (Pixels.int (round viewport.width))
-            (Pixels.int (round viewport.height))
+            (round viewport.width)
+            (round viewport.height)
         )
         Browser.Dom.getViewport
     )
@@ -115,7 +115,7 @@ updateModel message model =
             ( changeRouteTo url model, Cmd.none )
 
         Resize width height ->
-            ( { model | width = width, height = height }, Cmd.none )
+            ( { model | widthPx = width, heightPx = height }, Cmd.none )
 
         Tick elapsed ->
             ( { model | elapsedTime = model.elapsedTime |> Quantity.plus elapsed }
@@ -164,19 +164,7 @@ updateModel message model =
             else
                 case model.pointerStart of
                     Nothing -> ( model, Cmd.none )
-                    Just startDc ->
-                        let
-                            up = dc.y - startDc.y < 0
-                            left = dc.x - startDc.x < 0
-                            msg =
-                                if up then
-                                    if left then Go M.NW
-                                    else Go M.NE
-                                else
-                                    if left then Go M.SW
-                                    else Go M.SE
-                        in
-                        updateModel msg model
+                    Just startDc -> movePlayer model startDc dc
 
         ClearTouch ->
             ( model, Cmd.none )
@@ -245,6 +233,30 @@ updateModel message model =
         _ ->
             ( model, Cmd.none )
 
+movePlayer : Model -> DD.DocumentCoords -> DD.DocumentCoords -> ( Model, Cmd Msg )
+movePlayer model startDc dc =
+    let
+        (up, left) =
+            if startDc == dc then
+                -- simple click: see quadrant
+                ( dc.y * 2 < (model.heightPx |> toFloat)
+                , dc.x * 2 < (model.widthPx |> toFloat)
+                )
+            else
+                -- drag: see diff
+                ( dc.y < startDc.y
+                , dc.x < startDc.x
+                )
+        msg =
+            if up then
+                if left then Go M.NW
+                else Go M.NE
+            else
+                if left then Go M.SW
+                else Go M.SE
+    in
+    updateModel msg model
+
 changeRouteTo : Url.Url -> Model -> Model
 changeRouteTo url model =
     case Maybe.andThen Codec.decode url.query of
@@ -297,7 +309,7 @@ keydown mode keycode =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ BE.onResize (\w h -> Resize (Pixels.int w) (Pixels.int h))
+        [ BE.onResize Resize
         -- TODO , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
         , BE.onVisibilityChange VisibilityChange
         , BE.onKeyDown (Decode.map (keydown model.mode) <| Decode.field "key" Decode.string)

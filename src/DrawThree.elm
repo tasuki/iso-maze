@@ -23,8 +23,8 @@ type alias Model m =
         , player : M.Position
         , focus : M.Position
         , mode : ME.Mode
-        , width : Quantity Int Pixels
-        , height : Quantity Int Pixels
+        , widthPx : Int
+        , heightPx : Int
     }
 
 type alias Box =
@@ -377,8 +377,8 @@ computeCameraConfig model =
             , z = midR * r.z + midU * u.z
             }
 
-        widthPx = model.width |> Quantity.unwrap |> toFloat
-        heightPx = model.height |> Quantity.unwrap |> toFloat
+        widthPx = model.widthPx |> toFloat
+        heightPx = model.heightPx |> toFloat
 
         aspect =
             if heightPx > 0 then widthPx / heightPx
