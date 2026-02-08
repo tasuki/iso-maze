@@ -48,7 +48,7 @@ type Msg
     | Started DD.DocumentCoords
     | Moved DD.DocumentCoords
     | Finished DD.DocumentCoords
-    | ClearTouch
+    | Cancelled DD.DocumentCoords
     | VisibilityChange BE.Visibility
     | CameraReset
     | FocusShift M.Vector
@@ -124,16 +124,16 @@ updateModel message model =
 
         Started dc ->
             ( { model
-                | orbiting =
-                    if model.mode == ME.Editing then True
-                    else False
+                | orbiting = model.mode == ME.Editing
                 , pointerStart = Just dc
                 , pointerLast = Just dc
-            }, Cmd.none )
+              }
+            , Cmd.none
+            )
 
         Moved dc ->
-            case (model.orbiting, model.pointerLast) of
-                (True, Just lastDc) ->
+            case ( model.orbiting, model.pointerLast ) of
+                ( True, Just lastDc ) ->
                     let
                         rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
                         newAzimuth =
@@ -155,19 +155,15 @@ updateModel message model =
                     ( model, Cmd.none )
 
         Finished dc ->
-            if model.mode == ME.Editing then
-                ( { model
-                    | orbiting = False
-                    , pointerStart = Nothing
-                    , pointerLast = Nothing
-                }, Cmd.none )
-            else
-                case model.pointerStart of
-                    Nothing -> ( model, Cmd.none )
-                    Just startDc -> movePlayer model startDc dc
+            case ( model.mode, model.pointerStart ) of
+                ( ME.Running, Just startDc ) ->
+                    movePlayer { model | orbiting = False, pointerStart = Nothing, pointerLast = Nothing } startDc dc
 
-        ClearTouch ->
-            ( model, Cmd.none )
+                _ ->
+                    updateModel (Cancelled dc) model
+
+        Cancelled _ ->
+            ( { model | orbiting = False, pointerStart = Nothing, pointerLast = Nothing }, Cmd.none )
 
         VisibilityChange BE.Visible ->
             ( model, Cmd.none )
@@ -322,18 +318,14 @@ view : Model -> Browser.Document Msg
 view model =
     let
         alwaysWatch =
-            [ HE.on "mousedown" <| DD.decodeMouse Started
-            , HE.on "mouseup" <| DD.decodeMouse Finished
-            , HE.on "touchstart" <| DD.decodeTouch Started
-            , HE.on "touchend" <| DD.decodeChangedTouch Finished
-            , HE.on "touchcancel" <| DD.decodeChangedTouch Finished
-            , HE.preventDefaultOn "touchmove" <| DD.decodeSingleTouch ClearTouch Moved
+            [ HE.on "pointerdown" <| DD.decodePrimary Started
+            , HE.on "pointerup" <| DD.decodePrimary Finished
+            , HE.on "pointercancel" <| DD.decodePrimary Cancelled
             ]
         watchNow =
             if model.mode == ME.Editing && model.orbiting then
-                alwaysWatch ++
-                    [ HE.on "mousemove" <| DD.decodeMouse Moved
-                    ]
+                (HE.preventDefaultOn "pointermove" <| Decode.map (\m -> ( m, True )) (DD.decodePrimary Moved))
+                    :: alwaysWatch
             else alwaysWatch
     in
     { title = "Iso Maze"
