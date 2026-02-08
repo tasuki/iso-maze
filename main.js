@@ -22,6 +22,25 @@ const materials = {
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
 };
 
+const geometryCache = new Map();
+function getBoxGeometry(sx, sy, sz) {
+    const key = `box_${sx}_${sy}_${sz}`;
+    if (!geometryCache.has(key)) {
+        geometryCache.set(key, new THREE.BoxGeometry(sx, sy, sz));
+    }
+    return geometryCache.get(key);
+}
+
+function getSphereGeometry(r) {
+    const key = `sphere_${r}`;
+    if (!geometryCache.has(key)) {
+        geometryCache.set(key, new THREE.SphereGeometry(r, 16, 16));
+    }
+    return geometryCache.get(key);
+}
+
+const meshCache = new Map();
+
 // Scene & Lights
 scene = new THREE.Scene();
 scene.background = new THREE.Color(0xaaddee);
@@ -104,46 +123,66 @@ app.ports.renderThreeJS.subscribe(data => {
 });
 
 function updateScene(data) {
-    // Remove and dispose of old meshes and geometries
-    const toRemove = [];
-    scene.traverse(child => {
-        if (child.isMesh) {
-            toRemove.push(child);
-            if (child.geometry) child.geometry.dispose();
-            // Materials are reused, so don't dispose them here
-        }
-    });
-    toRemove.forEach(m => scene.remove(m));
-
     const unitScale = 0.01;
+    const currentMeshKeys = new Set();
 
     // Boxes
-    data.boxes.forEach(b => {
-        const geo = new THREE.BoxGeometry(
-            b.sizeX * unitScale,
-            b.sizeY * unitScale,
-            b.sizeZ * unitScale,
-        );
-        const mesh = new THREE.Mesh(geo, materials[b.material]);
-        mesh.position.set(
-            b.x * unitScale,
-            b.y * unitScale,
-            b.z * unitScale,
-        );
-        if (b.rotationZ) {
-            mesh.rotation.z = b.rotationZ * Math.PI / 180;
+    data.boxes.forEach((b) => {
+        const key = `box_${b.x}_${b.y}_${b.z}_${b.sizeX}_${b.sizeY}_${b.sizeZ}_${b.material}_${b.rotationZ || 0}`;
+        currentMeshKeys.add(key);
+
+        if (!meshCache.has(key)) {
+            const geo = getBoxGeometry(
+                b.sizeX * unitScale,
+                b.sizeY * unitScale,
+                b.sizeZ * unitScale,
+            );
+            const mesh = new THREE.Mesh(geo, materials[b.material]);
+            mesh.position.set(
+                b.x * unitScale,
+                b.y * unitScale,
+                b.z * unitScale,
+            );
+            if (b.rotationZ) {
+                mesh.rotation.z = b.rotationZ * Math.PI / 180;
+            }
+            mesh.renderOrder = -(b.x + b.y); // no tears
+            scene.add(mesh);
+            meshCache.set(key, mesh);
         }
-        mesh.renderOrder = -(b.x + b.y); // no tears
-        scene.add(mesh);
     });
 
     // Spheres
-    data.spheres.forEach(s => {
-        const geo = new THREE.SphereGeometry(s.radius * unitScale, 16, 16);
-        const mesh = new THREE.Mesh(geo, materials[s.material]);
+    data.spheres.forEach((s, i) => {
+        // We use index because player spheres are always in the same order
+        // and we want to be able to move them.
+        const key = `sphere_${s.material}_${i}`;
+        currentMeshKeys.add(key);
+
+        let mesh = meshCache.get(key);
+        if (!mesh) {
+            const geo = getSphereGeometry(s.radius * unitScale);
+            mesh = new THREE.Mesh(geo, materials[s.material]);
+            scene.add(mesh);
+            meshCache.set(key, mesh);
+        } else {
+            // Update geometry if radius changed (though it shouldn't for player)
+            const geo = getSphereGeometry(s.radius * unitScale);
+            if (mesh.geometry !== geo) {
+                mesh.geometry = geo;
+            }
+        }
         mesh.position.set(s.x * unitScale, s.y * unitScale, s.z * unitScale);
-        scene.add(mesh);
     });
+
+    // Cleanup
+    for (const [key, mesh] of meshCache.entries()) {
+        if (!currentMeshKeys.has(key)) {
+            scene.remove(mesh);
+            meshCache.delete(key);
+            // Geometries and materials are cached/reused, so don't dispose here
+        }
+    }
 
     // Player Light
     if (data.playerLight) {
