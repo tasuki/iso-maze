@@ -30,8 +30,25 @@ export class PlayerAnimator {
         this.initialized = true;
     }
 
+    isMoving() {
+        if (!this.initialized) return true;
+
+        const velThreshold = 0.01;
+        const posThreshold = 0.001;
+
+        for (let i = 0; i < this.spheres.length; i++) {
+            const s = this.spheres[i];
+            if (s.velocity.length() > velThreshold) return true;
+
+            // Check distance to target
+            if (s.current.distanceTo(s.target) > posThreshold) return true;
+        }
+
+        return false;
+    }
+
     update(deltaTime) {
-        if (!this.initialized) return;
+        if (!this.initialized) return false;
 
         // Cap deltaTime to avoid physics explosion
         const dt = Math.min(deltaTime, 0.05);

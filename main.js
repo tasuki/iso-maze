@@ -110,21 +110,38 @@ composer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({ preset: PP.SMAAPr
 
 const playerAnimator = new PlayerAnimator();
 
+let isAnimating = false;
 let lastTime = performance.now();
 function animate() {
-    requestAnimationFrame(animate);
+    isAnimating = true;
     const time = performance.now();
     const deltaTime = (time - lastTime) / 1000;
     lastTime = time;
 
     playerAnimator.update(deltaTime);
     composer.render();
+
+    const moving = playerAnimator.isMoving();
+    if (moving) {
+        requestAnimationFrame(animate);
+    } else {
+        isAnimating = false;
+    }
 }
-requestAnimationFrame(animate);
+
+function startAnimating() {
+    if (!isAnimating) {
+        lastTime = performance.now();
+        requestAnimationFrame(animate);
+    }
+}
+
+startAnimating();
 
 window.addEventListener('resize', () => {
     updateRenderer();
     updateCamera();
+    startAnimating();
 });
 
 
@@ -196,6 +213,7 @@ function updateScene(data) {
     if (playerTargets.length > 0) {
         playerAnimator.updateTargets(playerTargets, playerMeshes, playerLight);
     }
+    startAnimating();
 
     // Cleanup
     for (const [key, mesh] of meshCache.entries()) {
