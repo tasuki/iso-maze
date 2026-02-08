@@ -330,15 +330,15 @@ computeCameraConfig model =
                 fy = toFloat by * 10
                 fz = toFloat bz * 10
             in
-            -- Floor is at -10, head space up to fz + 15
+            -- Floor is at -10, head space up to fz + 10
             [ ( fx - 5, fy - 5, -10 )
             , ( fx + 5, fy - 5, -10 )
             , ( fx - 5, fy + 5, -10 )
             , ( fx + 5, fy + 5, -10 )
-            , ( fx - 5, fy - 5, fz + 15 )
-            , ( fx + 5, fy - 5, fz + 15 )
-            , ( fx - 5, fy + 5, fz + 15 )
-            , ( fx + 5, fy + 5, fz + 15 )
+            , ( fx - 5, fy - 5, fz + 10 )
+            , ( fx + 5, fy - 5, fz + 10 )
+            , ( fx - 5, fy + 5, fz + 10 )
+            , ( fx + 5, fy + 5, fz + 10 )
             ]
 
         points = case List.concatMap blockToPoints <| M.toBlocks model.maze of
