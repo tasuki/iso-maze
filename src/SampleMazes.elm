@@ -109,6 +109,9 @@ assymetric =
 
 -- enter a new era of representing mazes
 
+empty = "sz:1,1;off:0,0;st:0,0;end:0,0;mz:o0"
+    |> Codec.decode |> Maybe.withDefault M.emptyMaze
+
 ziggurat = "sz:9,9;off:-3,-3;st:0,0;end:4,4;mz:"
     ++ "x x o2o2o3o3o3o3o3"
     ++ "x x o2z3o3z4z5o5o3"
