@@ -50,40 +50,45 @@ export class PlayerAnimator {
     update(deltaTime) {
         if (!this.initialized) return false;
 
-        // Cap deltaTime to avoid physics explosion
-        const dt = Math.min(deltaTime, 0.05);
-        this.timer += dt;
+        // Sub-stepping for stability at low FPS
+        const subSteps = 5;
+        const totalDt = Math.min(deltaTime / 1000, 0.2);
+        const dt = totalDt / subSteps;
 
-        this.spheres.forEach((s, i) => {
-            // Staggered start for drop-in (optional, but looks nice)
-            if (this.timer < i * this.staggerDelay) return;
+        for (let step = 0; step < subSteps; step++) {
+            this.timer += dt;
 
-            let targetPos = new THREE.Vector3();
-            if (i === 0) {
-                targetPos.copy(s.target);
-            } else {
-                // Trail effect: follow the sphere below
-                // We calculate the desired offset from the original targets
-                const desiredOffset = new THREE.Vector3().subVectors(s.target, this.spheres[i-1].target);
-                targetPos.copy(this.spheres[i-1].current).add(desiredOffset);
-            }
+            this.spheres.forEach((s, i) => {
+                // Staggered start for drop-in (optional, but looks nice)
+                if (this.timer < i * this.staggerDelay) return;
 
-            // Simple spring-damper physics
-            const springK = 250;
-            const damping = 20;
+                let targetPos = new THREE.Vector3();
+                if (i === 0) {
+                    targetPos.copy(s.target);
+                } else {
+                    // Trail effect: follow the sphere below
+                    // We calculate the desired offset from the original targets
+                    const desiredOffset = new THREE.Vector3().subVectors(s.target, this.spheres[i - 1].target);
+                    targetPos.copy(this.spheres[i - 1].current).add(desiredOffset);
+                }
 
-            const diff = new THREE.Vector3().subVectors(targetPos, s.current);
-            const force = diff.multiplyScalar(springK);
-            const friction = new THREE.Vector3().copy(s.velocity).multiplyScalar(-damping);
+                // Simple spring-damper physics
+                const springK = 400;
+                const damping = 30;
 
-            const acceleration = force.add(friction);
-            s.velocity.add(acceleration.multiplyScalar(dt));
-            s.current.add(new THREE.Vector3().copy(s.velocity).multiplyScalar(dt));
+                const diff = new THREE.Vector3().subVectors(targetPos, s.current);
+                const force = diff.multiplyScalar(springK);
+                const friction = new THREE.Vector3().copy(s.velocity).multiplyScalar(-damping);
 
-            if (s.mesh) {
-                s.mesh.position.copy(s.current);
-            }
-        });
+                const acceleration = force.add(friction);
+                s.velocity.add(acceleration.multiplyScalar(dt));
+                s.current.add(new THREE.Vector3().copy(s.velocity).multiplyScalar(dt));
+
+                if (s.mesh && step === subSteps - 1) {
+                    s.mesh.position.copy(s.current);
+                }
+            });
+        }
 
         if (this.light && this.spheres[0]) {
             // Position light relative to the animated spheres

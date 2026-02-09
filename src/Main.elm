@@ -9,6 +9,7 @@ import Codec
 import DrawThree as D
 import DocumentDecoders as DD
 import Duration exposing (Duration)
+import Set exposing (Set)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
@@ -22,6 +23,18 @@ import Task
 import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
+secondsPerStep = 0.3
+framesPerStep = 3
+gameFPS = toFloat framesPerStep / secondsPerStep
+
+type PlayerState
+    = Idle M.Position
+    | Moving
+        { from : M.Position
+        , to : M.Position
+        , dir : M.Direction
+        , progress : Float
+        }
 
 type alias Model =
     { navKey : Nav.Key
@@ -35,8 +48,9 @@ type alias Model =
     , elevation : Angle
     , mode : ME.Mode
     , maze : M.Maze
-    , player : M.Position
+    , playerState : PlayerState
     , focus : M.Position
+    , keysDown : Set String
     }
 
 type Msg
@@ -59,6 +73,8 @@ type Msg
     | PlaceStart
     | PlaceEnd
     | Go M.Direction
+    | KeyDown String
+    | KeyUp String
 
 main : Program () Model Msg
 main =
@@ -73,6 +89,9 @@ main =
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url navKey =
+    let
+        initialPlayer = M.startPosition defaultMaze
+    in
     (changeRouteTo url
         { navKey = navKey
         , widthPx = 0
@@ -85,8 +104,9 @@ init () url navKey =
         , elevation = Angle.degrees D.initialElevation
         , mode = ME.Running
         , maze = defaultMaze
-        , player = M.startPosition defaultMaze
+        , playerState = Idle initialPlayer
         , focus = ( 0, 0, 1 )
+        , keysDown = Set.empty
         }
     , Task.perform
         (\{ viewport } -> Resize
@@ -104,8 +124,36 @@ update message model =
     let
         ( newModel, cmd ) =
             updateModel message model
+
+        sceneDataValue =
+            D.sceneData
+                { azimuth = newModel.azimuth
+                , elevation = newModel.elevation
+                , maze = newModel.maze
+                , player = interpolatedPosition newModel.playerState
+                , focus = newModel.focus
+                , mode = newModel.mode
+                , widthPx = newModel.widthPx
+                , heightPx = newModel.heightPx
+                }
+                (if newModel.mode == ME.Running then gameFPS else 60)
     in
-    ( newModel, Cmd.batch [ cmd, D.renderThreeJS (D.sceneData newModel) ] )
+    ( newModel, Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ] )
+
+
+interpolatedPosition : PlayerState -> (Float, Float, Float)
+interpolatedPosition playerState =
+    case playerState of
+        Idle (x, y, z) ->
+            (toFloat x, toFloat y, toFloat z)
+        Moving m ->
+            let
+                (x1, y1, z1) = m.from
+                (x2, y2, z2) = m.to
+                p = m.progress
+                lerp a b t = toFloat a + (toFloat b - toFloat a) * t
+            in
+            (lerp x1 x2 p, lerp y1 y2 p, lerp z1 z2 p)
 
 
 updateModel : Msg -> Model -> ( Model, Cmd Msg )
@@ -118,7 +166,20 @@ updateModel message model =
             ( { model | widthPx = width, heightPx = height }, Cmd.none )
 
         Tick elapsed ->
-            ( { model | elapsedTime = model.elapsedTime |> Quantity.plus elapsed }
+            let
+                dt = Duration.inSeconds elapsed
+                newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
+
+                newPlayerState =
+                    if model.mode == ME.Running then
+                        updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.widthPx model.heightPx model.maze model.playerState
+                    else
+                        model.playerState
+            in
+            ( { model
+                | elapsedTime = newElapsedTime
+                , playerState = newPlayerState
+              }
             , Cmd.none
             )
 
@@ -145,25 +206,20 @@ updateModel message model =
                                 |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
                     in
                     ( { model
-                        | pointerLast = Just dc
-                        , azimuth = newAzimuth
+                        | azimuth = newAzimuth
                         , elevation = newElevation
+                        , pointerLast = Just dc
                       }
                     , Cmd.none
                     )
                 _ ->
-                    ( model, Cmd.none )
+                    ( { model | pointerLast = Just dc }, Cmd.none )
 
         Finished dc ->
-            case ( model.mode, model.pointerStart ) of
-                ( ME.Running, Just startDc ) ->
-                    movePlayer { model | orbiting = False, pointerStart = Nothing, pointerLast = Nothing } startDc dc
-
-                _ ->
-                    updateModel (Cancelled dc) model
+            ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
 
         Cancelled _ ->
-            ( { model | orbiting = False, pointerStart = Nothing, pointerLast = Nothing }, Cmd.none )
+            ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
 
         VisibilityChange BE.Visible ->
             ( model, Cmd.none )
@@ -219,44 +275,109 @@ updateModel message model =
 
         Go dir ->
             let
+                pos = case model.playerState of
+                    Idle p -> p
+                    Moving m -> m.to
                 newPos : M.Position
                 newPos =
-                    M.move model.player dir model.maze
-                        |> Maybe.withDefault model.player
+                    M.move pos dir model.maze
+                        |> Maybe.withDefault pos
             in
-            ( { model | player = newPos }, Cmd.none )
+            ( { model | playerState = Idle newPos }, Cmd.none )
+
+        KeyDown key ->
+            let
+                newKeysDown = Set.insert key model.keysDown
+                newModel = { model | keysDown = newKeysDown }
+            in
+            case (model.mode, key) of
+                (_, "e") -> updateModel ToggleMode newModel
+                (_, "c") -> updateModel CameraReset newModel
+                (ME.Running, "ArrowLeft") -> (newModel, Cmd.none)
+                (ME.Running, "ArrowDown") -> (newModel, Cmd.none)
+                (ME.Running, "ArrowUp") -> (newModel, Cmd.none)
+                (ME.Running, "ArrowRight") -> (newModel, Cmd.none)
+                (ME.Editing, _) ->
+                    let
+                        msg = keydown model.mode key
+                    in
+                    if msg == Noop then (newModel, Cmd.none)
+                    else updateModel msg newModel
+                _ -> (newModel, Cmd.none)
+
+        KeyUp key ->
+            ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
 
-movePlayer : Model -> DD.DocumentCoords -> DD.DocumentCoords -> ( Model, Cmd Msg )
-movePlayer model startDc dc =
+updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Int -> Int -> M.Maze -> PlayerState -> PlayerState
+updatePlayerState dt keysDown pointerStart pointerLast width height maze playerState =
+    case playerState of
+        Idle pos ->
+            case getDesiredDirection keysDown pointerStart pointerLast width height of
+                Just dir ->
+                    case M.move pos dir maze of
+                        Just to ->
+                            Moving { from = pos, to = to, dir = dir, progress = 0 }
+                        Nothing ->
+                            Idle pos
+                Nothing ->
+                    Idle pos
+
+        Moving m ->
+            let
+                newProgress = m.progress + (dt / secondsPerStep)
+            in
+            if newProgress >= 1 then
+                case getDesiredDirection keysDown pointerStart pointerLast width height of
+                    Just dir ->
+                        case M.move m.to dir maze of
+                            Just nextTo ->
+                                Moving { from = m.to, to = nextTo, dir = dir, progress = newProgress - 1 }
+                            Nothing ->
+                                Idle m.to
+                    Nothing ->
+                        Idle m.to
+            else
+                Moving { m | progress = newProgress }
+
+getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Int -> Int -> Maybe M.Direction
+getDesiredDirection keysDown pointerStart pointerLast width height =
     let
-        (up, left) =
-            if startDc == dc then
-                -- simple click: see quadrant
-                ( dc.y * 2 < (model.heightPx |> toFloat)
-                , dc.x * 2 < (model.widthPx |> toFloat)
-                )
-            else
-                -- drag: see diff
-                ( dc.y < startDc.y
-                , dc.x < startDc.x
-                )
-        msg =
-            if up then
-                if left then Go M.NW
-                else Go M.NE
-            else
-                if left then Go M.SW
-                else Go M.SE
+        kbdDir =
+            if Set.member "ArrowLeft" keysDown then Just M.NW
+            else if Set.member "ArrowDown" keysDown then Just M.SW
+            else if Set.member "ArrowUp" keysDown then Just M.NE
+            else if Set.member "ArrowRight" keysDown then Just M.SE
+            else Nothing
+
+        joyDir =
+            case (pointerStart, pointerLast) of
+                (Just start, Just last) ->
+                    let
+                        dx = last.x - start.x
+                        dy = last.y - start.y
+                        dist = sqrt (dx*dx + dy*dy)
+                        deadzone = 10
+                    in
+                    if dist > deadzone then
+                        if dy < 0 then
+                            if dx < 0 then Just M.NW else Just M.NE
+                        else
+                            if dx < 0 then Just M.SW else Just M.SE
+                    else
+                        Nothing
+                _ -> Nothing
     in
-    updateModel msg model
+    case kbdDir of
+        Just d -> Just d
+        Nothing -> joyDir
 
 changeRouteTo : Url.Url -> Model -> Model
 changeRouteTo url model =
     case Maybe.andThen Codec.decode url.query of
-        Just maze -> { model | maze = maze, player = M.startPosition maze }
+        Just maze -> { model | maze = maze, playerState = Idle (M.startPosition maze) }
         Nothing -> model
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
@@ -276,15 +397,7 @@ pushUrl navKey maze =
 keydown : ME.Mode -> String -> Msg
 keydown mode keycode =
     case mode of
-        ME.Running ->
-            case keycode of
-                "e" -> ToggleMode
-                "c" -> CameraReset
-                "ArrowLeft"  -> Go M.NW
-                "ArrowDown"  -> Go M.SW
-                "ArrowUp"    -> Go M.NE
-                "ArrowRight" -> Go M.SE
-                _   -> Noop
+        ME.Running -> Noop
         ME.Editing ->
             case keycode of
                 "e" -> ToggleMode
@@ -306,9 +419,10 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ BE.onResize Resize
-        -- TODO , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
+        , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
         , BE.onVisibilityChange VisibilityChange
-        , BE.onKeyDown (Decode.map (keydown model.mode) <| Decode.field "key" Decode.string)
+        , BE.onKeyDown (Decode.field "key" Decode.string |> Decode.map KeyDown)
+        , BE.onKeyUp (Decode.field "key" Decode.string |> Decode.map KeyUp)
         ]
 
 
@@ -323,7 +437,7 @@ view model =
             , HE.on "pointercancel" <| DD.decodePrimary Cancelled
             ]
         watchNow =
-            if model.mode == ME.Editing && model.orbiting then
+            if (model.mode == ME.Editing && model.orbiting) || model.mode == ME.Running then
                 (HE.preventDefaultOn "pointermove" <| Decode.map (\m -> ( m, True )) (DD.decodePrimary Moved))
                     :: alwaysWatch
             else alwaysWatch
@@ -335,8 +449,61 @@ view model =
                 [ HA.id "three-container"
                 , HA.style "width" "100%"
                 , HA.style "height" "100vh"
+                , HA.style "position" "relative"
+                , HA.style "user-select" "none"
+                , HA.style "touch-action" "none"
                 ]
             )
-            []
+            [ viewJoystick model ]
         ]
     }
+
+viewJoystick : Model -> H.Html Msg
+viewJoystick model =
+    case ( model.mode, model.pointerStart, model.pointerLast ) of
+        ( ME.Running, Just start, Just last ) ->
+            let
+                dx = last.x - start.x
+                dy = last.y - start.y
+                dist = sqrt (dx * dx + dy * dy)
+                maxDist = 40
+                clampedDist = min dist maxDist
+                angle = atan2 dy dx
+                kx = clampedDist * cos angle
+                ky = clampedDist * sin angle
+            in
+            H.div
+                [ HA.style "position" "absolute"
+                , HA.style "left" (String.fromFloat start.x ++ "px")
+                , HA.style "top" (String.fromFloat start.y ++ "px")
+                , HA.style "width" "0"
+                , HA.style "height" "0"
+                , HA.style "pointer-events" "none"
+                , HA.style "z-index" "100"
+                ]
+                [ H.div
+                    [ HA.style "position" "absolute"
+                    , HA.style "left" "-40px"
+                    , HA.style "top" "-40px"
+                    , HA.style "width" "80px"
+                    , HA.style "height" "80px"
+                    , HA.style "border" "2px solid rgba(255,255,255,0.3)"
+                    , HA.style "border-radius" "50%"
+                    ]
+                    []
+                , H.div [ HA.style "position" "absolute", HA.style "left" "-30px", HA.style "top" "0", HA.style "width" "60px", HA.style "height" "2px", HA.style "background" "rgba(255,255,255,0.2)" ] []
+                , H.div [ HA.style "position" "absolute", HA.style "left" "0", HA.style "top" "-30px", HA.style "width" "2px", HA.style "height" "60px", HA.style "background" "rgba(255,255,255,0.2)" ] []
+                , H.div
+                    [ HA.style "position" "absolute"
+                    , HA.style "left" (String.fromFloat (kx - 15) ++ "px")
+                    , HA.style "top" (String.fromFloat (ky - 15) ++ "px")
+                    , HA.style "width" "30px"
+                    , HA.style "height" "30px"
+                    , HA.style "background" "rgba(255,255,255,0.5)"
+                    , HA.style "border-radius" "50%"
+                    ]
+                    []
+                ]
+
+        _ ->
+            H.text ""
