@@ -4,8 +4,6 @@ import Angle
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
-import Pixels exposing (Pixels)
-import Quantity exposing (Quantity)
 
 
 port renderThreeJS : E.Value -> Cmd msg
@@ -20,7 +18,7 @@ type alias Model m =
         | azimuth : Angle.Angle
         , elevation : Angle.Angle
         , maze : M.Maze
-        , player : M.Position
+        , player : ( Float, Float, Float )
         , focus : M.Position
         , mode : ME.Mode
         , widthPx : Int
@@ -47,15 +45,17 @@ type alias Sphere =
     }
 
 
-sceneData : Model m -> E.Value
-sceneData model =
+sceneData : Model m -> Float -> E.Value
+sceneData model fps =
     let
         ( x, y, z ) = model.player
         pLightPos = playerPos ( x, y, z ) 5 model.maze
         config = computeCameraConfig model
     in
     E.object
-        [ ( "camera"
+        [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
+        , ( "fps", E.float fps )
+        , ( "camera"
           , E.object
                 [ ( "azimuth", E.float (Angle.inDegrees model.azimuth) )
                 , ( "elevation", E.float (Angle.inDegrees model.elevation) )
@@ -82,9 +82,13 @@ sceneData model =
 
 allBoxes : Model m -> List Box
 allBoxes model =
+    let
+        ( px, py, pz ) = model.player
+        discretePlayer = ( round px, round py, round pz )
+    in
     List.concat
         [ List.concatMap drawBlock (M.toBlocks model.maze)
-        , drawEnd (M.endPosition model.maze) (M.isAtEnd model.player model.maze)
+        , drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze)
         -- , List.concatMap drawRailing (D.getRailings model.maze)
         ]
 
@@ -121,16 +125,37 @@ encodeSphere s =
 
 -- Drawing (Internal helpers)
 
-playerPos : M.Position -> Float -> M.Maze -> { x : Float, y : Float, z : Float }
+playerPos : ( Float, Float, Float ) -> Float -> M.Maze -> { x : Float, y : Float, z : Float }
 playerPos ( x, y, z ) zOffset maze =
     let
-        zStairsFix = case M.get ( x, y ) maze of
-            Just (M.Stairs _ _) -> -5
-            _ -> 0
+        getFix (ix, iy) =
+            case M.get ( ix, iy ) maze of
+                Just (M.Stairs _ _) -> -5
+                _ -> 0
+
+        x1 = floor x
+        x2 = ceiling x
+        y1 = floor y
+        y2 = ceiling y
+
+        fx = x - toFloat x1
+        fy = y - toFloat y1
+
+        fix11 = getFix (x1, y1)
+        fix12 = getFix (x1, y2)
+        fix21 = getFix (x2, y1)
+        fix22 = getFix (x2, y2)
+
+        fix =
+            if x1 == x2 && y1 == y2 then toFloat fix11
+            else if x1 == x2 then toFloat fix11 * (1 - fy) + toFloat fix12 * fy
+            else if y1 == y2 then toFloat fix11 * (1 - fx) + toFloat fix21 * fx
+            else (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
+                 (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
     in
-    { x = toFloat x * 10
-    , y = toFloat y * 10
-    , z = toFloat z * 10 + zOffset + zStairsFix
+    { x = x * 10
+    , y = y * 10
+    , z = z * 10 + zOffset + fix
     }
 
 drawBase : String -> Float -> Float -> Float -> Box
@@ -230,7 +255,7 @@ drawEnd ( x, y, z ) isAtEnd =
     [ hatPart 0, hatPart 30, hatPart 60 ]
 
 
-drawPlayer : M.Position -> M.Maze -> List Sphere
+drawPlayer : ( Float, Float, Float ) -> M.Maze -> List Sphere
 drawPlayer ( x, y, z ) maze =
     let
         playerSphere zOffset r =
