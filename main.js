@@ -14,13 +14,13 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 // Reuse Materials
 const materials = {
-    base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 }),
-    stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 1.0 }),
-    bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 1.0 }),
-    railing: new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 1.0 }),
-    player: new THREE.MeshStandardMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.5 }),
-    goal: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.5 }),
-    focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
+    base: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    stairs: new THREE.MeshLambertMaterial({ color: 0xffccaa }),
+    bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
+    railing: new THREE.MeshLambertMaterial({ color: 0xcccccc }),
+    player: new THREE.MeshLambertMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.5 }),
+    goal: new THREE.MeshLambertMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.5 }),
+    focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
 };
 
 const geometryCache = new Map();
@@ -75,18 +75,15 @@ function updateCamera() {
     camera.updateProjectionMatrix();
 }
 container = document.getElementById('three-container');
-camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 1000);
+camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 5);
 camera.up.set(0, 0, 1);
 updateCamera();
 
 // Renderer
-function updateRenderer() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(container.clientWidth, container.clientHeight);
+function getDpr() {
+    return Math.min(window.devicePixelRatio || 1, 2);
 }
 renderer = new THREE.WebGLRenderer({ antialias: false });
-updateRenderer();
 container.appendChild(renderer.domElement);
 
 // Ambient Occlusion
@@ -94,6 +91,7 @@ const n8aoPass = new N8AOPostPass(scene, camera, container.clientWidth, containe
 n8aoPass.configuration.aoRadius = 0.5;
 n8aoPass.configuration.distanceFalloff = 1.5;
 n8aoPass.configuration.intensity = 7.0;
+n8aoPass.setQualityMode("Medium");
 
 const bloomEffect = new PP.BloomEffect({
     intensity: 2,
@@ -106,7 +104,16 @@ composer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatTyp
 composer.addPass(new PP.RenderPass(scene, camera));
 composer.addPass(n8aoPass);
 composer.addPass(new PP.EffectPass(camera, bloomEffect));
-composer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({ preset: PP.SMAAPreset.ULTRA })));
+if (getDpr() <= 1.2) {
+    composer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({ preset: PP.SMAAPreset.LOW })));
+}
+
+function updateSize() {
+    renderer.setPixelRatio(getDpr());
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    composer.setSize(container.clientWidth, container.clientHeight);
+}
+updateSize();
 
 const playerAnimator = new PlayerAnimator();
 
@@ -139,7 +146,7 @@ function startAnimating() {
 startAnimating();
 
 window.addEventListener('resize', () => {
-    updateRenderer();
+    updateSize();
     updateCamera();
     startAnimating();
 });
@@ -235,7 +242,7 @@ function updateScene(data) {
     );
     lastViewSize = data.camera.viewSize;
 
-    const distance = 15;
+    const distance = 3;
     camera.position.x = lastFocalPoint.x + distance * Math.cos(azimuth) * Math.cos(elevation);
     camera.position.y = lastFocalPoint.y + distance * Math.sin(azimuth) * Math.cos(elevation);
     camera.position.z = lastFocalPoint.z + distance * Math.sin(elevation);
