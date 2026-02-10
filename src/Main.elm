@@ -89,9 +89,6 @@ main =
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url navKey =
-    let
-        initialPlayer = M.startPosition defaultMaze
-    in
     (changeRouteTo url
         { navKey = navKey
         , widthPx = 0
@@ -104,7 +101,7 @@ init () url navKey =
         , elevation = Angle.degrees D.initialElevation
         , mode = ME.Running
         , maze = defaultMaze
-        , playerState = Idle initialPlayer
+        , playerState = Idle <| M.startPosition defaultMaze
         , focus = ( 0, 0, 1 )
         , keysDown = Set.empty
         }
@@ -172,7 +169,7 @@ updateModel message model =
 
                 newPlayerState =
                     if model.mode == ME.Running then
-                        updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.widthPx model.heightPx model.maze model.playerState
+                        updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
                     else
                         model.playerState
             in
@@ -311,39 +308,31 @@ updateModel message model =
         _ ->
             ( model, Cmd.none )
 
-updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Int -> Int -> M.Maze -> PlayerState -> PlayerState
-updatePlayerState dt keysDown pointerStart pointerLast width height maze playerState =
-    case playerState of
-        Idle pos ->
-            case getDesiredDirection keysDown pointerStart pointerLast width height of
+updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> PlayerState -> PlayerState
+updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
+    let
+        maybeMove pos progress =
+            case getDesiredDirection keysDown pointerStart pointerLast of
                 Just dir ->
                     case M.move pos dir maze of
-                        Just to ->
-                            Moving { from = pos, to = to, dir = dir, progress = 0 }
+                        Just nextTo ->
+                            Moving { from = pos, to = nextTo, dir = dir, progress = progress }
                         Nothing ->
                             Idle pos
                 Nothing ->
                     Idle pos
-
+    in
+    case playerState of
+        Idle pos -> maybeMove pos 0
         Moving m ->
             let
                 newProgress = m.progress + (dt / secondsPerStep)
             in
-            if newProgress >= 1 then
-                case getDesiredDirection keysDown pointerStart pointerLast width height of
-                    Just dir ->
-                        case M.move m.to dir maze of
-                            Just nextTo ->
-                                Moving { from = m.to, to = nextTo, dir = dir, progress = newProgress - 1 }
-                            Nothing ->
-                                Idle m.to
-                    Nothing ->
-                        Idle m.to
-            else
-                Moving { m | progress = newProgress }
+            if newProgress >= 1 then maybeMove m.to (newProgress - 1)
+            else Moving { m | progress = newProgress }
 
-getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Int -> Int -> Maybe M.Direction
-getDesiredDirection keysDown pointerStart pointerLast width height =
+getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.Direction
+getDesiredDirection keysDown pointerStart pointerLast =
     let
         kbdDir =
             if Set.member "ArrowLeft" keysDown then Just M.NW
