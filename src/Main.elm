@@ -24,8 +24,6 @@ import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
 secondsPerStep = 0.3
-framesPerStep = 3
-gameFPS = toFloat framesPerStep / secondsPerStep
 
 type PlayerState
     = Idle M.Position
@@ -133,7 +131,6 @@ update message model =
                 , widthPx = newModel.widthPx
                 , heightPx = newModel.heightPx
                 }
-                (if newModel.mode == ME.Running then gameFPS else 60)
     in
     ( newModel, Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ] )
 

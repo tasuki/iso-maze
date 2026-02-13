@@ -119,32 +119,39 @@ const playerAnimator = new PlayerAnimator();
 
 let isAnimating = false;
 let needsRender = false;
-let lastRenderTime = performance.now();
+let lastTime = performance.now();
 let targetFPS = 60;
 
-const urlParams = new URLSearchParams(window.location.search);
-const forcedFPS = urlParams.get('fps');
+const forcedFPS = (function() {
+    const val = new URLSearchParams(window.location.search).get('fps');
+    return val ? parseInt(val) : null;
+})();
 
-function animate() {
-    isAnimating = true;
-    const time = performance.now();
-
-    const effectiveTargetFPS = forcedFPS ? parseInt(forcedFPS) : targetFPS;
+function animate(time) {
+    const effectiveTargetFPS = forcedFPS !== null ? forcedFPS : targetFPS;
     const interval = 1000 / effectiveTargetFPS;
+    const dt = time - lastTime;
 
-    if (time - lastRenderTime >= interval - 1) {
-        playerAnimator.update(time - lastRenderTime);
-        lastRenderTime = time;
+    if (dt >= interval - 1) {
+        playerAnimator.update(dt);
         composer.render();
-        measureFPS();
+        lastTime = time;
         needsRender = false;
+        measureFPS();
     }
 
-    const moving = playerAnimator.isMoving();
-    if (moving || needsRender) {
+    if (playerAnimator.isMoving() || needsRender) {
         requestAnimationFrame(animate);
     } else {
         isAnimating = false;
+    }
+}
+
+function startAnimating() {
+    if (!isAnimating) {
+        isAnimating = true;
+        lastTime = performance.now();
+        requestAnimationFrame(animate);
     }
 }
 
@@ -159,12 +166,6 @@ function measureFPS() {
         window.currentActualFPS = frameCount;
         frameCount = 0;
         fpsStartTime = now;
-    }
-}
-
-function startAnimating() {
-    if (!isAnimating) {
-        requestAnimationFrame(animate);
     }
 }
 
@@ -183,13 +184,6 @@ app.ports.renderThreeJS.subscribe(data => {
 
 function updateScene(data) {
     needsRender = true;
-    if (data.fps) {
-        targetFPS = data.fps;
-    } else if (data.mode === 'running') {
-        targetFPS = 10;
-    } else {
-        targetFPS = 60;
-    }
 
     const unitScale = 0.01;
     const currentMeshKeys = new Set();

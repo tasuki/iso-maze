@@ -50,9 +50,10 @@ export class PlayerAnimator {
     update(deltaTime) {
         if (!this.initialized) return false;
 
-        // Sub-stepping for stability at low FPS
-        const subSteps = 5;
-        const totalDt = Math.min(deltaTime / 1000, 0.2);
+        // Sub-stepping for stability. We want a fixed-ish dt for the physics simulation.
+        // Even if the frame rate drops, we want to simulate in small increments.
+        const totalDt = deltaTime / 1000;
+        const subSteps = Math.ceil(totalDt / 0.016); // Aim for at least 60Hz simulation
         const dt = totalDt / subSteps;
 
         for (let step = 0; step < subSteps; step++) {
