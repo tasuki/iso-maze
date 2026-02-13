@@ -19,7 +19,7 @@ const materials = {
     bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
     railing: new THREE.MeshLambertMaterial({ color: 0xcccccc }),
     player: new THREE.MeshLambertMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.5 }),
-    goal: new THREE.MeshLambertMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.5 }),
+    goal: new THREE.MeshLambertMaterial({ color: 0x222222 }),
     focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
 };
 
