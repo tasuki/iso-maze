@@ -23,6 +23,8 @@ import Task
 import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
+
+secondsPerStep : Float
 secondsPerStep = 0.3
 
 type PlayerState
@@ -49,6 +51,7 @@ type alias Model =
     , playerState : PlayerState
     , focus : M.Position
     , keysDown : Set String
+    , fps : Float
     }
 
 type Msg
@@ -102,6 +105,7 @@ init () url navKey =
         , playerState = Idle <| M.startPosition defaultMaze
         , focus = ( 0, 0, 1 )
         , keysDown = Set.empty
+        , fps = 60
         }
     , Task.perform
         (\{ viewport } -> Resize
@@ -125,18 +129,19 @@ update message model =
                 { azimuth = newModel.azimuth
                 , elevation = newModel.elevation
                 , maze = newModel.maze
-                , player = interpolatedPosition newModel.playerState
+                , player = interpolatedPosition newModel.fps newModel.playerState
                 , focus = newModel.focus
                 , mode = newModel.mode
                 , widthPx = newModel.widthPx
                 , heightPx = newModel.heightPx
+                , secondsPerStep = secondsPerStep
                 }
     in
     ( newModel, Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ] )
 
 
-interpolatedPosition : PlayerState -> (Float, Float, Float)
-interpolatedPosition playerState =
+interpolatedPosition : Float -> PlayerState -> (Float, Float, Float)
+interpolatedPosition fps playerState =
     case playerState of
         Idle (x, y, z) ->
             (toFloat x, toFloat y, toFloat z)
@@ -144,7 +149,11 @@ interpolatedPosition playerState =
             let
                 (x1, y1, z1) = m.from
                 (x2, y2, z2) = m.to
-                p = m.progress
+
+                numFrames = max 1 (floor (fps * secondsPerStep))
+                qProgress = toFloat (floor (m.progress * toFloat numFrames)) / toFloat numFrames
+
+                p = qProgress
                 lerp a b t = toFloat a + (toFloat b - toFloat a) * t
             in
             (lerp x1 x2 p, lerp y1 y2 p, lerp z1 z2 p)
@@ -164,6 +173,12 @@ updateModel message model =
                 dt = Duration.inSeconds elapsed
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
 
+                newFps =
+                    if dt > 0 then
+                        model.fps * 0.7 + (1 / dt) * 0.3
+                    else
+                        model.fps
+
                 newPlayerState =
                     if model.mode == ME.Running then
                         updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
@@ -173,6 +188,7 @@ updateModel message model =
             ( { model
                 | elapsedTime = newElapsedTime
                 , playerState = newPlayerState
+                , fps = newFps
               }
             , Cmd.none
             )

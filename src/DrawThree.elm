@@ -23,6 +23,7 @@ type alias Model m =
         , mode : ME.Mode
         , widthPx : Int
         , heightPx : Int
+        , secondsPerStep : Float
     }
 
 type alias Box =
@@ -54,6 +55,7 @@ sceneData model =
     in
     E.object
         [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
+        , ( "secondsPerStep", E.float model.secondsPerStep )
         , ( "camera"
           , E.object
                 [ ( "azimuth", E.float (Angle.inDegrees model.azimuth) )
