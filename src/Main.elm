@@ -24,8 +24,7 @@ import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
 secondsPerStep = 0.3
-framesPerStep = 3
-gameFPS = toFloat framesPerStep / secondsPerStep
+gameFPS = 60
 
 type PlayerState
     = Idle M.Position
