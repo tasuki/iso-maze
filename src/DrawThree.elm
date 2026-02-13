@@ -45,8 +45,8 @@ type alias Sphere =
     }
 
 
-sceneData : Model m -> Float -> E.Value
-sceneData model fps =
+sceneData : Model m -> E.Value
+sceneData model =
     let
         ( x, y, z ) = model.player
         pLightPos = playerPos ( x, y, z ) 5 model.maze
@@ -54,7 +54,6 @@ sceneData model fps =
     in
     E.object
         [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
-        , ( "fps", E.float fps )
         , ( "camera"
           , E.object
                 [ ( "azimuth", E.float (Angle.inDegrees model.azimuth) )

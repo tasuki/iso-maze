@@ -120,7 +120,6 @@ const playerAnimator = new PlayerAnimator();
 let isAnimating = false;
 let needsRender = false;
 let lastTime = performance.now();
-let targetFPS = 60;
 
 const forcedFPS = (function() {
     const val = new URLSearchParams(window.location.search).get('fps');
@@ -128,7 +127,7 @@ const forcedFPS = (function() {
 })();
 
 function animate(time) {
-    const effectiveTargetFPS = forcedFPS !== null ? forcedFPS : targetFPS;
+    const effectiveTargetFPS = forcedFPS !== null ? forcedFPS : 60;
     const interval = 1000 / effectiveTargetFPS;
     const dt = time - lastTime;
 
@@ -184,7 +183,6 @@ app.ports.renderThreeJS.subscribe(data => {
 
 function updateScene(data) {
     needsRender = true;
-    targetFPS = data.fps || 60;
 
     const unitScale = 0.01;
     const currentMeshKeys = new Set();
