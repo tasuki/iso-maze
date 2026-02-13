@@ -335,10 +335,10 @@ getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.Document
 getDesiredDirection keysDown pointerStart pointerLast =
     let
         kbdDir =
-            if Set.member "ArrowLeft" keysDown then Just M.NW
-            else if Set.member "ArrowDown" keysDown then Just M.SW
-            else if Set.member "ArrowUp" keysDown then Just M.NE
-            else if Set.member "ArrowRight" keysDown then Just M.SE
+            if Set.member "ArrowLeft" keysDown then Just M.SW
+            else if Set.member "ArrowDown" keysDown then Just M.SE
+            else if Set.member "ArrowUp" keysDown then Just M.NW
+            else if Set.member "ArrowRight" keysDown then Just M.NE
             else Nothing
 
         joyDir =
@@ -391,10 +391,10 @@ keydown mode keycode =
             case keycode of
                 "e" -> ToggleMode
                 "c" -> CameraReset
-                "h" -> FocusShift (  0,  1,  0 )
-                "l" -> FocusShift (  0, -1,  0 )
-                "k" -> FocusShift (  1,  0,  0 )
-                "j" -> FocusShift ( -1,  0,  0 )
+                "h" -> FocusShift ( -1,  0,  0 )
+                "l" -> FocusShift (  1,  0,  0 )
+                "k" -> FocusShift (  0,  1,  0 )
+                "j" -> FocusShift (  0, -1,  0 )
                 "i" -> FocusShift (  0,  0,  1 )
                 "u" -> FocusShift (  0,  0, -1 )
                 " " -> ToggleBlock
