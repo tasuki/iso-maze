@@ -124,7 +124,7 @@ let targetFPS = 60;
 
 const forcedFPS = (function() {
     const val = new URLSearchParams(window.location.search).get('fps');
-    return val ? parseInt(val) : null;
+    return val !== null ? parseInt(val) : null;
 })();
 
 function animate(time) {
@@ -137,7 +137,7 @@ function animate(time) {
         composer.render();
         lastTime = time;
         needsRender = false;
-        measureFPS();
+        measureFPS(dt);
     }
 
     if (playerAnimator.isMoving() || needsRender) {
@@ -155,17 +155,28 @@ function startAnimating() {
     }
 }
 
-let frameCount = 0;
-let fpsStartTime = performance.now();
-window.currentActualFPS = 0;
+let frameIntervals = [];
+const FPS_WINDOW_SIZE = 60;
+let lastFPSUpdateTime = performance.now();
 
-function measureFPS() {
-    frameCount++;
+function measureFPS(dt) {
+    if (dt > 0) {
+        frameIntervals.push(dt);
+        if (frameIntervals.length > FPS_WINDOW_SIZE) {
+            frameIntervals.shift();
+        }
+    }
+
     const now = performance.now();
-    if (now - fpsStartTime >= 1000) {
-        window.currentActualFPS = frameCount;
-        frameCount = 0;
-        fpsStartTime = now;
+    if (now - lastFPSUpdateTime >= 1000) {
+        if (frameIntervals.length > 0) {
+            const avgDt = frameIntervals.reduce((a, b) => a + b, 0) / frameIntervals.length;
+            const avgFPS = 1000 / avgDt;
+            if (app.ports.updateFPS) {
+                app.ports.updateFPS.send(avgFPS);
+            }
+        }
+        lastFPSUpdateTime = now;
     }
 }
 
@@ -184,6 +195,10 @@ app.ports.renderThreeJS.subscribe(data => {
 
 function updateScene(data) {
     needsRender = true;
+
+    if (data.secondsPerStep) {
+        playerAnimator.setSecondsPerStep(data.secondsPerStep);
+    }
 
     const unitScale = 0.01;
     const currentMeshKeys = new Set();

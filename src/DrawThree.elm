@@ -1,4 +1,4 @@
-port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS, sceneData)
+port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS, sceneData, updateFPS)
 
 import Angle
 import Json.Encode as E
@@ -7,6 +7,7 @@ import MazeEdit as ME
 
 
 port renderThreeJS : E.Value -> Cmd msg
+port updateFPS : (Float -> msg) -> Sub msg
 
 
 initialAzimuth = -135

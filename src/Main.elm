@@ -76,6 +76,7 @@ type Msg
     | Go M.Direction
     | KeyDown String
     | KeyUp String
+    | GotFPS Float
 
 main : Program () Model Msg
 main =
@@ -173,12 +174,6 @@ updateModel message model =
                 dt = Duration.inSeconds elapsed
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
 
-                newFps =
-                    if dt > 0 then
-                        model.fps * 0.7 + (1 / dt) * 0.3
-                    else
-                        model.fps
-
                 newPlayerState =
                     if model.mode == ME.Running then
                         updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
@@ -188,7 +183,6 @@ updateModel message model =
             ( { model
                 | elapsedTime = newElapsedTime
                 , playerState = newPlayerState
-                , fps = newFps
               }
             , Cmd.none
             )
@@ -318,6 +312,9 @@ updateModel message model =
         KeyUp key ->
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
+        GotFPS fps ->
+            ( { model | fps = fps }, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
 
@@ -425,6 +422,7 @@ subscriptions model =
         , BE.onVisibilityChange VisibilityChange
         , BE.onKeyDown (Decode.field "key" Decode.string |> Decode.map KeyDown)
         , BE.onKeyUp (Decode.field "key" Decode.string |> Decode.map KeyUp)
+        , D.updateFPS GotFPS
         ]
 
 

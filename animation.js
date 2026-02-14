@@ -9,7 +9,12 @@ export class PlayerAnimator {
         ];
         this.initialized = false;
         this.timer = 0;
-        this.staggerDelay = 0.05; // seconds
+        this.staggerDelay = 0.05; // seconds (default for 0.3s step)
+    }
+
+    setSecondsPerStep(val) {
+        // Keep stagger delay proportional to step speed
+        this.staggerDelay = val / 6;
     }
 
     updateTargets(targets, meshes, light) {
