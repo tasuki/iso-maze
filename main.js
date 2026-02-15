@@ -133,6 +133,10 @@ function animate(time) {
     const dt = time - lastTime;
 
     if (dt >= interval - 1) {
+        if (pendingSceneData) {
+            updateScene(pendingSceneData);
+            pendingSceneData = null;
+        }
         playerAnimator.update(dt);
         composer.render();
         lastTime = time;
@@ -140,7 +144,7 @@ function animate(time) {
         measureFPS(dt);
     }
 
-    if (playerAnimator.isMoving() || needsRender) {
+    if (playerAnimator.isMoving() || needsRender || pendingSceneData) {
         requestAnimationFrame(animate);
     } else {
         isAnimating = false;
@@ -188,9 +192,16 @@ window.addEventListener('resize', () => {
     startAnimating();
 });
 
+window.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+    }
+}, { passive: false });
 
+let pendingSceneData = null;
 app.ports.renderThreeJS.subscribe(data => {
-    updateScene(data);
+    pendingSceneData = data;
+    startAnimating();
 });
 
 function updateScene(data) {
@@ -263,7 +274,6 @@ function updateScene(data) {
     if (playerTargets.length > 0) {
         playerAnimator.updateTargets(playerTargets, playerMeshes, playerLight);
     }
-    startAnimating();
 
     // Cleanup
     for (const [key, mesh] of meshCache.entries()) {

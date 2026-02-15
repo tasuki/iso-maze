@@ -34,6 +34,7 @@ type PlayerState
         , to : M.Position
         , dir : M.Direction
         , progress : Float
+        , numFrames : Int
         }
 
 type alias Model =
@@ -130,7 +131,7 @@ update message model =
                 { azimuth = newModel.azimuth
                 , elevation = newModel.elevation
                 , maze = newModel.maze
-                , player = interpolatedPosition newModel.fps newModel.playerState
+                , player = interpolatedPosition newModel.playerState
                 , focus = newModel.focus
                 , mode = newModel.mode
                 , widthPx = newModel.widthPx
@@ -141,8 +142,8 @@ update message model =
     ( newModel, Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ] )
 
 
-interpolatedPosition : Float -> PlayerState -> (Float, Float, Float)
-interpolatedPosition fps playerState =
+interpolatedPosition : PlayerState -> (Float, Float, Float)
+interpolatedPosition playerState =
     case playerState of
         Idle (x, y, z) ->
             (toFloat x, toFloat y, toFloat z)
@@ -151,7 +152,7 @@ interpolatedPosition fps playerState =
                 (x1, y1, z1) = m.from
                 (x2, y2, z2) = m.to
 
-                numFrames = max 1 (floor (fps * secondsPerStep))
+                numFrames = m.numFrames
                 qProgress = toFloat (floor (m.progress * toFloat numFrames)) / toFloat numFrames
 
                 p = qProgress
@@ -176,7 +177,7 @@ updateModel message model =
 
                 newPlayerState =
                     if model.mode == ME.Running then
-                        updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
+                        updatePlayerState model.fps dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
                     else
                         model.playerState
             in
@@ -318,15 +319,16 @@ updateModel message model =
         _ ->
             ( model, Cmd.none )
 
-updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> PlayerState -> PlayerState
-updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
+updatePlayerState : Float -> Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> PlayerState -> PlayerState
+updatePlayerState fps dt keysDown pointerStart pointerLast maze playerState =
     let
+        numFrames = max 1 (floor (fps * secondsPerStep))
         maybeMove pos progress =
             case getDesiredDirection keysDown pointerStart pointerLast of
                 Just dir ->
                     case M.move pos dir maze of
                         Just nextTo ->
-                            Moving { from = pos, to = nextTo, dir = dir, progress = progress }
+                            Moving { from = pos, to = nextTo, dir = dir, progress = progress, numFrames = numFrames }
                         Nothing ->
                             Idle pos
                 Nothing ->
