@@ -23,7 +23,7 @@ import Task
 import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
-secondsPerStep = 0.3
+secondsPerStep = 0.2
 framesPerStep = 3
 gameFPS = toFloat framesPerStep / secondsPerStep
 
