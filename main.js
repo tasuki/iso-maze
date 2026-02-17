@@ -3,8 +3,6 @@ import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 
 import { Elm } from './src/Main.elm';
-import { PlayerAnimator } from './animation.js';
-
 const app = Elm.Main.init();
 
 let scene, camera, renderer, container, composer;
@@ -115,39 +113,6 @@ function updateSize() {
 }
 updateSize();
 
-const playerAnimator = new PlayerAnimator();
-
-let isAnimating = false;
-let needsRender = false;
-let lastRenderTime = performance.now();
-let targetFPS = 60;
-
-const urlParams = new URLSearchParams(window.location.search);
-const forcedFPS = urlParams.get('fps');
-
-function animate() {
-    isAnimating = true;
-    const time = performance.now();
-
-    const effectiveTargetFPS = forcedFPS ? parseInt(forcedFPS) : targetFPS;
-    const interval = 1000 / effectiveTargetFPS;
-
-    if (time - lastRenderTime >= interval - 1) {
-        playerAnimator.update(time - lastRenderTime);
-        lastRenderTime = time;
-        composer.render();
-        measureFPS();
-        needsRender = false;
-    }
-
-    const moving = playerAnimator.isMoving();
-    if (moving || needsRender) {
-        requestAnimationFrame(animate);
-    } else {
-        isAnimating = false;
-    }
-}
-
 let frameCount = 0;
 let fpsStartTime = performance.now();
 window.currentActualFPS = 0;
@@ -162,39 +127,26 @@ function measureFPS() {
     }
 }
 
-function startAnimating() {
-    if (!isAnimating) {
-        requestAnimationFrame(animate);
-    }
-}
-
-startAnimating();
-
 window.addEventListener('resize', () => {
     updateSize();
     updateCamera();
-    startAnimating();
 });
 
-
+let rafId = null;
 app.ports.renderThreeJS.subscribe(data => {
     updateScene(data);
+    if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+            composer.render();
+            measureFPS();
+            rafId = null;
+        });
+    }
 });
 
 function updateScene(data) {
-    needsRender = true;
-    if (data.fps) {
-        targetFPS = data.fps;
-    } else if (data.mode === 'running') {
-        targetFPS = 10;
-    } else {
-        targetFPS = 60;
-    }
-
     const unitScale = 0.01;
     const currentMeshKeys = new Set();
-    const playerTargets = [];
-    const playerMeshes = [];
 
     // Boxes
     data.boxes.forEach((b) => {
@@ -243,18 +195,17 @@ function updateScene(data) {
             }
         }
 
-        if (s.material === 'player') {
-            playerTargets.push(new THREE.Vector3(s.x * unitScale, s.y * unitScale, s.z * unitScale));
-            playerMeshes.push(mesh);
-        } else {
-            mesh.position.set(s.x * unitScale, s.y * unitScale, s.z * unitScale);
-        }
+        mesh.position.set(s.x * unitScale, s.y * unitScale, s.z * unitScale);
     });
 
-    if (playerTargets.length > 0) {
-        playerAnimator.updateTargets(playerTargets, playerMeshes, playerLight);
+    // Player Light
+    if (data.playerLight) {
+        playerLight.position.set(
+            data.playerLight.x * unitScale,
+            data.playerLight.y * unitScale,
+            data.playerLight.z * unitScale
+        );
     }
-    startAnimating();
 
     // Cleanup
     for (const [key, mesh] of meshCache.entries()) {
@@ -267,20 +218,18 @@ function updateScene(data) {
 
 
     // Camera
-    const azimuth = data.camera.azimuth * Math.PI / 180;
-    const elevation = data.camera.elevation * Math.PI / 180;
-    lastFocalPoint = new THREE.Vector3(
+    lastFocalPoint.set(
         data.camera.focalPoint.x,
         data.camera.focalPoint.y,
         data.camera.focalPoint.z
     );
-    lastViewSize = data.camera.viewSize;
-
-    const distance = 3;
-    camera.position.x = lastFocalPoint.x + distance * Math.cos(azimuth) * Math.cos(elevation);
-    camera.position.y = lastFocalPoint.y + distance * Math.sin(azimuth) * Math.cos(elevation);
-    camera.position.z = lastFocalPoint.z + distance * Math.sin(elevation);
+    camera.position.set(
+        data.camera.position.x,
+        data.camera.position.y,
+        data.camera.position.z
+    );
     camera.lookAt(lastFocalPoint);
+    lastViewSize = data.camera.viewSize;
 
     updateCamera();
 }
