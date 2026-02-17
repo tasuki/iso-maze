@@ -73,7 +73,7 @@ type Msg
     | PlaceStart
     | PlaceEnd
     | Go M.Direction
-    | KeyDown String
+    | KeyDown String Bool
     | KeyUp String
 
 main : Program () Model Msg
@@ -122,20 +122,38 @@ update message model =
         ( newModel, cmd ) =
             updateModel message model
 
-        sceneDataValue =
-            D.sceneData
-                { azimuth = newModel.azimuth
-                , elevation = newModel.elevation
-                , maze = newModel.maze
-                , player = interpolatedPosition newModel.playerState
-                , focus = newModel.focus
-                , mode = newModel.mode
-                , widthPx = newModel.widthPx
-                , heightPx = newModel.heightPx
-                }
-                (if newModel.mode == ME.Running then gameFPS else 60)
+        shouldRender =
+            case message of
+                KeyDown _ isRepeat ->
+                    not isRepeat
+
+                _ ->
+                    True
     in
-    ( newModel, Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ] )
+    if shouldRender then
+        let
+            sceneDataValue =
+                D.sceneData
+                    { azimuth = newModel.azimuth
+                    , elevation = newModel.elevation
+                    , maze = newModel.maze
+                    , player = interpolatedPosition newModel.playerState
+                    , focus = newModel.focus
+                    , mode = newModel.mode
+                    , widthPx = newModel.widthPx
+                    , heightPx = newModel.heightPx
+                    }
+                    (if newModel.mode == ME.Running then
+                        gameFPS
+
+                     else
+                        60
+                    )
+        in
+        ( newModel, Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ] )
+
+    else
+        ( newModel, cmd )
 
 
 interpolatedPosition : PlayerState -> (Float, Float, Float)
@@ -282,25 +300,49 @@ updateModel message model =
             in
             ( { model | playerState = Idle newPos }, Cmd.none )
 
-        KeyDown key ->
-            let
-                newKeysDown = Set.insert key model.keysDown
-                newModel = { model | keysDown = newKeysDown }
-            in
-            case (model.mode, key) of
-                (_, "e") -> updateModel ToggleMode newModel
-                (_, "c") -> updateModel CameraReset newModel
-                (ME.Running, "ArrowLeft") -> (newModel, Cmd.none)
-                (ME.Running, "ArrowDown") -> (newModel, Cmd.none)
-                (ME.Running, "ArrowUp") -> (newModel, Cmd.none)
-                (ME.Running, "ArrowRight") -> (newModel, Cmd.none)
-                (ME.Editing, _) ->
-                    let
-                        msg = keydown model.mode key
-                    in
-                    if msg == Noop then (newModel, Cmd.none)
-                    else updateModel msg newModel
-                _ -> (newModel, Cmd.none)
+        KeyDown key isRepeat ->
+            if isRepeat && model.mode == ME.Running then
+                ( model, Cmd.none )
+
+            else
+                let
+                    newKeysDown = Set.insert key model.keysDown
+
+                    newModel =
+                        { model | keysDown = newKeysDown }
+                in
+                case ( model.mode, key ) of
+                    ( _, "e" ) ->
+                        updateModel ToggleMode newModel
+
+                    ( _, "c" ) ->
+                        updateModel CameraReset newModel
+
+                    ( ME.Running, "ArrowLeft" ) ->
+                        ( newModel, Cmd.none )
+
+                    ( ME.Running, "ArrowDown" ) ->
+                        ( newModel, Cmd.none )
+
+                    ( ME.Running, "ArrowUp" ) ->
+                        ( newModel, Cmd.none )
+
+                    ( ME.Running, "ArrowRight" ) ->
+                        ( newModel, Cmd.none )
+
+                    ( ME.Editing, _ ) ->
+                        let
+                            msg =
+                                keydown model.mode key
+                        in
+                        if msg == Noop then
+                            ( newModel, Cmd.none )
+
+                        else
+                            updateModel msg newModel
+
+                    _ ->
+                        ( newModel, Cmd.none )
 
         KeyUp key ->
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
@@ -410,7 +452,7 @@ subscriptions model =
         [ BE.onResize Resize
         , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
         , BE.onVisibilityChange VisibilityChange
-        , BE.onKeyDown (Decode.field "key" Decode.string |> Decode.map KeyDown)
+        , BE.onKeyDown (Decode.map2 KeyDown (Decode.field "key" Decode.string) (Decode.field "repeat" Decode.bool))
         , BE.onKeyUp (Decode.field "key" Decode.string |> Decode.map KeyUp)
         ]
 

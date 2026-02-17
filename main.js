@@ -176,6 +176,12 @@ window.addEventListener('resize', () => {
     startAnimating();
 });
 
+window.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+    }
+});
+
 
 app.ports.renderThreeJS.subscribe(data => {
     updateScene(data);
