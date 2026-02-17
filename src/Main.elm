@@ -23,9 +23,18 @@ import Task
 import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
-secondsPerStep = 0.2
-framesPerStep = 3
-gameFPS = toFloat framesPerStep / secondsPerStep
+
+
+config =
+    { secondsPerStep = 0.2
+    , framesPerStep = 3
+    , editingFPS = 60
+    }
+
+
+gameFPS =
+    toFloat config.framesPerStep / config.secondsPerStep
+
 
 type PlayerState
     = Idle M.Position
@@ -51,6 +60,7 @@ type alias Model =
     , playerState : PlayerState
     , focus : M.Position
     , keysDown : Set String
+    , lastPortCallTime : Duration
     }
 
 type Msg
@@ -104,6 +114,7 @@ init () url navKey =
         , playerState = Idle <| M.startPosition defaultMaze
         , focus = ( 0, 0, 1 )
         , keysDown = Set.empty
+        , lastPortCallTime = Quantity.zero
         }
     , Task.perform
         (\{ viewport } -> Resize
@@ -368,7 +379,7 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
         Idle pos -> maybeMove pos 0
         Moving m ->
             let
-                newProgress = m.progress + (dt / secondsPerStep)
+                newProgress = m.progress + (dt / config.secondsPerStep)
             in
             if newProgress >= 1 then maybeMove m.to (newProgress - 1)
             else Moving { m | progress = newProgress }
