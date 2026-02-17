@@ -24,8 +24,6 @@ import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
 secondsPerStep = 0.2
-framesPerStep = 3
-gameFPS = toFloat framesPerStep / secondsPerStep
 
 type PlayerState
     = Idle M.Position
@@ -68,7 +66,6 @@ type alias Model =
     , maze : M.Maze
     , playerState : PlayerState
     , animator : AnimatorState
-    , lastRenderedFrame : Int
     , focus : M.Position
     , keysDown : Set String
     }
@@ -130,7 +127,6 @@ init () url navKey =
             , maze = defaultMaze
             , playerState = Idle initialPos
             , animator = initAnimator initialTargets
-            , lastRenderedFrame = -1
             , focus = ( 0, 0, 1 )
             , keysDown = Set.empty
             }
@@ -153,17 +149,13 @@ update message model =
         ( newModel, cmd ) =
             updateModel message model
 
-        currentFrame =
-            if newModel.mode == ME.Running then
-                floor (Duration.inSeconds newModel.elapsedTime * gameFPS)
-
-            else
-                -1
+        targets =
+            getPlayerTargets newModel.playerState newModel.maze
 
         isMoving =
             case newModel.playerState of
                 Idle _ ->
-                    isAnimatorMoving newModel.animator
+                    isAnimatorMoving targets newModel.animator
 
                 Moving _ ->
                     True
@@ -174,11 +166,7 @@ update message model =
                     True
 
                 Tick _ ->
-                    if newModel.mode == ME.Running then
-                        (currentFrame /= model.lastRenderedFrame) && isMoving
-
-                    else
-                        isMoving
+                    isMoving
 
                 Started _ ->
                     True
@@ -206,10 +194,10 @@ update message model =
                 , widthPx = newModel.widthPx
                 , heightPx = newModel.heightPx
                 }
-                (if newModel.mode == ME.Running then gameFPS else 60)
+                60
     in
     if shouldRender then
-        ( { newModel | lastRenderedFrame = currentFrame }
+        ( newModel
         , Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ]
         )
 
@@ -232,7 +220,7 @@ interpolatedPosition playerState =
                     m.to
 
                 p =
-                    floor (m.progress * toFloat framesPerStep) |> toFloat |> (\f -> f / toFloat framesPerStep)
+                    m.progress
 
                 lerp a b t =
                     toFloat a + (toFloat b - toFloat a) * t
@@ -291,10 +279,13 @@ updateModel message model =
             case ( model.orbiting, model.pointerLast ) of
                 ( True, Just lastDc ) ->
                     let
-                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+                        rotationRate =
+                            Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+
                         newAzimuth =
                             model.azimuth
-                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+                                |> Quantity.plus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+
                         newElevation =
                             model.elevation
                                 |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
@@ -509,8 +500,8 @@ initAnimator targets =
     }
 
 
-isAnimatorMoving : AnimatorState -> Bool
-isAnimatorMoving state =
+isAnimatorMoving : List Vec3 -> AnimatorState -> Bool
+isAnimatorMoving targets state =
     let
         velThreshold =
             0.1
@@ -518,21 +509,19 @@ isAnimatorMoving state =
         posThreshold =
             0.01
 
-        isSphereMoving s target =
+        isSphereMoving target s =
             let
-                dv =
-                    sqrt (s.velocity.x ^ 2 + s.velocity.y ^ 2 + s.velocity.z ^ 2)
+                dv2 =
+                    s.velocity.x * s.velocity.x + s.velocity.y * s.velocity.y + s.velocity.z * s.velocity.z
 
-                dp =
-                    sqrt ((s.current.x - target.x) ^ 2 + (s.current.y - target.y) ^ 2 + (s.current.z - target.z) ^ 2)
+                dp2 =
+                    (s.current.x - target.x) * (s.current.x - target.x)
+                        + (s.current.y - target.y) * (s.current.y - target.y)
+                        + (s.current.z - target.z) * (s.current.z - target.z)
             in
-            dv > velThreshold || dp > posThreshold
-
-        -- We'd need the targets here to be truly accurate, but checking velocity is usually enough
-        isMoving =
-            List.any (\s -> sqrt (s.velocity.x ^ 2 + s.velocity.y ^ 2 + s.velocity.z ^ 2) > velThreshold) state.spheres
+            dv2 > velThreshold * velThreshold || dp2 > posThreshold * posThreshold
     in
-    isMoving
+    List.map2 isSphereMoving targets state.spheres |> List.any identity
 
 
 updateAnimator : Float -> List Vec3 -> AnimatorState -> AnimatorState
@@ -558,7 +547,7 @@ updateAnimator totalDt targets state =
                 newTimer =
                     currentTimer + dt
 
-                updateSphere i target s prevCurrent =
+                updateSphere i target s prevCurrent prevTarget =
                     if newTimer < toFloat i * staggerDelay then
                         s
 
@@ -570,13 +559,10 @@ updateAnimator totalDt targets state =
 
                                 else
                                     let
-                                        firstTarget =
-                                            List.head targets |> Maybe.withDefault { x = 0, y = 0, z = 0 }
-
                                         desiredOffset =
-                                            { x = target.x - firstTarget.x
-                                            , y = target.y - firstTarget.y
-                                            , z = target.z - firstTarget.z
+                                            { x = target.x - prevTarget.x
+                                            , y = target.y - prevTarget.y
+                                            , z = target.z - prevTarget.z
                                             }
                                     in
                                     { x = prevCurrent.x + desiredOffset.x
@@ -623,15 +609,15 @@ updateAnimator totalDt targets state =
                         { current = newCurrent, velocity = newVelocity }
 
                 -- We need to update spheres one by one because each depends on the NEW current of the previous one
-                folder ( i, target, s ) ( accSpheres, lastPrevCurrent ) =
+                folder ( i, target, s ) ( accSpheres, lastPrevCurrent, lastPrevTarget ) =
                     let
                         newS =
-                            updateSphere i target s lastPrevCurrent
+                            updateSphere i target s lastPrevCurrent lastPrevTarget
                     in
-                    ( accSpheres ++ [ newS ], newS.current )
+                    ( accSpheres ++ [ newS ], newS.current, target )
 
-                ( nextSpheres, _ ) =
-                    List.foldl folder ( [], { x = 0, y = 0, z = 0 } ) (List.map3 (\i t s -> ( i, t, s )) (List.range 0 (List.length currentSpheres - 1)) targets currentSpheres)
+                ( nextSpheres, _, _ ) =
+                    List.foldl folder ( [], { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 0 } ) (List.map3 (\i t s -> ( i, t, s )) (List.range 0 (List.length currentSpheres - 1)) targets currentSpheres)
             in
             ( nextSpheres, newTimer )
 

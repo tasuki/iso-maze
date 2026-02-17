@@ -132,6 +132,12 @@ window.addEventListener('resize', () => {
     updateCamera();
 });
 
+window.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 let rafId = null;
 app.ports.renderThreeJS.subscribe(data => {
     updateScene(data);

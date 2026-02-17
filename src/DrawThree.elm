@@ -383,8 +383,8 @@ computeCameraConfig model =
             [] -> [ ( 0, 0, 0 ) ]
             ps -> ps
 
-        a = Angle.degrees initialAzimuth |> Angle.inRadians
-        e = Angle.degrees initialElevation |> Angle.inRadians
+        a = Angle.inRadians model.azimuth
+        e = Angle.inRadians model.elevation
 
         -- Basis vectors (matching Three.js with camera.up = 0,0,1)
         r = { x = -(sin a), y = cos a, z = 0 }
