@@ -13,17 +13,22 @@ initialAzimuth = -135
 initialElevation = 45
 
 
+type alias Vec3 =
+    { x : Float, y : Float, z : Float }
+
+
 type alias Model m =
     { m
         | azimuth : Angle.Angle
         , elevation : Angle.Angle
         , maze : M.Maze
-        , player : ( Float, Float, Float )
+        , playerSpheres : List Vec3
         , focus : M.Position
         , mode : ME.Mode
         , widthPx : Int
         , heightPx : Int
     }
+
 
 type alias Box =
     { x : Float
@@ -48,34 +53,28 @@ type alias Sphere =
 sceneData : Model m -> Float -> E.Value
 sceneData model fps =
     let
-        ( x, y, z ) = model.player
-        pLightPos = playerPos ( x, y, z ) 5 model.maze
-        config = computeCameraConfig model
+        pLightPos =
+            case model.playerSpheres of
+                p :: _ ->
+                    { x = p.x, y = p.y, z = p.z + 3.0 }
+
+                [] ->
+                    { x = 0, y = 0, z = 0 }
+
+        config =
+            computeCameraConfig model
     in
     E.object
         [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
         , ( "fps", E.float fps )
         , ( "camera"
           , E.object
-                [ ( "azimuth", E.float (Angle.inDegrees model.azimuth) )
-                , ( "elevation", E.float (Angle.inDegrees model.elevation) )
-                , ( "viewSize", E.float config.viewSize )
-                , ( "focalPoint"
-                  , E.object
-                        [ ( "x", E.float config.focalPoint.x )
-                        , ( "y", E.float config.focalPoint.y )
-                        , ( "z", E.float config.focalPoint.z )
-                        ]
-                  )
+                [ ( "viewSize", E.float config.viewSize )
+                , ( "focalPoint", encodeVec3 config.focalPoint )
+                , ( "position", encodeVec3 config.cameraPosition )
                 ]
           )
-        , ( "playerLight"
-          , E.object
-                [ ( "x", E.float pLightPos.x )
-                , ( "y", E.float pLightPos.y )
-                , ( "z", E.float pLightPos.z )
-                ]
-          )
+        , ( "playerLight", encodeVec3 pLightPos )
         , ( "boxes", E.list encodeBox (allBoxes model) )
         , ( "spheres", E.list encodeSphere (allSpheres model) )
         ]
@@ -83,19 +82,20 @@ sceneData model fps =
 allBoxes : Model m -> List Box
 allBoxes model =
     let
-        ( px, py, pz ) = model.player
-        discretePlayer = ( round px, round py, round pz )
+        discretePlayer =
+            case model.playerSpheres of
+                p :: _ -> ( round (p.x / 10), round (p.y / 10), round (p.z / 10) )
+                [] -> ( 0, 0, 0 )
     in
     List.concat
         [ List.concatMap drawBlock (M.toBlocks model.maze)
         , drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze)
-        -- , List.concatMap drawRailing (D.getRailings model.maze)
         ]
 
 allSpheres : Model m -> List Sphere
 allSpheres model =
     List.concat
-        [ drawPlayer model.player model.maze
+        [ drawPlayer model.playerSpheres
         , drawFocus model.mode model.focus
         ]
 
@@ -120,6 +120,15 @@ encodeSphere s =
         , ( "z", E.float s.z )
         , ( "radius", E.float s.radius )
         , ( "material", E.string s.material )
+        ]
+
+
+encodeVec3 : Vec3 -> E.Value
+encodeVec3 v =
+    E.object
+        [ ( "x", E.float v.x )
+        , ( "y", E.float v.y )
+        , ( "z", E.float v.z )
         ]
 
 
@@ -255,19 +264,16 @@ drawEnd ( x, y, z ) isAtEnd =
     [ hatPart 0, hatPart 30, hatPart 60 ]
 
 
-drawPlayer : ( Float, Float, Float ) -> M.Maze -> List Sphere
-drawPlayer ( x, y, z ) maze =
+drawPlayer : List Vec3 -> List Sphere
+drawPlayer spheres =
     let
-        playerSphere zOffset r =
-            let
-                p = playerPos ( x, y, z ) zOffset maze
-            in
+        radii =
+            [ 2.2, 1.8, 1.4 ]
+
+        toSphere p r =
             { x = p.x, y = p.y, z = p.z, radius = r, material = "player" }
     in
-    [ playerSphere 2.0 2.2
-    , playerSphere 5.5 1.8
-    , playerSphere 8.5 1.4
-    ]
+    List.map2 toSphere spheres radii
 
 
 drawFocus : ME.Mode -> M.Position -> List Sphere
@@ -342,8 +348,10 @@ drawRailing ( block, dir ) =
 
 type alias CameraConfig =
     { viewSize : Float
-    , focalPoint : { x : Float, y : Float, z : Float }
+    , focalPoint : Vec3
+    , cameraPosition : Vec3
     }
+
 
 computeCameraConfig : Model m -> CameraConfig
 computeCameraConfig model =
@@ -370,8 +378,8 @@ computeCameraConfig model =
             [] -> [ ( 0, 0, 0 ) ]
             ps -> ps
 
-        a = Angle.degrees initialAzimuth |> Angle.inRadians
-        e = Angle.degrees initialElevation |> Angle.inRadians
+        a = Angle.inRadians model.azimuth
+        e = Angle.inRadians model.elevation
 
         -- Basis vectors (matching Three.js with camera.up = 0,0,1)
         r = { x = -(sin a), y = cos a, z = 0 }
@@ -402,7 +410,17 @@ computeCameraConfig model =
             , z = midR * r.z + midU * u.z
             }
 
-        widthPx = model.widthPx |> toFloat
+        distance =
+            300.0
+
+        cameraPosition3d =
+            { x = focal3d.x + distance * cos a * cos e
+            , y = focal3d.y + distance * sin a * cos e
+            , z = focal3d.z + distance * sin e
+            }
+
+        widthPx =
+            model.widthPx |> toFloat
         heightPx = model.heightPx |> toFloat
 
         aspect =
@@ -418,5 +436,10 @@ computeCameraConfig model =
         { x = focal3d.x * 0.01
         , y = focal3d.y * 0.01
         , z = focal3d.z * 0.01
+        }
+    , cameraPosition =
+        { x = cameraPosition3d.x * 0.01
+        , y = cameraPosition3d.y * 0.01
+        , z = cameraPosition3d.z * 0.01
         }
     }
