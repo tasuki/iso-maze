@@ -284,7 +284,7 @@ updateModel message model =
 
                         newAzimuth =
                             model.azimuth
-                                |> Quantity.plus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
 
                         newElevation =
                             model.elevation
