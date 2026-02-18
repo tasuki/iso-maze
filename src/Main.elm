@@ -23,7 +23,7 @@ import Task
 import Url exposing (Url)
 
 defaultMaze = SM.ziggurat2
-secondsPerStep = 0.2
+secondsPerStep = 0.25
 
 type PlayerState
     = Idle M.Position
