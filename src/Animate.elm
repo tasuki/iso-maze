@@ -10,28 +10,29 @@ type alias SphereState =
     , velocity : Vec3
     }
 
+type alias Triple a = ( a, a, a )
+
 type alias AnimatorState =
-    { spheres : List SphereState
+    { spheres : Triple SphereState
     , timer : Float
     , initialized : Bool
     }
 
-
-initAnimator : List Vec3 -> AnimatorState
-initAnimator targets =
+initAnimator : Triple Vec3 -> AnimatorState
+initAnimator ( t1, t2, t3 ) =
     let
         initSphere target =
             { current = { x = target.x, y = target.y, z = target.z + 10.0 }
             , velocity = { x = 0, y = 0, z = 0 }
             }
     in
-    { spheres = List.map initSphere targets
+    { spheres = ( initSphere t1, initSphere t2, initSphere t3 )
     , timer = 0
     , initialized = True
     }
 
-isAnimatorMoving : List Vec3 -> AnimatorState -> Bool
-isAnimatorMoving targets state =
+isAnimatorMoving : Triple Vec3 -> AnimatorState -> Bool
+isAnimatorMoving ( t1, t2, t3 ) state =
     let
         velThreshold = 0.1
         posThreshold = 0.01
@@ -45,11 +46,12 @@ isAnimatorMoving targets state =
                     + (s.current.z - target.z) * (s.current.z - target.z)
             in
             dv2 > velThreshold * velThreshold || dp2 > posThreshold * posThreshold
+        ( s1, s2, s3 ) = state.spheres
     in
-    List.map2 isSphereMoving targets state.spheres |> List.any identity
+    isSphereMoving t1 s1 || isSphereMoving t2 s2 || isSphereMoving t3 s3
 
-updateAnimator : Float -> List Vec3 -> AnimatorState -> AnimatorState
-updateAnimator totalDt targets state =
+updateAnimator : Float -> Triple Vec3 -> AnimatorState -> AnimatorState
+updateAnimator totalDt ( t1, t2, t3 ) state =
     let
         subSteps = 5
         dt = min totalDt 0.2 / toFloat subSteps
@@ -57,85 +59,57 @@ updateAnimator totalDt targets state =
         springK = 400
         damping = 30
 
-        step currentSpheres currentTimer =
+        updateSphere curT i target s prevC prevT =
+            if curT < toFloat i * staggerDelay then s
+            else
+                let
+                    targetPos =
+                        if i == 0 then target
+                        else
+                            { x = prevC.x + (target.x - prevT.x)
+                            , y = prevC.y + (target.y - prevT.y)
+                            , z = prevC.z + (target.z - prevT.z)
+                            }
+                    diff =
+                        { x = targetPos.x - s.current.x
+                        , y = targetPos.y - s.current.y
+                        , z = targetPos.z - s.current.z
+                        }
+                    force =
+                        { x = diff.x * springK
+                        , y = diff.y * springK
+                        , z = diff.z * springK
+                        }
+                    friction =
+                        { x = -s.velocity.x * damping
+                        , y = -s.velocity.y * damping
+                        , z = -s.velocity.z * damping
+                        }
+                    accel =
+                        { x = force.x + friction.x
+                        , y = force.y + friction.y
+                        , z = force.z + friction.z
+                        }
+                    newV =
+                        { x = s.velocity.x + accel.x * dt
+                        , y = s.velocity.y + accel.y * dt
+                        , z = s.velocity.z + accel.z * dt
+                        }
+                    newC =
+                        { x = s.current.x + newV.x * dt
+                        , y = s.current.y + newV.y * dt
+                        , z = s.current.z + newV.z * dt
+                        }
+                in { current = newC, velocity = newV }
+        step ( s1, s2, s3 ) currentTimer =
             let
                 newTimer = currentTimer + dt
-                updateSphere i target s prevCurrent prevTarget =
-                    if newTimer < toFloat i * staggerDelay then
-                        s
-                    else
-                        let
-                            targetPos =
-                                if i == 0 then target
-                                else
-                                    let
-                                        desiredOffset =
-                                            { x = target.x - prevTarget.x
-                                            , y = target.y - prevTarget.y
-                                            , z = target.z - prevTarget.z
-                                            }
-                                    in
-                                    { x = prevCurrent.x + desiredOffset.x
-                                    , y = prevCurrent.y + desiredOffset.y
-                                    , z = prevCurrent.z + desiredOffset.z
-                                    }
-
-                            diff =
-                                { x = targetPos.x - s.current.x
-                                , y = targetPos.y - s.current.y
-                                , z = targetPos.z - s.current.z
-                                }
-
-                            force =
-                                { x = diff.x * springK
-                                , y = diff.y * springK
-                                , z = diff.z * springK
-                                }
-
-                            friction =
-                                { x = -s.velocity.x * damping
-                                , y = -s.velocity.y * damping
-                                , z = -s.velocity.z * damping
-                                }
-
-                            acceleration =
-                                { x = force.x + friction.x
-                                , y = force.y + friction.y
-                                , z = force.z + friction.z
-                                }
-
-                            newVelocity =
-                                { x = s.velocity.x + acceleration.x * dt
-                                , y = s.velocity.y + acceleration.y * dt
-                                , z = s.velocity.z + acceleration.z * dt
-                                }
-
-                            newCurrent =
-                                { x = s.current.x + newVelocity.x * dt
-                                , y = s.current.y + newVelocity.y * dt
-                                , z = s.current.z + newVelocity.z * dt
-                                }
-                        in
-                        { current = newCurrent, velocity = newVelocity }
-
-                folder ( i, target, s ) ( accSpheres, lastPrevCurrent, lastPrevTarget ) =
-                    let
-                        newS = updateSphere i target s lastPrevCurrent lastPrevTarget
-                    in
-                    ( accSpheres ++ [ newS ], newS.current, target )
-
-                ( nextSpheres, _, _ ) =
-                    List.foldl folder ( [], { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 0 } )
-                        (List.map3
-                            (\i t s -> ( i, t, s ))
-                            (List.range 0 (List.length currentSpheres - 1))
-                            targets
-                            currentSpheres
-                        )
+                ns1 = updateSphere newTimer 0 t1 s1 { x = 0, y = 0, z = 0 } { x = 0, y = 0, z = 0 }
+                ns2 = updateSphere newTimer 1 t2 s2 ns1.current t1
+                ns3 = updateSphere newTimer 2 t3 s3 ns2.current t2
             in
-            ( nextSpheres, newTimer )
-
-        runSubSteps n (s, t) =
+            ( ( ns1, ns2, ns3 ), newTimer )
+        runSubSteps n ( s, t ) =
             if n <= 0 then { state | spheres = s, timer = t }
             else runSubSteps (n - 1) (step s t)
     in
@@ -154,7 +128,7 @@ interpolatedPosition playerState =
             in
             ( lerp x1 x2 p, lerp y1 y2 p, lerp z1 z2 p )
 
-getPlayerTargets : M.PlayerState -> M.Maze -> List Vec3
+getPlayerTargets : M.PlayerState -> M.Maze -> Triple Vec3
 getPlayerTargets playerState maze =
     let
         ( x, y, z ) = interpolatedPosition playerState
@@ -193,10 +167,6 @@ getPlayerTargets playerState maze =
             , y = py * 10
             , z = pz * 10 + zOffset + fix
             }
-
         playerSphere zOffset = playerPos ( x, y, z ) zOffset
     in
-    [ playerSphere 2.0
-    , playerSphere 5.5
-    , playerSphere 8.5
-    ]
+    ( playerSphere 2.0, playerSphere 5.5, playerSphere 8.5 )

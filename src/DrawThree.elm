@@ -22,7 +22,7 @@ type alias Model m =
         | azimuth : Angle.Angle
         , elevation : Angle.Angle
         , maze : M.Maze
-        , playerSpheres : List Vec3
+        , playerSpheres : ( Vec3, Vec3, Vec3 )
         , focus : M.Position
         , mode : ME.Mode
         , widthPx : Int
@@ -53,16 +53,9 @@ type alias Sphere =
 sceneData : Model m -> Float -> E.Value
 sceneData model fps =
     let
-        pLightPos =
-            case model.playerSpheres of
-                p :: _ ->
-                    { x = p.x, y = p.y, z = p.z + 3.0 }
-
-                [] ->
-                    { x = 0, y = 0, z = 0 }
-
-        config =
-            computeCameraConfig model
+        ( p, _, _ ) = model.playerSpheres
+        pLightPos = { x = p.x, y = p.y, z = p.z + 3.0 }
+        config = computeCameraConfig model
     in
     E.object
         [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
@@ -82,10 +75,8 @@ sceneData model fps =
 allBoxes : Model m -> List Box
 allBoxes model =
     let
-        discretePlayer =
-            case model.playerSpheres of
-                p :: _ -> ( round (p.x / 10), round (p.y / 10), round (p.z / 10) )
-                [] -> ( 0, 0, 0 )
+        ( p, _, _ ) = model.playerSpheres
+        discretePlayer = ( round (p.x / 10), round (p.y / 10), round (p.z / 10) )
     in
     List.concat
         [ List.concatMap drawBlock (M.toBlocks model.maze)
@@ -231,16 +222,12 @@ drawEnd ( x, y, z ) isAtEnd =
     [ hatPart 0, hatPart 30, hatPart 60 ]
 
 
-drawPlayer : List Vec3 -> List Sphere
-drawPlayer spheres =
-    let
-        radii =
-            [ 2.2, 1.8, 1.4 ]
-
-        toSphere p r =
-            { x = p.x, y = p.y, z = p.z, radius = r, material = "player" }
-    in
-    List.map2 toSphere spheres radii
+drawPlayer : ( Vec3, Vec3, Vec3 ) -> List Sphere
+drawPlayer ( p1, p2, p3 ) =
+    [ { x = p1.x, y = p1.y, z = p1.z, radius = 2.2, material = "player" }
+    , { x = p2.x, y = p2.y, z = p2.z, radius = 1.8, material = "player" }
+    , { x = p3.x, y = p3.y, z = p3.z, radius = 1.4, material = "player" }
+    ]
 
 
 drawFocus : ME.Mode -> M.Position -> List Sphere
