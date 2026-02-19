@@ -15,7 +15,6 @@ const materials = {
     base: new THREE.MeshLambertMaterial({ color: 0xffffff }),
     stairs: new THREE.MeshLambertMaterial({ color: 0xffccaa }),
     bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
-    railing: new THREE.MeshLambertMaterial({ color: 0xcccccc }),
     player: new THREE.MeshLambertMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.5 }),
     goal: new THREE.MeshLambertMaterial({ color: 0x222222 }),
     focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
@@ -113,20 +112,6 @@ function updateSize() {
 }
 updateSize();
 
-let frameCount = 0;
-let fpsStartTime = performance.now();
-window.currentActualFPS = 0;
-
-function measureFPS() {
-    frameCount++;
-    const now = performance.now();
-    if (now - fpsStartTime >= 1000) {
-        window.currentActualFPS = frameCount;
-        frameCount = 0;
-        fpsStartTime = now;
-    }
-}
-
 window.addEventListener('resize', () => {
     updateSize();
     updateCamera();
@@ -144,7 +129,6 @@ app.ports.renderThreeJS.subscribe(data => {
     if (!rafId) {
         rafId = requestAnimationFrame(() => {
             composer.render();
-            measureFPS();
             rafId = null;
         });
     }

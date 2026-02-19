@@ -64,7 +64,6 @@ type Msg
     | ToggleBridge
     | PlaceStart
     | PlaceEnd
-    | Go M.Direction
     | KeyDown String
     | KeyUp String
 
@@ -127,12 +126,8 @@ update message model =
 
         shouldRender =
             case message of
-                Resize _ _ -> True
                 Tick _ -> isMoving
-                Started _ -> True
                 Moved _ -> newModel.mode == ME.Editing && newModel.orbiting
-                Finished _ -> True
-                Cancelled _ -> True
                 _ -> True
 
         ( s1, s2, s3 ) = newModel.animator.spheres
@@ -223,11 +218,11 @@ updateModel message model =
         Cancelled _ ->
             ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
 
-        VisibilityChange BE.Visible ->
-            ( model, Cmd.none )
-
         VisibilityChange BE.Hidden ->
             ( { model | orbiting = False }, Cmd.none )
+
+        VisibilityChange BE.Visible ->
+            ( model, Cmd.none )
 
         CameraReset ->
             ( { model
@@ -258,15 +253,6 @@ updateModel message model =
         PlaceStart -> updateMaze ME.placeStart model
         PlaceEnd -> updateMaze ME.placeEnd model
 
-        Go dir ->
-            let
-                pos = case model.playerState of
-                    M.Idle p -> p
-                    M.Moving m -> m.to
-                newPos = M.move pos dir model.maze |> Maybe.withDefault pos
-            in
-            ( { model | playerState = M.Idle newPos }, Cmd.none )
-
         KeyDown key ->
             let
                 newKeysDown = Set.insert key model.keysDown
@@ -275,10 +261,6 @@ updateModel message model =
             case (model.mode, key) of
                 (_, "e") -> updateModel ToggleMode newModel
                 (_, "c") -> updateModel CameraReset newModel
-                (ME.Running, "ArrowLeft") -> (newModel, Cmd.none)
-                (ME.Running, "ArrowDown") -> (newModel, Cmd.none)
-                (ME.Running, "ArrowUp") -> (newModel, Cmd.none)
-                (ME.Running, "ArrowRight") -> (newModel, Cmd.none)
                 (ME.Editing, _) ->
                     let
                         msg = keydown model.mode key
@@ -383,8 +365,6 @@ keydown mode keycode =
         ME.Running -> Noop
         ME.Editing ->
             case keycode of
-                "e" -> ToggleMode
-                "c" -> CameraReset
                 "h" -> FocusShift ( -1,  0,  0 )
                 "l" -> FocusShift (  1,  0,  0 )
                 "k" -> FocusShift (  0,  1,  0 )

@@ -15,7 +15,6 @@ type alias Triple a = ( a, a, a )
 type alias AnimatorState =
     { spheres : Triple SphereState
     , timer : Float
-    , initialized : Bool
     }
 
 initAnimator : Triple Vec3 -> AnimatorState
@@ -28,7 +27,6 @@ initAnimator ( t1, t2, t3 ) =
     in
     { spheres = ( initSphere t1, initSphere t2, initSphere t3 )
     , timer = 0
-    , initialized = True
     }
 
 isAnimatorMoving : Triple Vec3 -> AnimatorState -> Bool

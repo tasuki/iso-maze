@@ -255,50 +255,6 @@ drawFocus mode ( x, y, z ) =
             ]
 
 
-drawRailing : ( M.Block, M.Direction ) -> List Box
-drawRailing ( block, dir ) =
-    let
-        ( x, y, z ) = M.blockPosition block
-
-        baseCoords =
-            case block of
-                M.Stairs _ _ ->
-                    [ -4.5, -3.5, -2.5, -1.5, -0.5
-                    ,  0.5,  1.5,  2.5,  3.5,  4.5 ]
-                _ -> [ -4, -2, 0, 2, 4 ]
-
-        zd xd yd =
-            case block of
-                M.Base _ -> 0.2
-                M.Bridge _ -> 1.2
-                M.Stairs _ stairsDir ->
-                    case stairsDir of
-                        M.SE -> yd - 4.3
-                        M.SW -> xd - 4.3
-                        M.NW -> -4.3 - yd
-                        M.NE -> -4.3 - xd
-
-        createRailing ( xd, yd ) =
-            { x = toFloat x * 10 + xd
-            , y = toFloat y * 10 + yd
-            , z = toFloat z * 10 + zd xd yd
-            , sizeX = 0.3
-            , sizeY = 0.3
-            , sizeZ = 0.5
-            , material = "railing"
-            , rotationZ = 0
-            }
-
-        centers : List ( Float, Float )
-        centers = case dir of
-            M.SE -> List.map (\c -> ( c, -4 )) baseCoords
-            M.SW -> List.map (\c -> ( -4, c )) baseCoords
-            M.NW -> List.map (\c -> ( c, 4 )) baseCoords
-            M.NE -> List.map (\c -> ( 4, c )) baseCoords
-    in
-    List.map createRailing centers
-
-
 type alias CameraConfig =
     { viewSize : Float
     , focalPoint : Vec3
