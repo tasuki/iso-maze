@@ -7,14 +7,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-        #three-container {
-            touch-action: none;
-        }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: monospace; }
+        #three-container { touch-action: none; }
+
+        #menu { position: absolute; left: 0px; top: 0px; z-index: 9; }
+        #menu .item { float: left; padding: 1px 0 0 1px; }
+        @media screen and (min-aspect-ratio: 1/1) { #menu .item { float: none; } }
+        #menu .icon { display: block; cursor: pointer; background-color: #fff; color: #3cc;
+            border-radius: 30px; line-height: 30px; width: 30px; height: 30px; text-align: center; }
+        #menu .icon .tooltip { display: none; }
+        #menu .icon:hover .tooltip { display: inline; }
+        @media screen and (min-aspect-ratio: 1/1) { #menu .icon:hover { width:auto; padding: 0 10px; } }
+        @media screen and (max-aspect-ratio: 1/1) { #menu .icon:hover .tooltip { display: block; position: absolute; top: 25px; color: #fff; } }
     </style>
 </head>
 <body>

@@ -34,15 +34,16 @@ type alias Model =
     , elapsedTime : Duration
     , pointerStart : Maybe DD.DocumentCoords
     , pointerLast : Maybe DD.DocumentCoords
+    , keysDown : Set String
+    , debugInfo : Bool
     , orbiting : Bool
-    , azimuth : Angle
     , elevation : Angle
+    , azimuth : Angle
     , mode : ME.Mode
     , maze : M.Maze
     , playerState : M.PlayerState
     , animator : Animate.AnimatorState
     , focus : M.Position
-    , keysDown : Set String
     }
 
 type Msg
@@ -51,11 +52,13 @@ type Msg
     | UrlChanged Url
     | Resize Int Int
     | Tick Duration
+    | VisibilityChange BE.Visibility
     | Started DD.DocumentCoords
     | Moved DD.DocumentCoords
     | Finished DD.DocumentCoords
     | Cancelled DD.DocumentCoords
-    | VisibilityChange BE.Visibility
+    | KeyDown String
+    | KeyUp String
     | CameraReset
     | FocusShift M.Vector
     | ToggleMode
@@ -64,8 +67,7 @@ type Msg
     | ToggleBridge
     | PlaceStart
     | PlaceEnd
-    | KeyDown String
-    | KeyUp String
+    | ToggleDebug
 
 main : Program () Model Msg
 main =
@@ -91,15 +93,16 @@ init () url navKey =
             , elapsedTime = Quantity.zero
             , pointerStart = Nothing
             , pointerLast = Nothing
+            , keysDown = Set.empty
+            , debugInfo = False
             , orbiting = False
-            , azimuth = Angle.degrees D.initialAzimuth
             , elevation = Angle.degrees D.initialElevation
+            , azimuth = Angle.degrees D.initialAzimuth
             , mode = ME.Running
             , maze = defaultMaze
             , playerState = M.Idle initialPos
             , animator = Animate.initAnimator initialTargets
             , focus = ( 0, 0, 1 )
-            , keysDown = Set.empty
             }
     in
     ( changeRouteTo url model
@@ -272,6 +275,9 @@ updateModel message model =
         KeyUp key ->
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
+        ToggleDebug ->
+            ( { model | debugInfo = not model.debugInfo }, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
 
@@ -391,6 +397,13 @@ subscriptions _ =
 
 -- View
 
+menuLink : msg -> String -> String -> H.Html msg
+menuLink action iconText tooltip =
+    H.div [ HA.class "item" ]
+        [ H.div [ HA.class "icon", HE.onClick action ]
+            [ H.text iconText, H.span [ HA.class "tooltip" ] [ H.text <| " " ++ tooltip ] ]
+        ]
+
 view : Model -> Browser.Document Msg
 view model =
     let
@@ -407,7 +420,13 @@ view model =
     in
     { title = "Iso Maze"
     , body =
-        [ H.div
+        [ H.div [ HA.id "menu" ]
+            [ menuLink Noop "#" "maze"
+            , menuLink Noop "*" "settings"
+            , menuLink Noop "?" "help"
+            , menuLink ToggleDebug "~" "debug"
+            ]
+        , H.div
             (watchNow ++
                 [ HA.id "three-container"
                 , HA.style "width" "100%"
