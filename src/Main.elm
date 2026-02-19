@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Angle exposing (Angle)
 import Animate
@@ -44,6 +44,10 @@ type alias Model =
     , playerState : M.PlayerState
     , animator : Animate.AnimatorState
     , focus : M.Position
+    , dpr : Float
+    , fps : Float
+    , fpsTimer : Float
+    , frameCount : Int
     }
 
 type Msg
@@ -68,8 +72,9 @@ type Msg
     | PlaceStart
     | PlaceEnd
     | ToggleDebug
+    | DprUpdated Float
 
-main : Program () Model Msg
+main : Program Float Model Msg
 main =
     Browser.application
         { init = init
@@ -80,8 +85,8 @@ main =
         , onUrlChange = UrlChanged
         }
 
-init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init () url navKey =
+init : Float -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init dpr url navKey =
     let
         initialPos = M.startPosition defaultMaze
         initialTargets = Animate.getPlayerTargets (M.Idle initialPos) defaultMaze
@@ -103,6 +108,10 @@ init () url navKey =
             , playerState = M.Idle initialPos
             , animator = Animate.initAnimator initialTargets
             , focus = ( 0, 0, 1 )
+            , dpr = dpr
+            , fps = 0
+            , fpsTimer = 0
+            , frameCount = 0
             }
     in
     ( changeRouteTo url model
@@ -165,6 +174,7 @@ updateModel message model =
         Tick elapsed ->
             let
                 dt = Duration.inSeconds elapsed
+                dtMs = Duration.inMilliseconds elapsed
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
                     if model.mode == ME.Running then
@@ -174,11 +184,24 @@ updateModel message model =
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
+
+                ( newFps, newFpsTimer, newFrameCount ) =
+                    let
+                        timer = model.fpsTimer + dtMs
+                        count = model.frameCount + 1
+                    in
+                    if timer >= 1000 then
+                        ( (toFloat count / timer) * 1000, 0, 0 )
+                    else
+                        ( model.fps, timer, count )
             in
             ( { model
                 | elapsedTime = newElapsedTime
                 , playerState = newPlayerState
                 , animator = newAnimator
+                , fps = newFps
+                , fpsTimer = newFpsTimer
+                , frameCount = newFrameCount
               }
             , Cmd.none
             )
@@ -277,6 +300,9 @@ updateModel message model =
 
         ToggleDebug ->
             ( { model | debugInfo = not model.debugInfo }, Cmd.none )
+
+        DprUpdated dpr ->
+            ( { model | dpr = dpr }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -392,7 +418,11 @@ subscriptions _ =
         , BE.onVisibilityChange VisibilityChange
         , BE.onKeyDown (Decode.field "key" Decode.string |> Decode.map KeyDown)
         , BE.onKeyUp (Decode.field "key" Decode.string |> Decode.map KeyUp)
+        , updateDpr DprUpdated
         ]
+
+
+port updateDpr : (Float -> msg) -> Sub msg
 
 
 -- View
@@ -437,6 +467,22 @@ view model =
                 ]
             )
             [ viewJoystick model ]
+        , if model.debugInfo then
+            H.div
+                [ HA.style "position" "absolute"
+                , HA.style "top" "10px"
+                , HA.style "right" "10px"
+                , HA.style "color" "white"
+                , HA.style "background" "rgba(0, 0, 0, 0.4)"
+                , HA.style "padding" "5px 10px"
+                , HA.style "pointer-events" "none"
+                , HA.style "font-family" "monospace"
+                , HA.style "white-space" "pre"
+                , HA.style "z-index" "10"
+                ]
+                [ H.text ("FPS: " ++ String.fromInt (round model.fps) ++ "\nDPR: " ++ String.fromFloat model.dpr) ]
+          else
+            H.text ""
         ]
     }
 

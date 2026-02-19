@@ -3,7 +3,9 @@ import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 
 import { Elm } from './src/Main.elm';
-const app = Elm.Main.init();
+const app = Elm.Main.init({
+    flags: getDpr()
+});
 
 let scene, camera, renderer, container, composer;
 
@@ -115,6 +117,7 @@ updateSize();
 window.addEventListener('resize', () => {
     updateSize();
     updateCamera();
+    app.ports.updateDpr.send(getDpr());
 });
 
 window.addEventListener('keydown', (e) => {
