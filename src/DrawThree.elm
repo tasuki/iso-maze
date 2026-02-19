@@ -17,16 +17,15 @@ type alias Vec3 =
     { x : Float, y : Float, z : Float }
 
 
-type alias Model m =
-    { m
-        | azimuth : Angle.Angle
-        , elevation : Angle.Angle
-        , maze : M.Maze
-        , playerSpheres : ( Vec3, Vec3, Vec3 )
-        , focus : M.Position
-        , mode : ME.Mode
-        , widthPx : Int
-        , heightPx : Int
+type alias Model =
+    { azimuth : Angle.Angle
+    , elevation : Angle.Angle
+    , maze : M.Maze
+    , playerSpheres : ( Vec3, Vec3, Vec3 )
+    , focus : M.Position
+    , mode : ME.Mode
+    , widthPx : Int
+    , heightPx : Int
     }
 
 
@@ -50,7 +49,7 @@ type alias Sphere =
     }
 
 
-sceneData : Model m -> E.Value
+sceneData : Model -> E.Value
 sceneData model =
     let
         ( p, _, _ ) = model.playerSpheres
@@ -71,7 +70,7 @@ sceneData model =
         , ( "spheres", E.list encodeSphere (allSpheres model) )
         ]
 
-allBoxes : Model m -> List Box
+allBoxes : Model -> List Box
 allBoxes model =
     let
         ( p, _, _ ) = model.playerSpheres
@@ -82,7 +81,7 @@ allBoxes model =
         , drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze)
         ]
 
-allSpheres : Model m -> List Sphere
+allSpheres : Model -> List Sphere
 allSpheres model =
     List.concat
         [ drawPlayer model.playerSpheres
@@ -262,7 +261,7 @@ type alias CameraConfig =
     }
 
 
-computeCameraConfig : Model m -> CameraConfig
+computeCameraConfig : Model -> CameraConfig
 computeCameraConfig model =
     let
         blockToPoints block =
@@ -319,19 +318,15 @@ computeCameraConfig model =
             , z = midR * r.z + midU * u.z
             }
 
-        distance =
-            300.0
-
+        distance = 300.0
         cameraPosition3d =
             { x = focal3d.x + distance * cos a * cos e
             , y = focal3d.y + distance * sin a * cos e
             , z = focal3d.z + distance * sin e
             }
 
-        widthPx =
-            model.widthPx |> toFloat
+        widthPx = model.widthPx |> toFloat
         heightPx = model.heightPx |> toFloat
-
         aspect =
             if heightPx > 0 then widthPx / heightPx
             else 1.0
