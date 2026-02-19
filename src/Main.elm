@@ -135,12 +135,13 @@ update message model =
                 Cancelled _ -> True
                 _ -> True
 
+        ( s1, s2, s3 ) = newModel.animator.spheres
         sceneDataValue =
             D.sceneData
                 { azimuth = newModel.azimuth
                 , elevation = newModel.elevation
                 , maze = newModel.maze
-                , playerSpheres = List.map .current newModel.animator.spheres
+                , playerSpheres = ( s1.current, s2.current, s3.current )
                 , focus = newModel.focus
                 , mode = newModel.mode
                 , widthPx = newModel.widthPx

@@ -1,0 +1,8 @@
+- Read the `Makefile` for how to run this.
+- Do NOT conform to the Elm code style, instead:
+    - Primarily, DO NOT mess with the formatting I already have - it's intentional.
+    - Secondarily, try to match my formatting. Specifically:
+        - No line breaks after `=`, unless it's a very long line indeed
+        - Keep vertical white space to a minimum
+        - Try to put if/else blocks on two lines: one for `if`, one for `else`
+        - Similar for pattern matching: if the right side is short, keep it on one line and no empty lines
