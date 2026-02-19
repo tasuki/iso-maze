@@ -50,8 +50,8 @@ type alias Sphere =
     }
 
 
-sceneData : Model m -> Float -> E.Value
-sceneData model fps =
+sceneData : Model m -> E.Value
+sceneData model =
     let
         ( p, _, _ ) = model.playerSpheres
         pLightPos = { x = p.x, y = p.y, z = p.z + 3.0 }
@@ -59,7 +59,6 @@ sceneData model fps =
     in
     E.object
         [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
-        , ( "fps", E.float fps )
         , ( "camera"
           , E.object
                 [ ( "viewSize", E.float config.viewSize )

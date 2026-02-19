@@ -147,7 +147,6 @@ update message model =
                 , widthPx = newModel.widthPx
                 , heightPx = newModel.heightPx
                 }
-                4
     in
     if shouldRender then
         ( newModel
