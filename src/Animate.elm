@@ -159,7 +159,7 @@ getPlayerTargets playerState maze =
     let
         ( x, y, z ) = interpolatedPosition playerState
 
-        playerPos_ ( px, py, pz ) zOffset =
+        playerPos ( px, py, pz ) zOffset =
             let
                 getFix ( ix, iy ) =
                     case M.get ( ix, iy ) maze of
@@ -177,6 +177,7 @@ getPlayerTargets playerState maze =
                 fix12 = getFix ( x1, y2 )
                 fix21 = getFix ( x2, y1 )
                 fix22 = getFix ( x2, y2 )
+
                 fix =
                     if x1 == x2 && y1 == y2 then
                         toFloat fix11
@@ -185,15 +186,15 @@ getPlayerTargets playerState maze =
                     else if y1 == y2 then
                         toFloat fix11 * (1 - fx) + toFloat fix21 * fx
                     else
-                        (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy)
-                            + (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
+                        (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
+                        (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
             in
             { x = px * 10
             , y = py * 10
             , z = pz * 10 + zOffset + fix
             }
 
-        playerSphere zOffset = playerPos_ ( x, y, z ) zOffset
+        playerSphere zOffset = playerPos ( x, y, z ) zOffset
     in
     [ playerSphere 2.0
     , playerSphere 5.5

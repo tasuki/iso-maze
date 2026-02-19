@@ -134,39 +134,6 @@ encodeVec3 v =
 
 -- Drawing (Internal helpers)
 
-playerPos : ( Float, Float, Float ) -> Float -> M.Maze -> { x : Float, y : Float, z : Float }
-playerPos ( x, y, z ) zOffset maze =
-    let
-        getFix (ix, iy) =
-            case M.get ( ix, iy ) maze of
-                Just (M.Stairs _ _) -> -5
-                _ -> 0
-
-        x1 = floor x
-        x2 = ceiling x
-        y1 = floor y
-        y2 = ceiling y
-
-        fx = x - toFloat x1
-        fy = y - toFloat y1
-
-        fix11 = getFix (x1, y1)
-        fix12 = getFix (x1, y2)
-        fix21 = getFix (x2, y1)
-        fix22 = getFix (x2, y2)
-
-        fix =
-            if x1 == x2 && y1 == y2 then toFloat fix11
-            else if x1 == x2 then toFloat fix11 * (1 - fy) + toFloat fix12 * fy
-            else if y1 == y2 then toFloat fix11 * (1 - fx) + toFloat fix21 * fx
-            else (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
-                 (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
-    in
-    { x = x * 10
-    , y = y * 10
-    , z = z * 10 + zOffset + fix
-    }
-
 drawBase : String -> Float -> Float -> Float -> Box
 drawBase material x y z =
     { x = x * 10
