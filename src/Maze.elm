@@ -38,6 +38,15 @@ type alias Vector = Position
 
 type Direction = SE | SW | NE | NW
 
+type PlayerState
+    = Idle Position
+    | Moving
+        { from : Position
+        , to : Position
+        , dir : Direction
+        , progress : Float
+        }
+
 
 -- Maze
 

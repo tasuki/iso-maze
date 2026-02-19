@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Angle exposing (Angle)
+import Animate
 import Browser
 import Browser.Dom
 import Browser.Events as BE
@@ -25,32 +26,6 @@ import Url exposing (Url)
 defaultMaze = SM.ziggurat2
 secondsPerStep = 0.25
 
-type PlayerState
-    = Idle M.Position
-    | Moving
-        { from : M.Position
-        , to : M.Position
-        , dir : M.Direction
-        , progress : Float
-        }
-
-
-type alias Vec3 =
-    { x : Float, y : Float, z : Float }
-
-
-type alias SphereState =
-    { current : Vec3
-    , velocity : Vec3
-    }
-
-
-type alias AnimatorState =
-    { spheres : List SphereState
-    , timer : Float
-    , initialized : Bool
-    }
-
 
 type alias Model =
     { navKey : Nav.Key
@@ -64,8 +39,8 @@ type alias Model =
     , elevation : Angle
     , mode : ME.Mode
     , maze : M.Maze
-    , playerState : PlayerState
-    , animator : AnimatorState
+    , playerState : M.PlayerState
+    , animator : Animate.AnimatorState
     , focus : M.Position
     , keysDown : Set String
     }
@@ -107,11 +82,8 @@ main =
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url navKey =
     let
-        initialPos =
-            M.startPosition defaultMaze
-
-        initialTargets =
-            getPlayerTargets (Idle initialPos) defaultMaze
+        initialPos = M.startPosition defaultMaze
+        initialTargets = Animate.getPlayerTargets (M.Idle initialPos) defaultMaze
 
         model =
             { navKey = navKey
@@ -125,8 +97,8 @@ init () url navKey =
             , elevation = Angle.degrees D.initialElevation
             , mode = ME.Running
             , maze = defaultMaze
-            , playerState = Idle initialPos
-            , animator = initAnimator initialTargets
+            , playerState = M.Idle initialPos
+            , animator = Animate.initAnimator initialTargets
             , focus = ( 0, 0, 1 )
             , keysDown = Set.empty
             }
@@ -146,42 +118,22 @@ init () url navKey =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     let
-        ( newModel, cmd ) =
-            updateModel message model
-
-        targets =
-            getPlayerTargets newModel.playerState newModel.maze
-
+        ( newModel, cmd ) = updateModel message model
+        targets = Animate.getPlayerTargets newModel.playerState newModel.maze
         isMoving =
             case newModel.playerState of
-                Idle _ ->
-                    isAnimatorMoving targets newModel.animator
-
-                Moving _ ->
-                    True
+                M.Idle _ -> Animate.isAnimatorMoving targets newModel.animator
+                M.Moving _ -> True
 
         shouldRender =
             case message of
-                Resize _ _ ->
-                    True
-
-                Tick _ ->
-                    isMoving
-
-                Started _ ->
-                    True
-
-                Moved _ ->
-                    newModel.mode == ME.Editing && newModel.orbiting
-
-                Finished _ ->
-                    True
-
-                Cancelled _ ->
-                    True
-
-                _ ->
-                    True
+                Resize _ _ -> True
+                Tick _ -> isMoving
+                Started _ -> True
+                Moved _ -> newModel.mode == ME.Editing && newModel.orbiting
+                Finished _ -> True
+                Cancelled _ -> True
+                _ -> True
 
         sceneDataValue =
             D.sceneData
@@ -194,38 +146,13 @@ update message model =
                 , widthPx = newModel.widthPx
                 , heightPx = newModel.heightPx
                 }
-                60
+                4
     in
     if shouldRender then
         ( newModel
         , Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ]
         )
-
-    else
-        ( newModel, cmd )
-
-
-interpolatedPosition : PlayerState -> ( Float, Float, Float )
-interpolatedPosition playerState =
-    case playerState of
-        Idle ( x, y, z ) ->
-            ( toFloat x, toFloat y, toFloat z )
-
-        Moving m ->
-            let
-                ( x1, y1, z1 ) =
-                    m.from
-
-                ( x2, y2, z2 ) =
-                    m.to
-
-                p =
-                    m.progress
-
-                lerp a b t =
-                    toFloat a + (toFloat b - toFloat a) * t
-            in
-            ( lerp x1 x2 p, lerp y1 y2 p, lerp z1 z2 p )
+    else ( newModel, cmd )
 
 
 updateModel : Msg -> Model -> ( Model, Cmd Msg )
@@ -239,24 +166,15 @@ updateModel message model =
 
         Tick elapsed ->
             let
-                dt =
-                    Duration.inSeconds elapsed
-
-                newElapsedTime =
-                    model.elapsedTime |> Quantity.plus elapsed
-
+                dt = Duration.inSeconds elapsed
+                newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
                     if model.mode == ME.Running then
                         updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
+                    else model.playerState
 
-                    else
-                        model.playerState
-
-                targets =
-                    getPlayerTargets newPlayerState model.maze
-
-                newAnimator =
-                    updateAnimator dt targets model.animator
+                targets = Animate.getPlayerTargets newPlayerState model.maze
+                newAnimator = Animate.updateAnimator dt targets model.animator
             in
             ( { model
                 | elapsedTime = newElapsedTime
@@ -279,17 +197,12 @@ updateModel message model =
             case ( model.orbiting, model.pointerLast ) of
                 ( True, Just lastDc ) ->
                     let
-                        rotationRate =
-                            Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-
-                        newAzimuth =
-                            model.azimuth
-                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
-
-                        newElevation =
-                            model.elevation
-                                |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
-                                |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
+                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+                        newAzimuth = model.azimuth
+                            |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+                        newElevation = model.elevation
+                            |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
+                            |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
                     in
                     ( { model
                         | azimuth = newAzimuth
@@ -298,10 +211,9 @@ updateModel message model =
                       }
                     , Cmd.none
                     )
-                _ ->
-                    ( { model | pointerLast = Just dc }, Cmd.none )
+                _ -> ( { model | pointerLast = Just dc }, Cmd.none )
 
-        Finished dc ->
+        Finished _ ->
             ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
 
         Cancelled _ ->
@@ -323,53 +235,33 @@ updateModel message model =
 
         FocusShift vector ->
             let
-                newFocus =
-                    M.shiftPosition model.focus vector
+                newFocus = M.shiftPosition model.focus vector
             in
-            if M.isValidPosition newFocus then
-                ( { model | focus = newFocus }, Cmd.none )
-
-            else
-                ( model, Cmd.none )
+            if M.isValidPosition newFocus then ( { model | focus = newFocus }, Cmd.none )
+            else ( model, Cmd.none )
 
         ToggleMode ->
-            ( { model
-                | mode =
-                    if model.mode == ME.Running then
-                        ME.Editing
-
-                    else
-                        ME.Running
+            ( { model | mode =
+                if model.mode == ME.Running then ME.Editing
+                else ME.Running
               }
             , Cmd.none
             )
 
-        ToggleBlock ->
-            updateMaze ME.toggleBlock model
-
-        ToggleStairs ->
-            updateMaze ME.toggleStairs model
-
-        ToggleBridge ->
-            updateMaze ME.toggleBridge model
-
-        PlaceStart ->
-            updateMaze ME.placeStart model
-
-        PlaceEnd ->
-            updateMaze ME.placeEnd model
+        ToggleBlock -> updateMaze ME.toggleBlock model
+        ToggleStairs -> updateMaze ME.toggleStairs model
+        ToggleBridge -> updateMaze ME.toggleBridge model
+        PlaceStart -> updateMaze ME.placeStart model
+        PlaceEnd -> updateMaze ME.placeEnd model
 
         Go dir ->
             let
                 pos = case model.playerState of
-                    Idle p -> p
-                    Moving m -> m.to
-                newPos : M.Position
-                newPos =
-                    M.move pos dir model.maze
-                        |> Maybe.withDefault pos
+                    M.Idle p -> p
+                    M.Moving m -> m.to
+                newPos = M.move pos dir model.maze |> Maybe.withDefault pos
             in
-            ( { model | playerState = Idle newPos }, Cmd.none )
+            ( { model | playerState = M.Idle newPos }, Cmd.none )
 
         KeyDown key ->
             let
@@ -397,7 +289,7 @@ updateModel message model =
         _ ->
             ( model, Cmd.none )
 
-updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> PlayerState -> PlayerState
+updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> M.PlayerState -> M.PlayerState
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
         maybeMove pos progress =
@@ -405,20 +297,20 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
                 Just dir ->
                     case M.move pos dir maze of
                         Just nextTo ->
-                            Moving { from = pos, to = nextTo, dir = dir, progress = progress }
+                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
                         Nothing ->
-                            Idle pos
+                            M.Idle pos
                 Nothing ->
-                    Idle pos
+                    M.Idle pos
     in
     case playerState of
-        Idle pos -> maybeMove pos 0
-        Moving m ->
+        M.Idle pos -> maybeMove pos 0
+        M.Moving m ->
             let
                 newProgress = m.progress + (dt / secondsPerStep)
             in
             if newProgress >= 1 then maybeMove m.to (newProgress - 1)
-            else Moving { m | progress = newProgress }
+            else M.Moving { m | progress = newProgress }
 
 getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.Direction
 getDesiredDirection keysDown pointerStart pointerLast =
@@ -457,20 +349,15 @@ changeRouteTo url model =
     case Maybe.andThen Codec.decode url.query of
         Just maze ->
             let
-                startPos =
-                    M.startPosition maze
-
-                targets =
-                    getPlayerTargets (Idle startPos) maze
+                startPos = M.startPosition maze
+                targets = Animate.getPlayerTargets (M.Idle startPos) maze
             in
             { model
                 | maze = maze
-                , playerState = Idle startPos
-                , animator = initAnimator targets
+                , playerState = M.Idle startPos
+                , animator = Animate.initAnimator targets
             }
-
-        Nothing ->
-            model
+        Nothing -> model
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
@@ -482,231 +369,6 @@ updateMaze fun model =
 pushUrl : Nav.Key -> M.Maze -> Cmd msg
 pushUrl navKey maze =
     Nav.pushUrl navKey <| "?" ++ Codec.encode maze
-
-
--- Animator Logic
-
-initAnimator : List Vec3 -> AnimatorState
-initAnimator targets =
-    let
-        initSphere target =
-            { current = { x = target.x, y = target.y, z = target.z + 10.0 }
-            , velocity = { x = 0, y = 0, z = 0 }
-            }
-    in
-    { spheres = List.map initSphere targets
-    , timer = 0
-    , initialized = True
-    }
-
-
-isAnimatorMoving : List Vec3 -> AnimatorState -> Bool
-isAnimatorMoving targets state =
-    let
-        velThreshold =
-            0.1
-
-        posThreshold =
-            0.01
-
-        isSphereMoving target s =
-            let
-                dv2 =
-                    s.velocity.x * s.velocity.x + s.velocity.y * s.velocity.y + s.velocity.z * s.velocity.z
-
-                dp2 =
-                    (s.current.x - target.x) * (s.current.x - target.x)
-                        + (s.current.y - target.y) * (s.current.y - target.y)
-                        + (s.current.z - target.z) * (s.current.z - target.z)
-            in
-            dv2 > velThreshold * velThreshold || dp2 > posThreshold * posThreshold
-    in
-    List.map2 isSphereMoving targets state.spheres |> List.any identity
-
-
-updateAnimator : Float -> List Vec3 -> AnimatorState -> AnimatorState
-updateAnimator totalDt targets state =
-    let
-        subSteps =
-            5
-
-        dt =
-            min totalDt 0.2 / toFloat subSteps
-
-        staggerDelay =
-            0.05
-
-        springK =
-            400
-
-        damping =
-            30
-
-        step currentSpheres currentTimer =
-            let
-                newTimer =
-                    currentTimer + dt
-
-                updateSphere i target s prevCurrent prevTarget =
-                    if newTimer < toFloat i * staggerDelay then
-                        s
-
-                    else
-                        let
-                            targetPos =
-                                if i == 0 then
-                                    target
-
-                                else
-                                    let
-                                        desiredOffset =
-                                            { x = target.x - prevTarget.x
-                                            , y = target.y - prevTarget.y
-                                            , z = target.z - prevTarget.z
-                                            }
-                                    in
-                                    { x = prevCurrent.x + desiredOffset.x
-                                    , y = prevCurrent.y + desiredOffset.y
-                                    , z = prevCurrent.z + desiredOffset.z
-                                    }
-
-                            diff =
-                                { x = targetPos.x - s.current.x
-                                , y = targetPos.y - s.current.y
-                                , z = targetPos.z - s.current.z
-                                }
-
-                            force =
-                                { x = diff.x * springK
-                                , y = diff.y * springK
-                                , z = diff.z * springK
-                                }
-
-                            friction =
-                                { x = -s.velocity.x * damping
-                                , y = -s.velocity.y * damping
-                                , z = -s.velocity.z * damping
-                                }
-
-                            acceleration =
-                                { x = force.x + friction.x
-                                , y = force.y + friction.y
-                                , z = force.z + friction.z
-                                }
-
-                            newVelocity =
-                                { x = s.velocity.x + acceleration.x * dt
-                                , y = s.velocity.y + acceleration.y * dt
-                                , z = s.velocity.z + acceleration.z * dt
-                                }
-
-                            newCurrent =
-                                { x = s.current.x + newVelocity.x * dt
-                                , y = s.current.y + newVelocity.y * dt
-                                , z = s.current.z + newVelocity.z * dt
-                                }
-                        in
-                        { current = newCurrent, velocity = newVelocity }
-
-                -- We need to update spheres one by one because each depends on the NEW current of the previous one
-                folder ( i, target, s ) ( accSpheres, lastPrevCurrent, lastPrevTarget ) =
-                    let
-                        newS =
-                            updateSphere i target s lastPrevCurrent lastPrevTarget
-                    in
-                    ( accSpheres ++ [ newS ], newS.current, target )
-
-                ( nextSpheres, _, _ ) =
-                    List.foldl folder ( [], { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 0 } ) (List.map3 (\i t s -> ( i, t, s )) (List.range 0 (List.length currentSpheres - 1)) targets currentSpheres)
-            in
-            ( nextSpheres, newTimer )
-
-        runSubSteps n s t =
-            if n <= 0 then
-                { state | spheres = s, timer = t }
-
-            else
-                let
-                    ( nextS, nextT ) =
-                        step s t
-                in
-                runSubSteps (n - 1) nextS nextT
-    in
-    runSubSteps subSteps state.spheres state.timer
-
-
-getPlayerTargets : PlayerState -> M.Maze -> List Vec3
-getPlayerTargets playerState maze =
-    let
-        ( x, y, z ) =
-            interpolatedPosition playerState
-
-        playerPos_ ( px, py, pz ) zOffset =
-            let
-                getFix ( ix, iy ) =
-                    case M.get ( ix, iy ) maze of
-                        Just (M.Stairs _ _) ->
-                            -5
-
-                        _ ->
-                            0
-
-                x1 =
-                    floor px
-
-                x2 =
-                    ceiling px
-
-                y1 =
-                    floor py
-
-                y2 =
-                    ceiling py
-
-                fx =
-                    px - toFloat x1
-
-                fy =
-                    py - toFloat y1
-
-                fix11 =
-                    getFix ( x1, y1 )
-
-                fix12 =
-                    getFix ( x1, y2 )
-
-                fix21 =
-                    getFix ( x2, y1 )
-
-                fix22 =
-                    getFix ( x2, y2 )
-
-                fix =
-                    if x1 == x2 && y1 == y2 then
-                        toFloat fix11
-
-                    else if x1 == x2 then
-                        toFloat fix11 * (1 - fy) + toFloat fix12 * fy
-
-                    else if y1 == y2 then
-                        toFloat fix11 * (1 - fx) + toFloat fix21 * fx
-
-                    else
-                        (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy)
-                            + (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
-            in
-            { x = px * 10
-            , y = py * 10
-            , z = pz * 10 + zOffset + fix
-            }
-
-        playerSphere zOffset =
-            playerPos_ ( x, y, z ) zOffset
-    in
-    [ playerSphere 2.0
-    , playerSphere 5.5
-    , playerSphere 8.5
-    ]
 
 
 -- Subscriptions
@@ -733,7 +395,7 @@ keydown mode keycode =
                 _   -> Noop
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ BE.onResize Resize
         , BE.onAnimationFrameDelta (Duration.milliseconds >> Tick)
