@@ -45,9 +45,7 @@ type alias Model =
     , animator : Animate.AnimatorState
     , focus : M.Position
     , dpr : Float
-    , fps : Float
-    , fpsTimer : Float
-    , frameCount : Int
+    , frameHistory : List { timestamp : Float, duration : Float }
     }
 
 type Msg
@@ -109,9 +107,7 @@ init dpr url navKey =
             , animator = Animate.initAnimator initialTargets
             , focus = ( 0, 0, 1 )
             , dpr = dpr
-            , fps = 0
-            , fpsTimer = 0
-            , frameCount = 0
+            , frameHistory = []
             }
     in
     ( changeRouteTo url model
@@ -185,23 +181,17 @@ updateModel message model =
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
 
-                ( newFps, newFpsTimer, newFrameCount ) =
-                    let
-                        timer = model.fpsTimer + dtMs
-                        count = model.frameCount + 1
-                    in
-                    if timer >= 1000 then
-                        ( (toFloat count / timer) * 1000, 0, 0 )
-                    else
-                        ( model.fps, timer, count )
+                currentTime = Duration.inMilliseconds newElapsedTime
+                newFrameHistory =
+                    { timestamp = currentTime, duration = dtMs }
+                        :: model.frameHistory
+                        |> List.filter (\f -> currentTime - f.timestamp < 1000)
             in
             ( { model
                 | elapsedTime = newElapsedTime
                 , playerState = newPlayerState
                 , animator = newAnimator
-                , fps = newFps
-                , fpsTimer = newFpsTimer
-                , frameCount = newFrameCount
+                , frameHistory = newFrameHistory
               }
             , Cmd.none
             )
@@ -480,11 +470,37 @@ view model =
                 , HA.style "white-space" "pre"
                 , HA.style "z-index" "10"
                 ]
-                [ H.text ("FPS: " ++ String.fromInt (round model.fps) ++ "\nDPR: " ++ String.fromFloat model.dpr) ]
+                [ H.text ("FT: " ++ formatMs (avgFrameTime model.frameHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
           else
             H.text ""
         ]
     }
+
+avgFrameTime : List { timestamp : Float, duration : Float } -> Float
+avgFrameTime history =
+    case history of
+        [] ->
+            0
+
+        _ ->
+            List.sum (List.map .duration history) / toFloat (List.length history)
+
+
+formatMs : Float -> String
+formatMs val =
+    let
+        rounded =
+            toFloat (round (val * 10)) / 10
+
+        s =
+            String.fromFloat rounded
+    in
+    if String.contains "." s then
+        s
+
+    else
+        s ++ ".0"
+
 
 viewJoystick : Model -> H.Html Msg
 viewJoystick model =
