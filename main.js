@@ -127,11 +127,16 @@ window.addEventListener('keydown', (e) => {
 }, { passive: false });
 
 let rafId = null;
+let latestData = null;
 app.ports.renderThreeJS.subscribe(data => {
-    updateScene(data);
+    latestData = data;
     if (!rafId) {
         rafId = requestAnimationFrame(() => {
+            const t0 = performance.now();
+            updateScene(latestData);
             composer.render();
+            const t1 = performance.now();
+            app.ports.updateRenderTime.send(t1 - t0);
             rafId = null;
         });
     }

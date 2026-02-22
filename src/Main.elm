@@ -45,7 +45,7 @@ type alias Model =
     , animator : Animate.AnimatorState
     , focus : M.Position
     , dpr : Float
-    , frameHistory : List { timestamp : Float, duration : Float }
+    , renderHistory : List { timestamp : Float, duration : Float }
     }
 
 type Msg
@@ -71,6 +71,7 @@ type Msg
     | PlaceEnd
     | ToggleDebug
     | DprUpdated Float
+    | RenderTimeUpdated Float
 
 main : Program Float Model Msg
 main =
@@ -107,7 +108,7 @@ init dpr url navKey =
             , animator = Animate.initAnimator initialTargets
             , focus = ( 0, 0, 1 )
             , dpr = dpr
-            , frameHistory = []
+            , renderHistory = []
             }
     in
     ( changeRouteTo url model
@@ -170,7 +171,6 @@ updateModel message model =
         Tick elapsed ->
             let
                 dt = Duration.inSeconds elapsed
-                dtMs = Duration.inMilliseconds elapsed
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
                     if model.mode == ME.Running then
@@ -180,18 +180,11 @@ updateModel message model =
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
-
-                currentTime = Duration.inMilliseconds newElapsedTime
-                newFrameHistory =
-                    { timestamp = currentTime, duration = dtMs }
-                        :: model.frameHistory
-                        |> List.filter (\f -> currentTime - f.timestamp < 1000)
             in
             ( { model
                 | elapsedTime = newElapsedTime
                 , playerState = newPlayerState
                 , animator = newAnimator
-                , frameHistory = newFrameHistory
               }
             , Cmd.none
             )
@@ -277,6 +270,8 @@ updateModel message model =
             case (model.mode, key) of
                 (_, "e") -> updateModel ToggleMode newModel
                 (_, "c") -> updateModel CameraReset newModel
+                (_, "`") -> updateModel ToggleDebug newModel
+                (_, "~") -> updateModel ToggleDebug newModel
                 (ME.Editing, _) ->
                     let
                         msg = keydown model.mode key
@@ -293,6 +288,21 @@ updateModel message model =
 
         DprUpdated dpr ->
             ( { model | dpr = dpr }, Cmd.none )
+
+        RenderTimeUpdated duration ->
+            let
+                currentTime = Duration.inMilliseconds model.elapsedTime
+                newEntry = { timestamp = currentTime, duration = duration }
+                withinWindow =
+                    newEntry :: model.renderHistory
+                        |> List.filter (\r -> currentTime - r.timestamp < 1000)
+                finalHistory =
+                    if List.length withinWindow < 2 then
+                        List.take 2 (newEntry :: model.renderHistory)
+                    else
+                        withinWindow
+            in
+            ( { model | renderHistory = finalHistory }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -409,10 +419,12 @@ subscriptions _ =
         , BE.onKeyDown (Decode.field "key" Decode.string |> Decode.map KeyDown)
         , BE.onKeyUp (Decode.field "key" Decode.string |> Decode.map KeyUp)
         , updateDpr DprUpdated
+        , updateRenderTime RenderTimeUpdated
         ]
 
 
 port updateDpr : (Float -> msg) -> Sub msg
+port updateRenderTime : (Float -> msg) -> Sub msg
 
 
 -- View
@@ -470,14 +482,14 @@ view model =
                 , HA.style "white-space" "pre"
                 , HA.style "z-index" "10"
                 ]
-                [ H.text ("FT: " ++ formatMs (avgFrameTime model.frameHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
+                [ H.text ("RT: " ++ formatMs (avgRenderTime model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
           else
             H.text ""
         ]
     }
 
-avgFrameTime : List { timestamp : Float, duration : Float } -> Float
-avgFrameTime history =
+avgRenderTime : List { timestamp : Float, duration : Float } -> Float
+avgRenderTime history =
     case history of
         [] ->
             0
