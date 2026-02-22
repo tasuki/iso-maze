@@ -1,4 +1,4 @@
-port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS, sceneData)
+port module DrawThree exposing (CameraConfig, Vec3, computeCameraConfig, initialAzimuth, initialElevation, renderThreeJS, sceneData)
 
 import Angle
 import Json.Encode as E
@@ -21,11 +21,13 @@ type alias Model =
     { azimuth : Angle.Angle
     , elevation : Angle.Angle
     , maze : M.Maze
+    , blocks : List M.Block
     , playerSpheres : ( Vec3, Vec3, Vec3 )
     , focus : M.Position
     , mode : ME.Mode
     , widthPx : Int
     , heightPx : Int
+    , cameraConfig : CameraConfig
     }
 
 
@@ -54,7 +56,7 @@ sceneData model =
     let
         ( p, _, _ ) = model.playerSpheres
         pLightPos = { x = p.x, y = p.y, z = p.z + 3.0 }
-        config = computeCameraConfig model
+        config = model.cameraConfig
     in
     E.object
         [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
@@ -77,7 +79,7 @@ allBoxes model =
         discretePlayer = ( round (p.x / 10), round (p.y / 10), round (p.z / 10) )
     in
     List.concat
-        [ List.concatMap drawBlock (M.toBlocks model.maze)
+        [ List.concatMap drawBlock model.blocks
         , drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze)
         ]
 
@@ -261,8 +263,17 @@ type alias CameraConfig =
     }
 
 
-computeCameraConfig : Model -> CameraConfig
-computeCameraConfig model =
+type alias CameraArgs =
+    { azimuth : Angle.Angle
+    , elevation : Angle.Angle
+    , blocks : List M.Block
+    , widthPx : Int
+    , heightPx : Int
+    }
+
+
+computeCameraConfig : CameraArgs -> CameraConfig
+computeCameraConfig args =
     let
         blockToPoints block =
             let
@@ -282,12 +293,12 @@ computeCameraConfig model =
             , ( fx + 5, fy + 5, fz + 10 )
             ]
 
-        points = case List.concatMap blockToPoints <| M.toBlocks model.maze of
+        points = case List.concatMap blockToPoints args.blocks of
             [] -> [ ( 0, 0, 0 ) ]
             ps -> ps
 
-        a = Angle.inRadians model.azimuth
-        e = Angle.inRadians model.elevation
+        a = Angle.inRadians args.azimuth
+        e = Angle.inRadians args.elevation
 
         -- Basis vectors (matching Three.js with camera.up = 0,0,1)
         r = { x = -(sin a), y = cos a, z = 0 }
@@ -325,8 +336,8 @@ computeCameraConfig model =
             , z = focal3d.z + distance * sin e
             }
 
-        widthPx = model.widthPx |> toFloat
-        heightPx = model.heightPx |> toFloat
+        widthPx = args.widthPx |> toFloat
+        heightPx = args.heightPx |> toFloat
         aspect =
             if heightPx > 0 then widthPx / heightPx
             else 1.0

@@ -46,6 +46,9 @@ type alias Model =
     , focus : M.Position
     , dpr : Float
     , renderHistory : List { timestamp : Float, duration : Float }
+    , tickHistory : List { timestamp : Float, duration : Float }
+    , mazeBlocks : List M.Block
+    , cameraConfig : D.CameraConfig
     }
 
 type Msg
@@ -109,6 +112,16 @@ init dpr url navKey =
             , focus = ( 0, 0, 1 )
             , dpr = dpr
             , renderHistory = []
+            , tickHistory = []
+            , mazeBlocks = M.toBlocks defaultMaze
+            , cameraConfig =
+                D.computeCameraConfig
+                    { azimuth = Angle.degrees D.initialAzimuth
+                    , elevation = Angle.degrees D.initialElevation
+                    , blocks = M.toBlocks defaultMaze
+                    , widthPx = 0
+                    , heightPx = 0
+                    }
             }
     in
     ( changeRouteTo url model
@@ -138,29 +151,75 @@ update message model =
                 Tick _ -> isMoving
                 Moved _ -> newModel.mode == ME.Editing && newModel.orbiting
                 _ -> True
-
-        ( s1, s2, s3 ) = newModel.animator.spheres
-        sceneDataValue =
-            D.sceneData
-                { azimuth = newModel.azimuth
-                , elevation = newModel.elevation
-                , maze = newModel.maze
-                , playerSpheres = ( s1.current, s2.current, s3.current )
-                , focus = newModel.focus
-                , mode = newModel.mode
-                , widthPx = newModel.widthPx
-                , heightPx = newModel.heightPx
-                }
     in
     if shouldRender then
+        let
+            ( s1, s2, s3 ) = newModel.animator.spheres
+            sceneDataValue =
+                D.sceneData
+                    { azimuth = newModel.azimuth
+                    , elevation = newModel.elevation
+                    , maze = newModel.maze
+                    , blocks = newModel.mazeBlocks
+                    , playerSpheres = ( s1.current, s2.current, s3.current )
+                    , focus = newModel.focus
+                    , mode = newModel.mode
+                    , widthPx = newModel.widthPx
+                    , heightPx = newModel.heightPx
+                    , cameraConfig = newModel.cameraConfig
+                    }
+        in
         ( newModel
         , Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ]
         )
-    else ( newModel, cmd )
+    else
+        ( newModel, cmd )
 
 
 updateModel : Msg -> Model -> ( Model, Cmd Msg )
 updateModel message model =
+    let
+        ( m, c ) = updateModelRaw message model
+        needsBlocksUpdate =
+            case message of
+                UrlChanged _ -> True
+                ToggleBlock -> True
+                ToggleStairs -> True
+                ToggleBridge -> True
+                PlaceStart -> True
+                PlaceEnd -> True
+                _ -> False
+
+        needsCameraUpdate =
+            needsBlocksUpdate ||
+            case message of
+                Resize _ _ -> True
+                Moved _ -> model.orbiting
+                CameraReset -> True
+                _ -> False
+
+        m1 =
+            if needsBlocksUpdate then
+                { m | mazeBlocks = M.toBlocks m.maze }
+            else m
+
+        m2 =
+            if needsCameraUpdate then
+                { m1 | cameraConfig = D.computeCameraConfig
+                    { azimuth = m1.azimuth
+                    , elevation = m1.elevation
+                    , blocks = m1.mazeBlocks
+                    , widthPx = m1.widthPx
+                    , heightPx = m1.heightPx
+                    }
+                }
+            else m1
+    in
+    ( m2, c )
+
+
+updateModelRaw : Msg -> Model -> ( Model, Cmd Msg )
+updateModelRaw message model =
     case message of
         UrlChanged url ->
             ( changeRouteTo url model, Cmd.none )
@@ -171,6 +230,7 @@ updateModel message model =
         Tick elapsed ->
             let
                 dt = Duration.inSeconds elapsed
+                dtMs = Duration.inMilliseconds elapsed
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
                     if model.mode == ME.Running then
@@ -180,11 +240,18 @@ updateModel message model =
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
+
+                currentTime = Duration.inMilliseconds newElapsedTime
+                newTickHistory =
+                    { timestamp = currentTime, duration = dtMs }
+                        :: model.tickHistory
+                        |> List.filter (\f -> currentTime - f.timestamp < 1000)
             in
             ( { model
                 | elapsedTime = newElapsedTime
                 , playerState = newPlayerState
                 , animator = newAnimator
+                , tickHistory = newTickHistory
               }
             , Cmd.none
             )
@@ -482,14 +549,19 @@ view model =
                 , HA.style "white-space" "pre"
                 , HA.style "z-index" "10"
                 ]
-                [ H.text ("RT: " ++ formatMs (avgRenderTime model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
+                [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
           else
             H.text ""
         ]
     }
 
-avgRenderTime : List { timestamp : Float, duration : Float } -> Float
-avgRenderTime history =
+fpsFromPeriod : Float -> Float
+fpsFromPeriod ms =
+    if ms <= 0 then 0 else 1000 / ms
+
+
+avgDuration : List { timestamp : Float, duration : Float } -> Float
+avgDuration history =
     case history of
         [] ->
             0

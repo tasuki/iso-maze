@@ -16,6 +16,9 @@ furthest = 16
 sideSize = maxTileCoord - minTileCoord + 1
 coordsRange = List.range minTileCoord maxTileCoord
 
+allCoords : List Pos2d
+allCoords = mapCoords coordsRange coordsRange Tuple.pair
+
 type alias Maze =
     { maze : Array MazeBlock
     , start : Pos2d
@@ -91,10 +94,10 @@ mapCoords rangeY rangeX fun =
     List.concatMap (\y -> List.map (fun y) rangeX) rangeY
 
 mapAllCoords : (Int -> Int -> a) -> List a
-mapAllCoords = mapCoords coordsRange coordsRange
+mapAllCoords fun = List.map (\( x, y ) -> fun x y) allCoords
 
 toBlocks : Maze -> List Block
-toBlocks maze = List.filterMap (\c -> get c maze) (mapAllCoords Tuple.pair)
+toBlocks maze = List.filterMap (\c -> get c maze) allCoords
 
 toBlock : Pos2d -> MazeBlock -> Maybe Block
 toBlock ( x, y ) mazeBlock = case mazeBlock of
