@@ -176,8 +176,7 @@ update message model =
         ( newModel
         , Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ]
         )
-    else
-        ( newModel, cmd )
+    else ( newModel, cmd )
 
 
 updateModel : Msg -> Model -> ( Model, Cmd Msg )
@@ -563,32 +562,20 @@ fpsFromPeriod : Float -> Float
 fpsFromPeriod ms =
     if ms <= 0 then 0 else 1000 / ms
 
-
 avgDuration : List { timestamp : Float, duration : Float } -> Float
 avgDuration history =
     case history of
-        [] ->
-            0
-
-        _ ->
-            List.sum (List.map .duration history) / toFloat (List.length history)
-
+        [] -> 0
+        _ -> List.sum (List.map .duration history) / toFloat (List.length history)
 
 formatMs : Float -> String
 formatMs val =
     let
-        rounded =
-            toFloat (round (val * 10)) / 10
-
-        s =
-            String.fromFloat rounded
+        rounded = toFloat (round (val * 10)) / 10
+        s = String.fromFloat rounded
     in
-    if String.contains "." s then
-        s
-
-    else
-        s ++ ".0"
-
+    if String.contains "." s then s
+    else s ++ ".0"
 
 viewJoystick : Model -> H.Html Msg
 viewJoystick model =
