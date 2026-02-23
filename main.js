@@ -128,6 +128,7 @@ window.addEventListener('keydown', (e) => {
 
 let rafId = null;
 let latestData = null;
+let lastRenderTimeReport = 0;
 app.ports.renderThreeJS.subscribe(data => {
     latestData = data;
     if (!rafId) {
@@ -136,7 +137,10 @@ app.ports.renderThreeJS.subscribe(data => {
             updateScene(latestData);
             composer.render();
             const t1 = performance.now();
-            app.ports.updateRenderTime.send(t1 - t0);
+            if (t1 - lastRenderTimeReport > 1000) {
+                app.ports.updateRenderTime.send(t1 - t0);
+                lastRenderTimeReport = t1;
+            }
             rafId = null;
         });
     }

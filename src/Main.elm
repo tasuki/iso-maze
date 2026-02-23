@@ -150,6 +150,9 @@ update message model =
             case message of
                 Tick _ -> isMoving
                 Moved _ -> newModel.mode == ME.Editing && newModel.orbiting
+                RenderTimeUpdated _ -> False
+                DprUpdated _ -> False
+                Noop -> False
                 _ -> True
     in
     if shouldRender then
