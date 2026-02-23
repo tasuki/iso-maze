@@ -148,12 +148,13 @@ update message model =
 
         shouldRender =
             case message of
+                Resize _ _ -> True
                 Tick _ -> isMoving
                 Moved _ -> newModel.mode == ME.Editing && newModel.orbiting
-                RenderTimeUpdated _ -> False
-                DprUpdated _ -> False
-                Noop -> False
-                _ -> True
+                KeyDown key ->
+                    if newModel.mode == ME.Editing then True
+                    else key == "e" || key == "c"
+                _ -> False
     in
     if shouldRender then
         let
