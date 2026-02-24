@@ -157,13 +157,13 @@ let rafId = null;
 let latestData = null;
 let lastRenderTimeReport = 0;
 let needsStaticRender = true;
-let pendingBoxes = null;
+let pendingStatic = null;
 
 app.ports.renderThreeJS.subscribe(data => {
     latestData = data;
-    if (data.staticUpdate && data.boxes) {
+    if (data.staticUpdate && data.static) {
         needsStaticRender = true;
-        pendingBoxes = data.boxes;
+        pendingStatic = data.static;
     }
 
     if (!rafId) {
@@ -178,7 +178,7 @@ app.ports.renderThreeJS.subscribe(data => {
                 backgroundQuad.material.map = staticComposer.inputBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
-                pendingBoxes = null;
+                pendingStatic = null;
             }
 
             renderer.setRenderTarget(null);
@@ -194,29 +194,56 @@ app.ports.renderThreeJS.subscribe(data => {
     }
 });
 
+function getRenderableKey(r, prefix) {
+    if (r.type === 'box') {
+        return `${prefix}_box_${r.x}_${r.y}_${r.z}_${r.sizeX}_${r.sizeY}_${r.sizeZ}_${r.material}_${r.rotationZ || 0}`;
+    } else {
+        return `${prefix}_sphere_${r.x}_${r.y}_${r.z}_${r.radius}_${r.material}`;
+    }
+}
+
+function createMesh(r, unitScale, useOcclusion = false) {
+    let geo;
+    if (r.type === 'box') {
+        geo = getBoxGeometry(r.sizeX * unitScale, r.sizeY * unitScale, r.sizeZ * unitScale);
+    } else {
+        geo = getSphereGeometry(r.radius * unitScale);
+    }
+    const mat = useOcclusion ? materials.occlusion : materials[r.material];
+    const mesh = new THREE.Mesh(geo, mat);
+    updateMesh(mesh, r, unitScale);
+    return mesh;
+}
+
+function updateMesh(mesh, r, unitScale) {
+    let geo;
+    if (r.type === 'box') {
+        geo = getBoxGeometry(r.sizeX * unitScale, r.sizeY * unitScale, r.sizeZ * unitScale);
+        mesh.rotation.z = (r.rotationZ || 0) * Math.PI / 180;
+        mesh.renderOrder = -(r.x + r.y);
+    } else {
+        geo = getSphereGeometry(r.radius * unitScale);
+    }
+    if (mesh.geometry !== geo) mesh.geometry = geo;
+    mesh.position.set(r.x * unitScale, r.y * unitScale, r.z * unitScale);
+}
+
 function updateScene(data) {
     const unitScale = 0.01;
 
-    const boxesToUse = pendingBoxes || (data.staticUpdate ? data.boxes : null);
-    if (boxesToUse) {
+    const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
+    if (staticToUse) {
         const currentStaticKeys = new Set();
-        boxesToUse.forEach((b) => {
-            const key = `box_${b.x}_${b.y}_${b.z}_${b.sizeX}_${b.sizeY}_${b.sizeZ}_${b.material}_${b.rotationZ || 0}`;
+        staticToUse.forEach((r) => {
+            const key = getRenderableKey(r, 'static');
             currentStaticKeys.add(key);
 
             if (!staticMeshCache.has(key)) {
-                const geo = getBoxGeometry(b.sizeX * unitScale, b.sizeY * unitScale, b.sizeZ * unitScale);
-                const mesh = new THREE.Mesh(geo, materials[b.material]);
-                mesh.position.set(b.x * unitScale, b.y * unitScale, b.z * unitScale);
-                if (b.rotationZ) mesh.rotation.z = b.rotationZ * Math.PI / 180;
-                mesh.renderOrder = -(b.x + b.y);
+                const mesh = createMesh(r, unitScale);
                 staticScene.add(mesh);
                 staticMeshCache.set(key, mesh);
 
-                const occMesh = new THREE.Mesh(geo, materials.occlusion);
-                occMesh.position.copy(mesh.position);
-                occMesh.rotation.copy(mesh.rotation);
-                occMesh.renderOrder = mesh.renderOrder;
+                const occMesh = createMesh(r, unitScale, true);
                 dynamicScene.add(occMesh);
                 dynamicMeshCache.set(key, occMesh);
             }
@@ -236,25 +263,22 @@ function updateScene(data) {
     }
 
     const currentDynamicKeys = new Set();
-    data.spheres.forEach((s, i) => {
-        const key = `sphere_${s.material}_${i}`;
+    data.dynamic.forEach((r, i) => {
+        const key = `dyn_${r.type}_${r.material}_${i}`;
         currentDynamicKeys.add(key);
 
         let mesh = dynamicMeshCache.get(key);
         if (!mesh) {
-            const geo = getSphereGeometry(s.radius * unitScale);
-            mesh = new THREE.Mesh(geo, materials[s.material]);
+            mesh = createMesh(r, unitScale);
             dynamicScene.add(mesh);
             dynamicMeshCache.set(key, mesh);
         } else {
-            const geo = getSphereGeometry(s.radius * unitScale);
-            if (mesh.geometry !== geo) mesh.geometry = geo;
+            updateMesh(mesh, r, unitScale);
         }
-        mesh.position.set(s.x * unitScale, s.y * unitScale, s.z * unitScale);
     });
 
     for (const [key, mesh] of dynamicMeshCache.entries()) {
-        if (!key.startsWith('box_') && !currentDynamicKeys.has(key)) {
+        if (key.startsWith('dyn_') && !currentDynamicKeys.has(key)) {
             dynamicScene.remove(mesh);
             dynamicMeshCache.delete(key);
         }

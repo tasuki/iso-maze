@@ -49,6 +49,10 @@ type alias Sphere =
     , material : String
     }
 
+type Renderable
+    = BoxRenderable Box
+    | SphereRenderable Sphere
+
 
 sceneData : Model -> E.Value
 sceneData model =
@@ -64,55 +68,56 @@ sceneData model =
                     , ( "position", encodeVec3 config.cameraPosition )
                     ]
               )
-            , ( "spheres", E.list encodeSphere (allSpheres model) )
+            , ( "dynamic", E.list encodeRenderable (dynamicRenderables model) )
             , ( "staticUpdate", E.bool model.staticUpdate )
             ]
     in
     if model.staticUpdate then
-        E.object (( "boxes", E.list encodeBox (allBoxes model) ) :: common)
+        E.object (( "static", E.list encodeRenderable (staticRenderables model) ) :: common)
     else
         E.object common
 
-allBoxes : Model -> List Box
-allBoxes model =
+staticRenderables : Model -> List Renderable
+staticRenderables model =
+    List.concatMap (drawBlock >> List.map BoxRenderable) (M.toBlocks model.maze)
+
+dynamicRenderables : Model -> List Renderable
+dynamicRenderables model =
     let
         ( p, _, _ ) = model.playerSpheres
         discretePlayer = ( round (p.x / 10), round (p.y / 10), round (p.z / 10) )
     in
     List.concat
-        [ List.concatMap drawBlock (M.toBlocks model.maze)
-        , drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze)
+        [ List.map SphereRenderable (drawPlayer model.playerSpheres)
+        , List.map SphereRenderable (drawFocus model.mode model.focus)
+        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze))
         ]
 
-allSpheres : Model -> List Sphere
-allSpheres model =
-    List.concat
-        [ drawPlayer model.playerSpheres
-        , drawFocus model.mode model.focus
-        ]
+encodeRenderable : Renderable -> E.Value
+encodeRenderable r =
+    case r of
+        BoxRenderable b ->
+            E.object
+                [ ( "type", E.string "box" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                , ( "sizeX", E.float b.sizeX )
+                , ( "sizeY", E.float b.sizeY )
+                , ( "sizeZ", E.float b.sizeZ )
+                , ( "material", E.string b.material )
+                , ( "rotationZ", E.float b.rotationZ )
+                ]
 
-encodeBox : Box -> E.Value
-encodeBox b =
-    E.object
-        [ ( "x", E.float b.x )
-        , ( "y", E.float b.y )
-        , ( "z", E.float b.z )
-        , ( "sizeX", E.float b.sizeX )
-        , ( "sizeY", E.float b.sizeY )
-        , ( "sizeZ", E.float b.sizeZ )
-        , ( "material", E.string b.material )
-        , ( "rotationZ", E.float b.rotationZ )
-        ]
-
-encodeSphere : Sphere -> E.Value
-encodeSphere s =
-    E.object
-        [ ( "x", E.float s.x )
-        , ( "y", E.float s.y )
-        , ( "z", E.float s.z )
-        , ( "radius", E.float s.radius )
-        , ( "material", E.string s.material )
-        ]
+        SphereRenderable s ->
+            E.object
+                [ ( "type", E.string "sphere" )
+                , ( "x", E.float s.x )
+                , ( "y", E.float s.y )
+                , ( "z", E.float s.z )
+                , ( "radius", E.float s.radius )
+                , ( "material", E.string s.material )
+                ]
 
 
 encodeVec3 : Vec3 -> E.Value
