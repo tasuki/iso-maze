@@ -98,6 +98,7 @@ backgroundQuad = new THREE.Mesh(
     new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false })
 );
 backgroundScene.add(backgroundQuad);
+const backgroundPass = new PP.RenderPass(backgroundScene, backgroundCamera);
 
 // Postprocessing
 const staticRenderPass = new PP.RenderPass(staticScene, camera);
@@ -107,16 +108,13 @@ staticAoPass.configuration.distanceFalloff = 1.5;
 staticAoPass.configuration.intensity = 7.0;
 staticAoPass.setQualityMode("Medium");
 
-staticComposer = new PP.EffectComposer(renderer, {
-    frameBufferType: THREE.HalfFloatType
-});
+staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 staticComposer.renderToScreen = false;
 staticComposer.addPass(staticRenderPass);
 staticComposer.addPass(staticAoPass);
 
 // We'll update the map in the render loop to be safe
 
-const backgroundPass = new PP.RenderPass(backgroundScene, backgroundCamera);
 const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
 dynamicRenderPass.clear = false;
 const bloomEffect = new PP.BloomEffect({
@@ -126,9 +124,7 @@ const bloomEffect = new PP.BloomEffect({
     mipmapBlur: true,
 });
 
-composer = new PP.EffectComposer(renderer, {
-    frameBufferType: THREE.HalfFloatType
-});
+composer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 composer.addPass(backgroundPass);
 composer.addPass(dynamicRenderPass);
 composer.addPass(new PP.EffectPass(camera, bloomEffect));
