@@ -101,10 +101,11 @@ backgroundScene.add(backgroundQuad);
 
 // Postprocessing
 const staticRenderPass = new PP.RenderPass(staticScene, camera);
-const staticAoPass = new N8AOPostPass(staticScene, camera);
+const staticAoPass = new N8AOPostPass(staticScene, camera, container.clientWidth, container.clientHeight);
 staticAoPass.configuration.aoRadius = 0.5;
 staticAoPass.configuration.distanceFalloff = 1.5;
 staticAoPass.configuration.intensity = 7.0;
+staticAoPass.setQualityMode("Medium");
 
 staticComposer = new PP.EffectComposer(renderer, {
     frameBufferType: THREE.HalfFloatType
@@ -135,8 +136,7 @@ composer.addPass(new PP.EffectPass(camera, bloomEffect));
 function updateSize() {
     const w = container.clientWidth;
     const h = container.clientHeight;
-    const dpr = getDpr();
-    renderer.setPixelRatio(dpr);
+    renderer.setPixelRatio(getDpr());
     renderer.setSize(w, h);
     composer.setSize(w, h);
     staticComposer.setSize(w, h);
