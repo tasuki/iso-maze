@@ -53,8 +53,6 @@ type alias Sphere =
 sceneData : Model -> E.Value
 sceneData model =
     let
-        ( p, _, _ ) = model.playerSpheres
-        pLightPos = { x = p.x, y = p.y, z = p.z + 3.0 }
         config = computeCameraConfig model
 
         common =
@@ -66,7 +64,6 @@ sceneData model =
                     , ( "position", encodeVec3 config.cameraPosition )
                     ]
               )
-            , ( "playerLight", encodeVec3 pLightPos )
             , ( "spheres", E.list encodeSphere (allSpheres model) )
             , ( "staticUpdate", E.bool model.staticUpdate )
             ]

@@ -18,9 +18,9 @@ const materials = {
     base: new THREE.MeshLambertMaterial({ color: 0xffffff }),
     stairs: new THREE.MeshLambertMaterial({ color: 0xffccaa }),
     bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
-    player: new THREE.MeshLambertMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.5 }),
+    player: new THREE.MeshLambertMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.7 }),
     goal: new THREE.MeshLambertMaterial({ color: 0x222222 }),
-    focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
+    focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
 
@@ -45,10 +45,6 @@ const staticMeshCache = new Map();
 const dynamicMeshCache = new Map();
 
 // Scenes & Lights
-staticScene = new THREE.Scene();
-staticScene.background = new THREE.Color(0xaaddee);
-dynamicScene = new THREE.Scene();
-
 function addLights(s) {
     const fillLeft = new THREE.PointLight(0xffcc99, 30);
     fillLeft.position.set(-2, 0, 3);
@@ -63,11 +59,11 @@ function addLights(s) {
     s.add(fillAbove);
 }
 
+staticScene = new THREE.Scene();
+staticScene.background = new THREE.Color(0xaaddee);
 addLights(staticScene);
+dynamicScene = new THREE.Scene();
 addLights(dynamicScene);
-
-const playerLight = new THREE.PointLight(0xffffff, 0.03);
-dynamicScene.add(playerLight);
 
 // Camera
 let lastViewSize = 1.4;
@@ -89,7 +85,7 @@ camera.up.set(0, 0, 1);
 function getDpr() {
     return Math.min(window.devicePixelRatio || 1, 2);
 }
-renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.autoClear = false;
 container.appendChild(renderer.domElement);
 
@@ -104,37 +100,36 @@ backgroundQuad = new THREE.Mesh(
 backgroundScene.add(backgroundQuad);
 
 // Postprocessing
+const staticRenderPass = new PP.RenderPass(staticScene, camera);
+const staticAoPass = new N8AOPostPass(staticScene, camera);
+staticAoPass.configuration.aoRadius = 0.5;
+staticAoPass.configuration.distanceFalloff = 1.5;
+staticAoPass.configuration.intensity = 7.0;
+
 staticComposer = new PP.EffectComposer(renderer, {
     frameBufferType: THREE.HalfFloatType
 });
 staticComposer.renderToScreen = false;
-const staticRenderPass = new PP.RenderPass(staticScene, camera);
 staticComposer.addPass(staticRenderPass);
-const staticAoPass = new N8AOPostPass(staticScene, camera);
-staticAoPass.configuration.aoRadius = 0.2;
-staticAoPass.configuration.distanceFalloff = 1.0;
-staticAoPass.configuration.intensity = 5.0;
 staticComposer.addPass(staticAoPass);
 
 // We'll update the map in the render loop to be safe
 
+const backgroundPass = new PP.RenderPass(backgroundScene, backgroundCamera);
+const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
+dynamicRenderPass.clear = false;
+const bloomEffect = new PP.BloomEffect({
+    intensity: 5,
+    luminanceThreshold: 1,
+    // luminanceSmoothing: 0.1,
+    mipmapBlur: true,
+});
+
 composer = new PP.EffectComposer(renderer, {
     frameBufferType: THREE.HalfFloatType
 });
-
-const backgroundPass = new PP.RenderPass(backgroundScene, backgroundCamera);
 composer.addPass(backgroundPass);
-
-const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
-dynamicRenderPass.clear = false;
 composer.addPass(dynamicRenderPass);
-
-const bloomEffect = new PP.BloomEffect({
-    intensity: 1.0,
-    luminanceThreshold: 0.9,
-    luminanceSmoothing: 0.1,
-    mipmapBlur: true
-});
 composer.addPass(new PP.EffectPass(camera, bloomEffect));
 
 function updateSize() {
@@ -144,7 +139,7 @@ function updateSize() {
     renderer.setPixelRatio(dpr);
     renderer.setSize(w, h);
     composer.setSize(w, h);
-    if (staticComposer) staticComposer.setSize(w, h);
+    staticComposer.setSize(w, h);
 }
 updateSize();
 
@@ -264,14 +259,6 @@ function updateScene(data) {
             dynamicScene.remove(mesh);
             dynamicMeshCache.delete(key);
         }
-    }
-
-    if (data.playerLight) {
-        playerLight.position.set(
-            data.playerLight.x * unitScale,
-            data.playerLight.y * unitScale,
-            data.playerLight.z * unitScale
-        );
     }
 
     lastFocalPoint.set(data.camera.focalPoint.x, data.camera.focalPoint.y, data.camera.focalPoint.z);
