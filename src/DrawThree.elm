@@ -26,6 +26,8 @@ type alias Model =
     , mode : ME.Mode
     , widthPx : Int
     , heightPx : Int
+    , staticUpdate : Bool
+    , skipAo : Bool
     }
 
 
@@ -55,20 +57,26 @@ sceneData model =
         ( p, _, _ ) = model.playerSpheres
         pLightPos = { x = p.x, y = p.y, z = p.z + 3.0 }
         config = computeCameraConfig model
+
+        common =
+            [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
+            , ( "camera"
+              , E.object
+                    [ ( "viewSize", E.float config.viewSize )
+                    , ( "focalPoint", encodeVec3 config.focalPoint )
+                    , ( "position", encodeVec3 config.cameraPosition )
+                    ]
+              )
+            , ( "playerLight", encodeVec3 pLightPos )
+            , ( "spheres", E.list encodeSphere (allSpheres model) )
+            , ( "staticUpdate", E.bool model.staticUpdate )
+            , ( "skipAo", E.bool model.skipAo )
+            ]
     in
-    E.object
-        [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
-        , ( "camera"
-          , E.object
-                [ ( "viewSize", E.float config.viewSize )
-                , ( "focalPoint", encodeVec3 config.focalPoint )
-                , ( "position", encodeVec3 config.cameraPosition )
-                ]
-          )
-        , ( "playerLight", encodeVec3 pLightPos )
-        , ( "boxes", E.list encodeBox (allBoxes model) )
-        , ( "spheres", E.list encodeSphere (allSpheres model) )
-        ]
+    if model.staticUpdate then
+        E.object (( "boxes", E.list encodeBox (allBoxes model) ) :: common)
+    else
+        E.object common
 
 allBoxes : Model -> List Box
 allBoxes model =

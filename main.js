@@ -7,7 +7,8 @@ const app = Elm.Main.init({
     flags: getDpr()
 });
 
-let scene, camera, renderer, container, composer;
+let staticScene, dynamicScene, camera, renderer, container, composer, staticComposer;
+let backgroundScene, backgroundCamera, backgroundQuad;
 
 // Set Z as up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -20,6 +21,7 @@ const materials = {
     player: new THREE.MeshLambertMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.5 }),
     goal: new THREE.MeshLambertMaterial({ color: 0x222222 }),
     focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 10 }),
+    occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
 
 const geometryCache = new Map();
@@ -39,27 +41,33 @@ function getSphereGeometry(r) {
     return geometryCache.get(key);
 }
 
-const meshCache = new Map();
+const staticMeshCache = new Map();
+const dynamicMeshCache = new Map();
 
-// Scene & Lights
-scene = new THREE.Scene();
-scene.background = new THREE.Color(0xaaddee);
+// Scenes & Lights
+staticScene = new THREE.Scene();
+staticScene.background = new THREE.Color(0xaaddee);
+dynamicScene = new THREE.Scene();
 
-const fillLeft = new THREE.PointLight(0xffcc99, 30);
-fillLeft.position.set(-2, 0, 3);
-scene.add(fillLeft);
+function addLights(s) {
+    const fillLeft = new THREE.PointLight(0xffcc99, 30);
+    fillLeft.position.set(-2, 0, 3);
+    s.add(fillLeft);
 
-const fillRight = new THREE.PointLight(0x66bbff, 15);
-fillRight.position.set(0, -2, 3);
-scene.add(fillRight);
+    const fillRight = new THREE.PointLight(0x66bbff, 15);
+    fillRight.position.set(0, -2, 3);
+    s.add(fillRight);
 
-const fillAbove = new THREE.PointLight(0xffffff, 40);
-fillAbove.position.set(2, 2, 6);
-scene.add(fillAbove);
+    const fillAbove = new THREE.PointLight(0xffffff, 40);
+    fillAbove.position.set(2, 2, 6);
+    s.add(fillAbove);
+}
+
+addLights(staticScene);
+addLights(dynamicScene);
 
 const playerLight = new THREE.PointLight(0xffffff, 0.03);
-scene.add(playerLight);
-
+dynamicScene.add(playerLight);
 
 // Camera
 let lastViewSize = 1.4;
@@ -76,41 +84,67 @@ function updateCamera() {
 container = document.getElementById('three-container');
 camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 5);
 camera.up.set(0, 0, 1);
-updateCamera();
 
 // Renderer
 function getDpr() {
     return Math.min(window.devicePixelRatio || 1, 2);
 }
-renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+renderer.autoClear = false;
 container.appendChild(renderer.domElement);
 
-// Ambient Occlusion
-const n8aoPass = new N8AOPostPass(scene, camera, container.clientWidth, container.clientHeight);
-n8aoPass.configuration.aoRadius = 0.5;
-n8aoPass.configuration.distanceFalloff = 1.5;
-n8aoPass.configuration.intensity = 7.0;
-n8aoPass.setQualityMode("Medium");
-
-const bloomEffect = new PP.BloomEffect({
-    intensity: 2,
-    luminanceThreshold: 1,
-    mipmapBlur: true,
-});
+// Background Quad
+backgroundScene = new THREE.Scene();
+backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 10);
+backgroundCamera.position.z = 5;
+backgroundQuad = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false })
+);
+backgroundScene.add(backgroundQuad);
 
 // Postprocessing
-composer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
-composer.addPass(new PP.RenderPass(scene, camera));
-composer.addPass(n8aoPass);
+staticComposer = new PP.EffectComposer(renderer, {
+    frameBufferType: THREE.HalfFloatType
+});
+staticComposer.renderToScreen = false;
+const staticRenderPass = new PP.RenderPass(staticScene, camera);
+staticComposer.addPass(staticRenderPass);
+const staticAoPass = new N8AOPostPass(staticScene, camera);
+staticAoPass.configuration.aoRadius = 0.2;
+staticAoPass.configuration.distanceFalloff = 1.0;
+staticAoPass.configuration.intensity = 5.0;
+staticComposer.addPass(staticAoPass);
+
+// We'll update the map in the render loop to be safe
+
+composer = new PP.EffectComposer(renderer, {
+    frameBufferType: THREE.HalfFloatType
+});
+
+const backgroundPass = new PP.RenderPass(backgroundScene, backgroundCamera);
+composer.addPass(backgroundPass);
+
+const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
+dynamicRenderPass.clear = false;
+composer.addPass(dynamicRenderPass);
+
+const bloomEffect = new PP.BloomEffect({
+    intensity: 1.0,
+    luminanceThreshold: 0.9,
+    luminanceSmoothing: 0.1,
+    mipmapBlur: true
+});
 composer.addPass(new PP.EffectPass(camera, bloomEffect));
-if (getDpr() <= 1.2) {
-    composer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({ preset: PP.SMAAPreset.LOW })));
-}
 
 function updateSize() {
-    renderer.setPixelRatio(getDpr());
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    composer.setSize(container.clientWidth, container.clientHeight);
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    const dpr = getDpr();
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(w, h);
+    composer.setSize(w, h);
+    if (staticComposer) staticComposer.setSize(w, h);
 }
 updateSize();
 
@@ -124,18 +158,39 @@ window.addEventListener('keydown', (e) => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
     }
-}, { passive: false });
+});
 
 let rafId = null;
 let latestData = null;
 let lastRenderTimeReport = 0;
+let needsStaticRender = true;
+let pendingBoxes = null;
+
 app.ports.renderThreeJS.subscribe(data => {
     latestData = data;
+    if (data.staticUpdate && data.boxes) {
+        needsStaticRender = true;
+        pendingBoxes = data.boxes;
+        staticAoPass.enabled = !data.skipAo;
+    }
+
     if (!rafId) {
         rafId = requestAnimationFrame(() => {
             const t0 = performance.now();
             updateScene(latestData);
+
+            if (needsStaticRender) {
+                staticComposer.render();
+                // In postprocessing, the result is in inputBuffer after swap
+                backgroundQuad.material.map = staticComposer.inputBuffer.texture;
+                backgroundQuad.material.needsUpdate = true;
+                needsStaticRender = false;
+                pendingBoxes = null;
+            }
+
+            renderer.setRenderTarget(null);
             composer.render();
+
             const t1 = performance.now();
             if (t1 - lastRenderTimeReport > 1000) {
                 app.ports.updateRenderTime.send(t1 - t0);
@@ -148,59 +203,70 @@ app.ports.renderThreeJS.subscribe(data => {
 
 function updateScene(data) {
     const unitScale = 0.01;
-    const currentMeshKeys = new Set();
 
-    // Boxes
-    data.boxes.forEach((b) => {
-        const key = `box_${b.x}_${b.y}_${b.z}_${b.sizeX}_${b.sizeY}_${b.sizeZ}_${b.material}_${b.rotationZ || 0}`;
-        currentMeshKeys.add(key);
+    const boxesToUse = pendingBoxes || (data.staticUpdate ? data.boxes : null);
+    if (boxesToUse) {
+        const currentStaticKeys = new Set();
+        boxesToUse.forEach((b) => {
+            const key = `box_${b.x}_${b.y}_${b.z}_${b.sizeX}_${b.sizeY}_${b.sizeZ}_${b.material}_${b.rotationZ || 0}`;
+            currentStaticKeys.add(key);
 
-        if (!meshCache.has(key)) {
-            const geo = getBoxGeometry(
-                b.sizeX * unitScale,
-                b.sizeY * unitScale,
-                b.sizeZ * unitScale,
-            );
-            const mesh = new THREE.Mesh(geo, materials[b.material]);
-            mesh.position.set(
-                b.x * unitScale,
-                b.y * unitScale,
-                b.z * unitScale,
-            );
-            if (b.rotationZ) {
-                mesh.rotation.z = b.rotationZ * Math.PI / 180;
+            if (!staticMeshCache.has(key)) {
+                const geo = getBoxGeometry(b.sizeX * unitScale, b.sizeY * unitScale, b.sizeZ * unitScale);
+                const mesh = new THREE.Mesh(geo, materials[b.material]);
+                mesh.position.set(b.x * unitScale, b.y * unitScale, b.z * unitScale);
+                if (b.rotationZ) mesh.rotation.z = b.rotationZ * Math.PI / 180;
+                mesh.renderOrder = -(b.x + b.y);
+                staticScene.add(mesh);
+                staticMeshCache.set(key, mesh);
+
+                const occMesh = new THREE.Mesh(geo, materials.occlusion);
+                occMesh.position.copy(mesh.position);
+                occMesh.rotation.copy(mesh.rotation);
+                occMesh.renderOrder = mesh.renderOrder;
+                dynamicScene.add(occMesh);
+                dynamicMeshCache.set(key, occMesh);
             }
-            mesh.renderOrder = -(b.x + b.y); // no tears
-            scene.add(mesh);
-            meshCache.set(key, mesh);
+        });
+
+        for (const [key, mesh] of staticMeshCache.entries()) {
+            if (!currentStaticKeys.has(key)) {
+                staticScene.remove(mesh);
+                staticMeshCache.delete(key);
+                const occMesh = dynamicMeshCache.get(key);
+                if (occMesh) {
+                    dynamicScene.remove(occMesh);
+                    dynamicMeshCache.delete(key);
+                }
+            }
         }
-    });
+    }
 
-    // Spheres
+    const currentDynamicKeys = new Set();
     data.spheres.forEach((s, i) => {
-        // We use index because player spheres are always in the same order
-        // and we want to be able to move them.
         const key = `sphere_${s.material}_${i}`;
-        currentMeshKeys.add(key);
+        currentDynamicKeys.add(key);
 
-        let mesh = meshCache.get(key);
+        let mesh = dynamicMeshCache.get(key);
         if (!mesh) {
             const geo = getSphereGeometry(s.radius * unitScale);
             mesh = new THREE.Mesh(geo, materials[s.material]);
-            scene.add(mesh);
-            meshCache.set(key, mesh);
+            dynamicScene.add(mesh);
+            dynamicMeshCache.set(key, mesh);
         } else {
-            // Update geometry if radius changed (though it shouldn't for player)
             const geo = getSphereGeometry(s.radius * unitScale);
-            if (mesh.geometry !== geo) {
-                mesh.geometry = geo;
-            }
+            if (mesh.geometry !== geo) mesh.geometry = geo;
         }
-
         mesh.position.set(s.x * unitScale, s.y * unitScale, s.z * unitScale);
     });
 
-    // Player Light
+    for (const [key, mesh] of dynamicMeshCache.entries()) {
+        if (!key.startsWith('box_') && !currentDynamicKeys.has(key)) {
+            dynamicScene.remove(mesh);
+            dynamicMeshCache.delete(key);
+        }
+    }
+
     if (data.playerLight) {
         playerLight.position.set(
             data.playerLight.x * unitScale,
@@ -209,27 +275,8 @@ function updateScene(data) {
         );
     }
 
-    // Cleanup
-    for (const [key, mesh] of meshCache.entries()) {
-        if (!currentMeshKeys.has(key)) {
-            scene.remove(mesh);
-            meshCache.delete(key);
-            // Geometries and materials are cached/reused, so don't dispose here
-        }
-    }
-
-
-    // Camera
-    lastFocalPoint.set(
-        data.camera.focalPoint.x,
-        data.camera.focalPoint.y,
-        data.camera.focalPoint.z
-    );
-    camera.position.set(
-        data.camera.position.x,
-        data.camera.position.y,
-        data.camera.position.z
-    );
+    lastFocalPoint.set(data.camera.focalPoint.x, data.camera.focalPoint.y, data.camera.focalPoint.z);
+    camera.position.set(data.camera.position.x, data.camera.position.y, data.camera.position.z);
     camera.lookAt(lastFocalPoint);
     lastViewSize = data.camera.viewSize;
 

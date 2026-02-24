@@ -47,6 +47,8 @@ type alias Model =
     , dpr : Float
     , renderHistory : List { timestamp : Float, duration : Float }
     , tickHistory : List { timestamp : Float, duration : Float }
+    , staticUpdate : Bool
+    , skipAo : Bool
     }
 
 type Msg
@@ -111,6 +113,8 @@ init dpr url navKey =
             , dpr = dpr
             , renderHistory = []
             , tickHistory = []
+            , staticUpdate = True
+            , skipAo = False
             }
     in
     ( changeRouteTo url model
@@ -128,42 +132,54 @@ init dpr url navKey =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     let
-        ( newModel, cmd ) = updateModel message model
-        targets = Animate.getPlayerTargets newModel.playerState newModel.maze
+        ( preModel, cmd ) = updateModel message model
+
+        targets = Animate.getPlayerTargets preModel.playerState preModel.maze
         isMoving =
-            case newModel.playerState of
-                M.Idle _ -> Animate.isAnimatorMoving targets newModel.animator
+            case preModel.playerState of
+                M.Idle _ -> Animate.isAnimatorMoving targets preModel.animator
                 M.Moving _ -> True
 
         shouldRender =
             case message of
                 Resize _ _ -> True
                 Tick _ -> isMoving
-                Moved _ -> newModel.mode == ME.Editing && newModel.orbiting
+                Moved _ -> preModel.mode == ME.Editing && preModel.orbiting
+                Finished _ -> model.orbiting
                 KeyDown key ->
-                    if newModel.mode == ME.Editing then True
+                    if preModel.mode == ME.Editing then True
                     else key == "e" || key == "c"
+                ToggleMode -> True
+                CameraReset -> True
+                FocusShift _ -> True
+                ToggleBlock -> True
+                ToggleStairs -> True
+                ToggleBridge -> True
+                PlaceStart -> True
+                PlaceEnd -> True
                 _ -> False
     in
     if shouldRender then
         let
-            ( s1, s2, s3 ) = newModel.animator.spheres
+            ( s1, s2, s3 ) = preModel.animator.spheres
             sceneDataValue =
                 D.sceneData
-                    { azimuth = newModel.azimuth
-                    , elevation = newModel.elevation
-                    , maze = newModel.maze
+                    { azimuth = preModel.azimuth
+                    , elevation = preModel.elevation
+                    , maze = preModel.maze
                     , playerSpheres = ( s1.current, s2.current, s3.current )
-                    , focus = newModel.focus
-                    , mode = newModel.mode
-                    , widthPx = newModel.widthPx
-                    , heightPx = newModel.heightPx
+                    , focus = preModel.focus
+                    , mode = preModel.mode
+                    , widthPx = preModel.widthPx
+                    , heightPx = preModel.heightPx
+                    , staticUpdate = preModel.staticUpdate
+                    , skipAo = preModel.skipAo
                     }
         in
-        ( newModel
+        ( { preModel | staticUpdate = False, skipAo = False }
         , Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ]
         )
-    else ( newModel, cmd )
+    else ( preModel, cmd )
 
 
 updateModel : Msg -> Model -> ( Model, Cmd Msg )
@@ -173,7 +189,7 @@ updateModel message model =
             ( changeRouteTo url model, Cmd.none )
 
         Resize width height ->
-            ( { model | widthPx = width, heightPx = height }, Cmd.none )
+            ( { model | widthPx = width, heightPx = height, staticUpdate = True }, Cmd.none )
 
         Tick elapsed ->
             let
@@ -230,6 +246,8 @@ updateModel message model =
                         | azimuth = newAzimuth
                         , elevation = newElevation
                         , pointerLast = Just dc
+                        , staticUpdate = True
+                        , skipAo = True
                       }
                     , Cmd.none
                     )
@@ -237,10 +255,26 @@ updateModel message model =
                     ( { model | pointerLast = Just dc }, Cmd.none )
 
         Finished _ ->
-            ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
+            ( { model
+                | pointerStart = Nothing
+                , pointerLast = Nothing
+                , orbiting = False
+                , staticUpdate = model.orbiting
+                , skipAo = False
+              }
+            , Cmd.none
+            )
 
         Cancelled _ ->
-            ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
+            ( { model
+                | pointerStart = Nothing
+                , pointerLast = Nothing
+                , orbiting = False
+                , staticUpdate = model.orbiting
+                , skipAo = False
+              }
+            , Cmd.none
+            )
 
         VisibilityChange BE.Hidden ->
             ( { model | orbiting = False }, Cmd.none )
@@ -252,6 +286,8 @@ updateModel message model =
             ( { model
                 | azimuth = Angle.degrees D.initialAzimuth
                 , elevation = Angle.degrees D.initialElevation
+                , staticUpdate = True
+                , skipAo = False
               }
             , Cmd.none
             )
@@ -260,13 +296,14 @@ updateModel message model =
             let
                 newFocus = M.shiftPosition model.focus vector
             in
-            if M.isValidPosition newFocus then ( { model | focus = newFocus }, Cmd.none )
+            if M.isValidPosition newFocus then ( { model | focus = newFocus, staticUpdate = True }, Cmd.none )
             else ( model, Cmd.none )
 
         ToggleMode ->
             ( { model | mode =
                 if model.mode == ME.Running then ME.Editing
                 else ME.Running
+              , staticUpdate = True
               }
             , Cmd.none
             )
@@ -395,7 +432,7 @@ changeRouteTo url model =
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
     let newMaze = fun model.focus model.maze in
-    ( { model | maze = newMaze }
+    ( { model | maze = newMaze, staticUpdate = True }
     , pushUrl model.navKey newMaze
     )
 
