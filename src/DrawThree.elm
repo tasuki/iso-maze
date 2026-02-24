@@ -27,7 +27,6 @@ type alias Model =
     , widthPx : Int
     , heightPx : Int
     , staticUpdate : Bool
-    , skipAo : Bool
     }
 
 
@@ -70,7 +69,6 @@ sceneData model =
             , ( "playerLight", encodeVec3 pLightPos )
             , ( "spheres", E.list encodeSphere (allSpheres model) )
             , ( "staticUpdate", E.bool model.staticUpdate )
-            , ( "skipAo", E.bool model.skipAo )
             ]
     in
     if model.staticUpdate then

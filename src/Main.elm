@@ -48,7 +48,6 @@ type alias Model =
     , renderHistory : List { timestamp : Float, duration : Float }
     , tickHistory : List { timestamp : Float, duration : Float }
     , staticUpdate : Bool
-    , skipAo : Bool
     }
 
 type Msg
@@ -114,7 +113,6 @@ init dpr url navKey =
             , renderHistory = []
             , tickHistory = []
             , staticUpdate = True
-            , skipAo = False
             }
     in
     ( changeRouteTo url model
@@ -173,10 +171,9 @@ update message model =
                     , widthPx = preModel.widthPx
                     , heightPx = preModel.heightPx
                     , staticUpdate = preModel.staticUpdate
-                    , skipAo = preModel.skipAo
                     }
         in
-        ( { preModel | staticUpdate = False, skipAo = False }
+        ( { preModel | staticUpdate = False }
         , Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ]
         )
     else ( preModel, cmd )
@@ -247,7 +244,6 @@ updateModel message model =
                         , elevation = newElevation
                         , pointerLast = Just dc
                         , staticUpdate = True
-                        , skipAo = True
                       }
                     , Cmd.none
                     )
@@ -260,7 +256,6 @@ updateModel message model =
                 , pointerLast = Nothing
                 , orbiting = False
                 , staticUpdate = model.orbiting
-                , skipAo = False
               }
             , Cmd.none
             )
@@ -271,7 +266,6 @@ updateModel message model =
                 , pointerLast = Nothing
                 , orbiting = False
                 , staticUpdate = model.orbiting
-                , skipAo = False
               }
             , Cmd.none
             )
@@ -287,7 +281,6 @@ updateModel message model =
                 | azimuth = Angle.degrees D.initialAzimuth
                 , elevation = Angle.degrees D.initialElevation
                 , staticUpdate = True
-                , skipAo = False
               }
             , Cmd.none
             )

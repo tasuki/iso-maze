@@ -171,7 +171,6 @@ app.ports.renderThreeJS.subscribe(data => {
     if (data.staticUpdate && data.boxes) {
         needsStaticRender = true;
         pendingBoxes = data.boxes;
-        staticAoPass.enabled = !data.skipAo;
     }
 
     if (!rafId) {
