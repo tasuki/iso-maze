@@ -160,7 +160,7 @@ drawBlock block =
                 fy = toFloat y
                 fz = toFloat z
 
-                stepBox cx cy cz sw sd sh =
+                stepBox ( cx, cy, cz ) ( sw, sd, sh ) =
                     { x = fx * 10 + cx
                     , y = fy * 10 + cy
                     , z = fz * 10 + cz
@@ -189,12 +189,7 @@ drawBlock block =
                         , \i -> ( 10, 1, 1 + toFloat i )
                         )
 
-                oneBox i =
-                    let
-                        ( cx, cy, cz ) = centerFun i
-                        ( sw, sd, sh ) = dimsFun i
-                    in
-                    stepBox cx cy cz sw sd sh
+                oneBox i = stepBox (centerFun i) (dimsFun i)
             in
             List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
 
