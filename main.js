@@ -18,7 +18,7 @@ const materials = {
     base: new THREE.MeshLambertMaterial({ color: 0xffffff }),
     stairs: new THREE.MeshLambertMaterial({ color: 0xffccaa }),
     bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
-    player: new THREE.MeshLambertMaterial({ color: 0xddffff, emissive: 0xddffff, emissiveIntensity: 0.7 }),
+    player: new THREE.MeshLambertMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1 }),
     goal: new THREE.MeshLambertMaterial({ color: 0x222222 }),
     focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
@@ -109,7 +109,7 @@ staticAoPass.configuration.intensity = 7.0;
 staticAoPass.setQualityMode("Medium");
 
 staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
-staticComposer.renderToScreen = false;
+staticComposer.autoRenderToScreen = false;
 staticComposer.addPass(staticRenderPass);
 staticComposer.addPass(staticAoPass);
 
@@ -171,8 +171,7 @@ app.ports.renderThreeJS.subscribe(data => {
 
             if (needsStaticRender) {
                 staticComposer.render();
-                borked; // inserting an illegal line here to see N8AO
-                backgroundQuad.material.map = staticComposer.inputBuffer.texture;
+                backgroundQuad.material.map = staticComposer.outputBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
                 pendingBoxes = null;
