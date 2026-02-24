@@ -171,7 +171,7 @@ app.ports.renderThreeJS.subscribe(data => {
 
             if (needsStaticRender) {
                 staticComposer.render();
-                // In postprocessing, the result is in inputBuffer after swap
+                borked; // inserting an illegal line here to see N8AO
                 backgroundQuad.material.map = staticComposer.inputBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
