@@ -84,10 +84,13 @@ staticRenderables model =
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
+    let
+        ( s1, s2, s3 ) = model.playerSpheres
+    in
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
         , List.map SphereRenderable (drawFocus model.mode model.focus)
-        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) model.playerState)
+        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) model.playerState s3)
         ]
 
 encodeRenderable : Renderable -> E.Value
@@ -199,8 +202,8 @@ drawBlock block =
             List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
 
 
-drawEnd : M.Position -> M.PlayerState -> List Box
-drawEnd ( gx, gy, gz ) playerState =
+drawEnd : M.Position -> M.PlayerState -> Vec3 -> List Box
+drawEnd ( gx, gy, gz ) playerState head =
     let
         ( from2d, to2d, progress ) =
             case playerState of
@@ -224,12 +227,16 @@ drawEnd ( gx, gy, gz ) playerState =
             else { squash = 0, jump = 0 }
 
         fz = toFloat gz * 10
-        headZ = fz + 9.8
-        jumpHeight = 5.0
+        headZ = head.z + 1.4
+        jumpHeight = 18.0
 
-        currentBaseZ = fz + (headZ - fz) * anim.jump + (4 * jumpHeight * anim.jump * (1 - anim.jump))
+        -- Fast up, slow down: H(t) = 6.75 * jumpHeight * t * (1-t)^2
+        -- Peak is at t=1/3, lands with 0 vertical velocity at t=1
+        hProgress = anim.jump
+        jumpOffset = 6.75 * jumpHeight * hProgress * (1 - hProgress) * (1 - hProgress)
+        currentBaseZ = fz + (headZ - fz) * anim.jump + jumpOffset
         sZ = 1.0 - 0.4 * anim.squash
-        sXY = 1.0 + 0.4 * anim.squash
+        sXY = 1.0
 
         brimSizeZ = 0.4 * sZ
         crownSizeZ = 2.5 * sZ
