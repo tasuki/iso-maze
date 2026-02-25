@@ -21,6 +21,7 @@ type alias Model =
     { azimuth : Angle.Angle
     , elevation : Angle.Angle
     , maze : M.Maze
+    , playerState : M.PlayerState
     , playerSpheres : ( Vec3, Vec3, Vec3 )
     , focus : M.Position
     , mode : ME.Mode
@@ -83,14 +84,10 @@ staticRenderables model =
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
-    let
-        ( p, _, _ ) = model.playerSpheres
-        discretePlayer = ( round (p.x / 10), round (p.y / 10), round (p.z / 10) )
-    in
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
         , List.map SphereRenderable (drawFocus model.mode model.focus)
-        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze))
+        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) model.playerState)
         ]
 
 encodeRenderable : Renderable -> E.Value
@@ -202,25 +199,64 @@ drawBlock block =
             List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
 
 
-drawEnd : M.Position -> Bool -> List Box
-drawEnd ( x, y, z ) isAtEnd =
+drawEnd : M.Position -> M.PlayerState -> List Box
+drawEnd ( gx, gy, gz ) playerState =
     let
-        zd =
-            if isAtEnd then 9.5
-            else 0
+        ( from2d, to2d, progress ) =
+            case playerState of
+                M.Idle ( px, py, _ ) -> ( ( px, py ), ( px, py ), 1.0 )
+                M.Moving m ->
+                    let
+                        ( fx, fy, _ ) = m.from
+                        ( tx, ty, _ ) = m.to
+                    in
+                    ( ( fx, fy ), ( tx, ty ), m.progress )
 
-        hatPart rotation =
-            { x = toFloat x * 10
-            , y = toFloat y * 10
-            , z = toFloat z * 10 + 1 + zd
-            , sizeX = 1.6
-            , sizeY = 1.6
-            , sizeZ = 1.6
+        goal2d = ( gx, gy )
+        isNeighbor ( x1, y1 ) ( x2, y2 ) = abs (x1 - x2) + abs (y1 - y2) == 1
+
+        anim =
+            if to2d == goal2d && progress >= 1.0 then { squash = 0, jump = 1 }
+            else if to2d == goal2d && progress < 1.0 && isNeighbor from2d goal2d then { squash = max 0 (1 - progress * 5), jump = progress }
+            else if to2d /= goal2d && isNeighbor to2d goal2d && progress >= 1.0 then { squash = 1, jump = 0 }
+            else if to2d /= goal2d && isNeighbor to2d goal2d && progress < 1.0 && not (isNeighbor from2d goal2d) then { squash = progress, jump = 0 }
+            else if from2d /= goal2d && isNeighbor from2d goal2d && progress < 1.0 && not (isNeighbor to2d goal2d) then { squash = 1 - progress, jump = 0 }
+            else { squash = 0, jump = 0 }
+
+        fz = toFloat gz * 10
+        headZ = fz + 9.8
+        jumpHeight = 5.0
+
+        currentBaseZ = fz + (headZ - fz) * anim.jump + (4 * jumpHeight * anim.jump * (1 - anim.jump))
+        sZ = 1.0 - 0.4 * anim.squash
+        sXY = 1.0 + 0.4 * anim.squash
+
+        brimSizeZ = 0.4 * sZ
+        crownSizeZ = 2.5 * sZ
+
+        brim =
+            { x = toFloat gx * 10
+            , y = toFloat gy * 10
+            , z = currentBaseZ + brimSizeZ / 2
+            , sizeX = 4.0 * sXY
+            , sizeY = 4.0 * sXY
+            , sizeZ = brimSizeZ
             , material = "goal"
-            , rotationZ = rotation
+            , rotationZ = 0
+            }
+
+        crown =
+            { x = toFloat gx * 10
+            , y = toFloat gy * 10
+            , z = currentBaseZ + brimSizeZ + crownSizeZ / 2
+            , sizeX = 2.5 * sXY
+            , sizeY = 2.5 * sXY
+            , sizeZ = crownSizeZ
+            , material = "goal"
+            , rotationZ = 0
             }
     in
-    [ hatPart 0, hatPart 30, hatPart 60 ]
+    [ brim, crown ]
 
 
 drawPlayer : ( Vec3, Vec3, Vec3 ) -> List Sphere
