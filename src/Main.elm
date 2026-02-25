@@ -332,24 +332,32 @@ updateModel message model =
 updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> M.PlayerState -> M.PlayerState
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
-        maybeMove pos progress =
+        maybeMove pos progress maybePrevDir =
             case getDesiredDirection keysDown pointerStart pointerLast of
                 Just dir ->
                     case M.move pos dir maze of
                         Just nextTo ->
                             M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
                         Nothing ->
-                            M.Idle pos
+                            case maybePrevDir of
+                                Just prevDir ->
+                                    case M.move pos prevDir maze of
+                                        Just nextTo ->
+                                            M.Moving { from = pos, to = nextTo, dir = prevDir, progress = progress }
+                                        Nothing ->
+                                            M.Idle pos
+                                Nothing ->
+                                    M.Idle pos
                 Nothing ->
                     M.Idle pos
     in
     case playerState of
-        M.Idle pos -> maybeMove pos 0
+        M.Idle pos -> maybeMove pos 0 Nothing
         M.Moving m ->
             let
                 newProgress = m.progress + (dt / secondsPerStep)
             in
-            if newProgress >= 1 then maybeMove m.to (newProgress - 1)
+            if newProgress >= 1 then maybeMove m.to (newProgress - 1) (Just m.dir)
             else M.Moving { m | progress = newProgress }
 
 getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.Direction
