@@ -220,12 +220,19 @@ function updateMesh(mesh, r, unitScale) {
     if (r.type === 'box') {
         geo = getBoxGeometry(r.sizeX * unitScale, r.sizeY * unitScale, r.sizeZ * unitScale);
         mesh.rotation.z = (r.rotationZ || 0) * Math.PI / 180;
-        mesh.renderOrder = -(r.x + r.y);
     } else {
         geo = getSphereGeometry(r.radius * unitScale);
     }
     if (mesh.geometry !== geo) mesh.geometry = geo;
     mesh.position.set(r.x * unitScale, r.y * unitScale, r.z * unitScale);
+
+    // Sorting: z - x - y is back-to-front for Azimuth -135
+    mesh.renderOrder = r.z - r.x - r.y;
+    if (mesh.material === materials.occlusion) {
+        mesh.renderOrder -= 10000;
+    } else if (mesh.material === materials.player || mesh.material === materials.goal || mesh.material === materials.focus) {
+        mesh.renderOrder += 10000;
+    }
 }
 
 function updateScene(data) {
