@@ -462,7 +462,7 @@ port updateRenderTime : (Float -> msg) -> Sub msg
 menuLink : msg -> String -> String -> H.Html msg
 menuLink action iconText tooltip =
     H.div [ HA.class "item" ]
-        [ H.div [ HA.class "icon", HE.onClick action ]
+        [ H.div [ HA.class "icon overlay-style", HE.onClick action ]
             [ H.text iconText, H.span [ HA.class "tooltip" ] [ H.text <| " " ++ tooltip ] ]
         ]
 
@@ -488,30 +488,10 @@ view model =
             , menuLink Noop "?" "help"
             , menuLink ToggleDebug "~" "debug"
             ]
-        , H.div
-            (watchNow ++
-                [ HA.id "three-container"
-                , HA.style "width" "100%"
-                , HA.style "height" "100vh"
-                , HA.style "position" "relative"
-                , HA.style "user-select" "none"
-                , HA.style "touch-action" "none"
-                ]
-            )
+        , H.div (HA.id "three-container" :: watchNow)
             [ viewJoystick model ]
         , if model.debugInfo then
-            H.div
-                [ HA.style "position" "absolute"
-                , HA.style "top" "10px"
-                , HA.style "right" "10px"
-                , HA.style "color" "white"
-                , HA.style "background" "rgba(0, 0, 0, 0.4)"
-                , HA.style "padding" "5px 10px"
-                , HA.style "pointer-events" "none"
-                , HA.style "font-family" "monospace"
-                , HA.style "white-space" "pre"
-                , HA.style "z-index" "10"
-                ]
+            H.div [ HA.id "debug-info", HA.class "overlay-style" ]
                 [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
           else
             H.text ""
@@ -552,34 +532,17 @@ viewJoystick model =
                 ky = clampedDist * sin angle
             in
             H.div
-                [ HA.style "position" "absolute"
+                [ HA.class "joystick-container"
                 , HA.style "left" (String.fromFloat start.x ++ "px")
                 , HA.style "top" (String.fromFloat start.y ++ "px")
-                , HA.style "width" "0"
-                , HA.style "height" "0"
-                , HA.style "pointer-events" "none"
-                , HA.style "z-index" "100"
                 ]
-                [ H.div
-                    [ HA.style "position" "absolute"
-                    , HA.style "left" "-40px"
-                    , HA.style "top" "-40px"
-                    , HA.style "width" "80px"
-                    , HA.style "height" "80px"
-                    , HA.style "border" "2px solid rgba(255,255,255,0.3)"
-                    , HA.style "border-radius" "50%"
-                    ]
-                    []
-                , H.div [ HA.style "position" "absolute", HA.style "left" "-30px", HA.style "top" "0", HA.style "width" "60px", HA.style "height" "2px", HA.style "background" "rgba(255,255,255,0.2)" ] []
-                , H.div [ HA.style "position" "absolute", HA.style "left" "0", HA.style "top" "-30px", HA.style "width" "2px", HA.style "height" "60px", HA.style "background" "rgba(255,255,255,0.2)" ] []
+                [ H.div [ HA.class "joystick-base" ] []
+                , H.div [ HA.class "joystick-crosshair-h" ] []
+                , H.div [ HA.class "joystick-crosshair-v" ] []
                 , H.div
-                    [ HA.style "position" "absolute"
+                    [ HA.class "joystick-knob"
                     , HA.style "left" (String.fromFloat (kx - 15) ++ "px")
                     , HA.style "top" (String.fromFloat (ky - 15) ++ "px")
-                    , HA.style "width" "30px"
-                    , HA.style "height" "30px"
-                    , HA.style "background" "rgba(255,255,255,0.5)"
-                    , HA.style "border-radius" "50%"
                     ]
                     []
                 ]
