@@ -1,6 +1,7 @@
 port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS, sceneData)
 
 import Angle
+import Animate
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
@@ -200,69 +201,18 @@ drawBlock block =
 
 
 drawEnd : M.Position -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> List Box
-drawEnd ( gx, gy, gz ) playerState ( _, _, head ) =
+drawEnd goal playerState ( _, _, head ) =
     let
-        ( from2d, to2d, progress ) =
-            case playerState of
-                M.Idle ( px, py, _ ) -> ( ( px, py ), ( px, py ), 1.0 )
-                M.Moving m ->
-                    let
-                        ( fx, fy, _ ) = m.from
-                        ( tx, ty, _ ) = m.to
-                    in
-                    ( ( fx, fy ), ( tx, ty ), m.progress )
+        hatTransform = Animate.computeHatTransform goal playerState head.z
+        ( gx, gy, _ ) = goal
 
-        goal2d = ( gx, gy )
-        isNeighbor ( x1, y1 ) ( x2, y2 ) = abs (x1 - x2) + abs (y1 - y2) == 1
-
-        fz = toFloat gz * 10
-        jumpHeight = 18.0
-
-        ( currentBaseZ, squashFactor ) =
-            if to2d == goal2d then
-                if isNeighbor from2d goal2d then
-                    -- Moving to goal
-                    let
-                        -- Jump up fast (reach peak at progress = 0.2)
-                        t = clamp 0 0.333 (progress * (1.0 / 0.6))
-                        hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
-
-                        -- Descend slowly (from 1.0 to 4.0)
-                        descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
-                        targetZ = head.z + 1.4
-
-                        currentZ =
-                            if progress < 1.0 then fz + hJump
-                            else
-                                let startDescendZ = fz + jumpHeight
-                                in startDescendZ + (targetZ - startDescendZ) * descendProgress
-
-                        -- Squash should dissipate as it jumps
-                        squash = clamp 0 1 (1.0 - progress * 5.0)
-                    in
-                    ( currentZ, squash )
-                else if from2d == goal2d then
-                    -- Already at goal
-                    ( head.z + 1.4, 0 )
-                else
-                    ( fz, 0 )
-            else
-                let
-                    squash =
-                        if to2d /= goal2d && isNeighbor to2d goal2d && progress >= 1.0 then 1.0
-                        else if to2d /= goal2d && isNeighbor to2d goal2d && progress < 1.0 && not (isNeighbor from2d goal2d) then progress
-                        else if from2d /= goal2d && isNeighbor from2d goal2d && progress < 1.0 && not (isNeighbor to2d goal2d) then 1.0 - progress
-                        else 0
-                in
-                ( fz, squash )
-
-        sZ = 1.0 - 0.6 * squashFactor
-        sXY = 1.0 + 0.6 * squashFactor
+        sZ = 1.0 - 0.6 * hatTransform.squash
+        sXY = 1.0 + 0.6 * hatTransform.squash
 
         hatPart rotation =
             { x = toFloat gx * 10
             , y = toFloat gy * 10
-            , z = currentBaseZ + (0.8 * sZ)
+            , z = hatTransform.z + (0.8 * sZ)
             , sizeX = 1.6 * sXY
             , sizeY = 1.6 * sXY
             , sizeZ = 1.6 * sZ

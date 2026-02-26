@@ -113,6 +113,72 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
     in
     runSubSteps subSteps ( state.spheres, state.timer )
 
+type alias HatTransform =
+    { z : Float
+    , squash : Float
+    }
+
+
+computeHatTransform : M.Position -> M.PlayerState -> Float -> HatTransform
+computeHatTransform ( gx, gy, gz ) playerState headZ =
+    let
+        ( from2d, to2d, progress ) =
+            case playerState of
+                M.Idle ( px, py, _ ) -> ( ( px, py ), ( px, py ), 1.0 )
+                M.Moving m ->
+                    let
+                        ( fx, fy, _ ) = m.from
+                        ( tx, ty, _ ) = m.to
+                    in
+                    ( ( fx, fy ), ( tx, ty ), m.progress )
+
+        goal2d = ( gx, gy )
+        isNeighbor ( x1, y1 ) ( x2, y2 ) = abs (x1 - x2) + abs (y1 - y2) == 1
+
+        fz = toFloat gz * 10
+        jumpHeight = 18.0
+
+        ( currentBaseZ, squashFactor ) =
+            if to2d == goal2d then
+                if isNeighbor from2d goal2d then
+                    -- Moving to goal
+                    let
+                        -- Jump up fast (reach peak at progress = 0.2)
+                        t = clamp 0 0.333 (progress * (1.0 / 0.6))
+                        hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
+
+                        -- Descend slowly (from 1.0 to 4.0)
+                        descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
+                        targetZ = headZ + 1.4
+
+                        currentZ =
+                            if progress < 1.0 then fz + hJump
+                            else
+                                let startDescendZ = fz + jumpHeight
+                                in startDescendZ + (targetZ - startDescendZ) * descendProgress
+
+                        -- Squash should dissipate as it jumps
+                        squash = clamp 0 1 (1.0 - progress * 5.0)
+                    in
+                    ( currentZ, squash )
+                else if from2d == goal2d then
+                    -- Already at goal
+                    ( headZ + 1.4, 0 )
+                else
+                    ( fz, 0 )
+            else
+                let
+                    squash =
+                        if to2d /= goal2d && isNeighbor to2d goal2d && progress >= 1.0 then 1.0
+                        else if to2d /= goal2d && isNeighbor to2d goal2d && progress < 1.0 && not (isNeighbor from2d goal2d) then progress
+                        else if from2d /= goal2d && isNeighbor from2d goal2d && progress < 1.0 && not (isNeighbor to2d goal2d) then 1.0 - progress
+                        else 0
+                in
+                ( fz, squash )
+    in
+    { z = currentBaseZ, squash = squashFactor }
+
+
 interpolatedPosition : M.PlayerState -> (Float, Float, Float)
 interpolatedPosition playerState =
     case playerState of
