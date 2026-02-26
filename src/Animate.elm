@@ -51,11 +51,13 @@ isAnimatorMoving ( t1, t2, t3 ) state =
 updateAnimator : Float -> Triple Vec3 -> AnimatorState -> AnimatorState
 updateAnimator totalDt ( t1, t2, t3 ) state =
     let
+        ( bottomSphere, _, _ ) = state.spheres
         subSteps = 5
         dt = min totalDt 0.2 / toFloat subSteps
         staggerDelay = 0.05
-        springK = 400
-        damping = 30
+        isInitialFall = bottomSphere.current.z > t1.z + 2.0
+        springK = if isInitialFall then 40 else 400
+        damping = if isInitialFall then 20 else 30
 
         updateSphere curT i target s prevC prevT =
             if curT < toFloat i * staggerDelay then s
