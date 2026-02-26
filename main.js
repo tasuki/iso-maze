@@ -19,7 +19,7 @@ const materials = {
     stairs: new THREE.MeshLambertMaterial({ color: 0xffccaa }),
     bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
     player: new THREE.MeshLambertMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1 }),
-    goal: new THREE.MeshLambertMaterial({ color: 0x222222 }),
+    goal: new THREE.MeshLambertMaterial({ color: 0x555555 }),
     focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
