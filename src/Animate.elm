@@ -143,11 +143,11 @@ computeHatTransform ( gx, gy, gz ) playerState headZ =
                 if isNeighbor from2d goal2d then
                     -- Moving to goal
                     let
-                        -- Jump up fast (reach peak at progress = 0.2)
-                        t = clamp 0 0.333 (progress * (1.0 / 0.6))
+                        -- Jump up fast
+                        t = clamp 0 0.333 (progress * 0.2)
                         hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
 
-                        -- Descend slowly (from 1.0 to 4.0)
+                        -- Descend slowly
                         descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
                         targetZ = headZ + 1.4
 
