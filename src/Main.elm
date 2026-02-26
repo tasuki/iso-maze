@@ -156,6 +156,7 @@ update message model =
                     { azimuth = preModel.azimuth
                     , elevation = preModel.elevation
                     , maze = preModel.maze
+                    , playerState = preModel.playerState
                     , playerSpheres = ( s1.current, s2.current, s3.current )
                     , focus = preModel.focus
                     , mode = preModel.mode
@@ -356,8 +357,10 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
         M.Moving m ->
             let
                 newProgress = m.progress + (dt / secondsPerStep)
+                isAtGoal = m.to == M.endPosition maze
+                maxProgress = if isAtGoal then 4.0 else 1.0
             in
-            if newProgress >= 1 then maybeMove m.to (newProgress - 1) (Just m.dir)
+            if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress) (Just m.dir)
             else M.Moving { m | progress = newProgress }
 
 getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.Direction

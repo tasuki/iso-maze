@@ -1,6 +1,7 @@
 port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS, sceneData)
 
 import Angle
+import Animate
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
@@ -21,6 +22,7 @@ type alias Model =
     { azimuth : Angle.Angle
     , elevation : Angle.Angle
     , maze : M.Maze
+    , playerState : M.PlayerState
     , playerSpheres : ( Vec3, Vec3, Vec3 )
     , focus : M.Position
     , mode : ME.Mode
@@ -83,14 +85,10 @@ staticRenderables model =
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
-    let
-        ( p, _, _ ) = model.playerSpheres
-        discretePlayer = ( round (p.x / 10), round (p.y / 10), round (p.z / 10) )
-    in
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
         , List.map SphereRenderable (drawFocus model.mode model.focus)
-        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) (M.isAtEnd discretePlayer model.maze))
+        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) model.playerState model.playerSpheres)
         ]
 
 encodeRenderable : Renderable -> E.Value
@@ -202,20 +200,22 @@ drawBlock block =
             List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
 
 
-drawEnd : M.Position -> Bool -> List Box
-drawEnd ( x, y, z ) isAtEnd =
+drawEnd : M.Position -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> List Box
+drawEnd goal playerState ( _, _, head ) =
     let
-        zd =
-            if isAtEnd then 9.5
-            else 0
+        hatTransform = Animate.computeHatTransform goal playerState head.z
+        ( gx, gy, _ ) = goal
+
+        sZ = 1.0 - 0.6 * hatTransform.squash
+        sXY = 1.0 + 0.6 * hatTransform.squash
 
         hatPart rotation =
-            { x = toFloat x * 10
-            , y = toFloat y * 10
-            , z = toFloat z * 10 + 1 + zd
-            , sizeX = 1.6
-            , sizeY = 1.6
-            , sizeZ = 1.6
+            { x = toFloat gx * 10
+            , y = toFloat gy * 10
+            , z = hatTransform.z + (0.8 * sZ)
+            , sizeX = 1.6 * sXY
+            , sizeY = 1.6 * sXY
+            , sizeZ = 1.6 * sZ
             , material = "goal"
             , rotationZ = rotation
             }
