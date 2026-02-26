@@ -21,7 +21,7 @@ initAnimator : Triple Vec3 -> AnimatorState
 initAnimator ( t1, t2, t3 ) =
     let
         initSphere target =
-            { current = { x = target.x, y = target.y, z = target.z + 10.0 }
+            { current = { x = target.x, y = target.y, z = target.z + 30.0 }
             , velocity = { x = 0, y = 0, z = 0 }
             }
     in
@@ -51,11 +51,15 @@ isAnimatorMoving ( t1, t2, t3 ) state =
 updateAnimator : Float -> Triple Vec3 -> AnimatorState -> AnimatorState
 updateAnimator totalDt ( t1, t2, t3 ) state =
     let
+        ( bottomSphere, _, _ ) = state.spheres
+        isInitialFall = bottomSphere.current.z > t1.z + 10.0
+
         subSteps = 5
         dt = min totalDt 0.2 / toFloat subSteps
-        staggerDelay = 0.05
-        springK = 400
-        damping = 30
+        staggerDelay = 0.1
+
+        springK = if isInitialFall then 40 else 600
+        damping = if isInitialFall then 15 else 30
 
         updateSphere curT i target s prevC prevT =
             if curT < toFloat i * staggerDelay then s
