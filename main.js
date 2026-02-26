@@ -108,7 +108,7 @@ n8aoPass.configuration.distanceFalloff = 1.5;
 n8aoPass.configuration.intensity = 7.0;
 n8aoPass.setQualityMode("High");
 
-staticComposer = new PP.EffectComposer(renderer);
+staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 staticComposer.autoRenderToScreen = false;
 staticComposer.addPass(new PP.RenderPass(staticScene, camera));
 staticComposer.addPass(n8aoPass);
@@ -129,6 +129,9 @@ dynamicComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfF
 dynamicComposer.addPass(new PP.RenderPass(backgroundScene, backgroundCamera));
 dynamicComposer.addPass(dynamicRenderPass);
 dynamicComposer.addPass(bloomEffectPass);
+dynamicComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
+    preset: PP.SMAAPreset.LOW,
+})));
 
 // Updates and Listeners
 function updateSize() {
