@@ -121,7 +121,7 @@ interpolatedPosition playerState =
             let
                 ( x1, y1, z1 ) = m.from
                 ( x2, y2, z2 ) = m.to
-                p = m.progress
+                p = clamp 0 1 m.progress
                 lerp a b t = toFloat a + (toFloat b - toFloat a) * t
             in
             ( lerp x1 x2 p, lerp y1 y2 p, lerp z1 z2 p )

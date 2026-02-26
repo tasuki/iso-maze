@@ -357,8 +357,11 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
         M.Moving m ->
             let
                 newProgress = m.progress + (dt / secondsPerStep)
+                goal = M.endPosition maze
+                isAtGoal = m.to == goal
+                maxProgress = if isAtGoal then 4.0 else 1.0
             in
-            if newProgress >= 1 then maybeMove m.to (newProgress - 1) (Just m.dir)
+            if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress) (Just m.dir)
             else M.Moving { m | progress = newProgress }
 
 getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.Direction

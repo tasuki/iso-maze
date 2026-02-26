@@ -87,7 +87,7 @@ dynamicRenderables model =
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
         , List.map SphereRenderable (drawFocus model.mode model.focus)
-        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) model.playerState)
+        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) model.playerState model.playerSpheres)
         ]
 
 encodeRenderable : Renderable -> E.Value
@@ -199,8 +199,8 @@ drawBlock block =
             List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
 
 
-drawEnd : M.Position -> M.PlayerState -> List Box
-drawEnd ( gx, gy, gz ) playerState =
+drawEnd : M.Position -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> List Box
+drawEnd ( gx, gy, gz ) playerState ( _, _, head ) =
     let
         ( from2d, to2d, progress ) =
             case playerState of
@@ -215,34 +215,62 @@ drawEnd ( gx, gy, gz ) playerState =
         goal2d = ( gx, gy )
         isNeighbor ( x1, y1 ) ( x2, y2 ) = abs (x1 - x2) + abs (y1 - y2) == 1
 
-        anim =
-            if to2d == goal2d && progress >= 1.0 then { squash = 0, jump = 1 }
-            else if to2d == goal2d && progress < 1.0 && isNeighbor from2d goal2d then { squash = max 0 (1 - progress * 5), jump = progress }
-            else if to2d /= goal2d && isNeighbor to2d goal2d && progress >= 1.0 then { squash = 1, jump = 0 }
-            else if to2d /= goal2d && isNeighbor to2d goal2d && progress < 1.0 && not (isNeighbor from2d goal2d) then { squash = progress, jump = 0 }
-            else if from2d /= goal2d && isNeighbor from2d goal2d && progress < 1.0 && not (isNeighbor to2d goal2d) then { squash = 1 - progress, jump = 0 }
-            else { squash = 0, jump = 0 }
-
         fz = toFloat gz * 10
-        headZ = fz + 9.8
-        jumpHeight = 5.0
+        jumpHeight = 18.0
 
-        currentBaseZ = fz + (headZ - fz) * anim.jump + (4 * jumpHeight * anim.jump * (1 - anim.jump))
-        sZ = 1.0 - 0.4 * anim.squash
-        sXY = 1.0 + 0.4 * anim.squash
+        ( currentBaseZ, squashFactor ) =
+            if to2d == goal2d then
+                if isNeighbor from2d goal2d then
+                    -- Moving to goal
+                    let
+                        -- Jump up fast (reach peak at progress = 0.2)
+                        t = clamp 0 0.333 (progress * (1.0 / 0.6))
+                        hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
+
+                        -- Descend slowly (from 1.0 to 4.0)
+                        descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
+                        targetZ = head.z + 1.4
+
+                        currentZ =
+                            if progress < 1.0 then fz + hJump
+                            else
+                                let startDescendZ = fz + jumpHeight
+                                in startDescendZ + (targetZ - startDescendZ) * descendProgress
+
+                        -- Squash should dissipate as it jumps
+                        squash = clamp 0 1 (1.0 - progress * 5.0)
+                    in
+                    ( currentZ, squash )
+                else if from2d == goal2d then
+                    -- Already at goal
+                    ( head.z + 1.4, 0 )
+                else
+                    ( fz, 0 )
+            else
+                let
+                    squash =
+                        if to2d /= goal2d && isNeighbor to2d goal2d && progress >= 1.0 then 1.0
+                        else if to2d /= goal2d && isNeighbor to2d goal2d && progress < 1.0 && not (isNeighbor from2d goal2d) then progress
+                        else if from2d /= goal2d && isNeighbor from2d goal2d && progress < 1.0 && not (isNeighbor to2d goal2d) then 1.0 - progress
+                        else 0
+                in
+                ( fz, squash )
+
+        sZ = 1.0 - 0.6 * squashFactor
+        sXY = 1.0 + 0.6 * squashFactor
 
         hatPart rotation =
             { x = toFloat gx * 10
             , y = toFloat gy * 10
-            , z = currentBaseZ + sZ
-            , sizeX = 1.6
-            , sizeY = 1.6
-            , sizeZ = 1.6
+            , z = currentBaseZ + (0.8 * sZ)
+            , sizeX = 1.6 * sXY
+            , sizeY = 1.6 * sXY
+            , sizeZ = 1.6 * sZ
             , material = "goal"
             , rotationZ = rotation
             }
     in
-    [ hatPart 0, hatPart 30, hatPart 60]
+    [ hatPart 0, hatPart 30, hatPart 60 ]
 
 
 drawPlayer : ( Vec3, Vec3, Vec3 ) -> List Sphere
