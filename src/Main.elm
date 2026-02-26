@@ -156,6 +156,7 @@ update message model =
                     { azimuth = preModel.azimuth
                     , elevation = preModel.elevation
                     , maze = preModel.maze
+                    , playerState = preModel.playerState
                     , playerSpheres = ( s1.current, s2.current, s3.current )
                     , focus = preModel.focus
                     , mode = preModel.mode
