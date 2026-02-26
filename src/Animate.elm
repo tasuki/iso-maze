@@ -113,11 +113,11 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
     in
     runSubSteps subSteps ( state.spheres, state.timer )
 
+
 type alias HatTransform =
     { z : Float
     , squash : Float
     }
-
 
 computeHatTransform : M.Position -> M.PlayerState -> Float -> HatTransform
 computeHatTransform ( gx, gy, gz ) playerState headZ =
@@ -169,9 +169,9 @@ computeHatTransform ( gx, gy, gz ) playerState headZ =
             else
                 let
                     squash =
-                        if to2d /= goal2d && isNeighbor to2d goal2d && progress >= 1.0 then 1.0
-                        else if to2d /= goal2d && isNeighbor to2d goal2d && progress < 1.0 && not (isNeighbor from2d goal2d) then progress
-                        else if from2d /= goal2d && isNeighbor from2d goal2d && progress < 1.0 && not (isNeighbor to2d goal2d) then 1.0 - progress
+                        if isNeighbor to2d goal2d && progress >= 1.0 then 1.0
+                        else if isNeighbor to2d goal2d && progress < 1.0 then progress
+                        else if isNeighbor from2d goal2d && progress < 1.0 then 1.0 - progress
                         else 0
                 in
                 ( fz, squash )
