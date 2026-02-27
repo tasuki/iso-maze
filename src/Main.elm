@@ -486,7 +486,7 @@ port updateRenderTime : (Float -> msg) -> Sub msg
 menuLink : msg -> String -> H.Html msg
 menuLink action iconText =
     H.div [ HA.class "item" ]
-        [ H.div [ HA.class "icon overlay-style", HE.onClick action ] [ H.text iconText ]
+        [ H.div [ HA.class "icon overlay", HE.onClick action ] [ H.text iconText ]
         ]
 
 viewOverlay : Overlay -> H.Html Msg
@@ -494,7 +494,7 @@ viewOverlay overlay =
     case overlay of
         Help ->
             H.div [ HA.class "modal-backdrop", HE.onClick CloseOverlay ]
-                [ H.div [ HA.class "modal-content overlay-style" ]
+                [ H.div [ HA.class "modal-content overlay" ]
                     [ H.text helpText ]
                 ]
 
@@ -539,7 +539,7 @@ view model =
             Just overlay -> viewOverlay overlay
             Nothing -> H.text ""
         , if model.debugInfo then
-            H.div [ HA.id "debug-info", HA.class "overlay-style" ]
+            H.div [ HA.id "debug-info", HA.class "overlay" ]
                 [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
           else
             H.text ""
