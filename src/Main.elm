@@ -27,6 +27,9 @@ defaultMaze = SM.ziggurat2
 secondsPerStep = 0.25
 
 
+type Overlay
+    = Help
+
 type alias Model =
     { navKey : Nav.Key
     , widthPx : Int
@@ -48,6 +51,7 @@ type alias Model =
     , renderHistory : List { timestamp : Float, duration : Float }
     , tickHistory : List { timestamp : Float, duration : Float }
     , staticUpdate : Bool
+    , activeOverlay : Maybe Overlay
     }
 
 type Msg
@@ -72,6 +76,8 @@ type Msg
     | PlaceStart
     | PlaceEnd
     | ToggleDebug
+    | ShowOverlay Overlay
+    | CloseOverlay
     | DprUpdated Float
     | RenderTimeUpdated Float
 
@@ -113,6 +119,7 @@ init dpr url navKey =
             , renderHistory = []
             , tickHistory = []
             , staticUpdate = True
+            , activeOverlay = Nothing
             }
     in
     ( changeRouteTo url model
@@ -186,7 +193,7 @@ updateModel message model =
                 dtMs = Duration.inMilliseconds elapsed
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
-                    if model.mode == ME.Running then
+                    if model.mode == ME.Running && model.activeOverlay == Nothing then
                         updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
                     else
                         model.playerState
@@ -219,7 +226,7 @@ updateModel message model =
             )
 
         Moved dc ->
-            case ( model.orbiting, model.pointerLast ) of
+            case ( model.orbiting && model.activeOverlay == Nothing, model.pointerLast ) of
                 ( True, Just lastDc ) ->
                     let
                         rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
@@ -286,28 +293,42 @@ updateModel message model =
         PlaceEnd -> updateMaze ME.placeEnd model
 
         KeyDown key ->
-            let
-                newKeysDown = Set.insert key model.keysDown
-                newModel = { model | keysDown = newKeysDown }
-            in
-            case (model.mode, key) of
-                (_, "e") -> updateModel ToggleMode newModel
-                (_, "c") -> updateModel CameraReset newModel
-                (_, "`") -> updateModel ToggleDebug newModel
-                (_, "~") -> updateModel ToggleDebug newModel
-                (ME.Editing, _) ->
+            case model.activeOverlay of
+                Just Help ->
+                    ( { model | activeOverlay = Nothing, keysDown = Set.empty }, Cmd.none )
+
+                Nothing ->
                     let
-                        msg = keydown model.mode key
+                        newKeysDown = Set.insert key model.keysDown
+                        newModel = { model | keysDown = newKeysDown }
                     in
-                    if msg == Noop then (newModel, Cmd.none)
-                    else updateModel msg newModel
-                _ -> (newModel, Cmd.none)
+                    case (model.mode, key) of
+                        (_, "e") -> updateModel ToggleMode newModel
+                        (_, "c") -> updateModel CameraReset newModel
+                        (_, "`") -> updateModel ToggleDebug newModel
+                        (_, "~") -> updateModel ToggleDebug newModel
+                        (ME.Editing, _) ->
+                            let
+                                msg = keydown model.mode key
+                            in
+                            if msg == Noop then (newModel, Cmd.none)
+                            else updateModel msg newModel
+                        _ -> (newModel, Cmd.none)
 
         KeyUp key ->
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
         ToggleDebug ->
             ( { model | debugInfo = not model.debugInfo }, Cmd.none )
+
+        ShowOverlay overlay ->
+            if model.activeOverlay == Just overlay then
+                ( { model | activeOverlay = Nothing }, Cmd.none )
+            else
+                ( { model | activeOverlay = Just overlay, orbiting = False, pointerStart = Nothing, keysDown = Set.empty }, Cmd.none )
+
+        CloseOverlay ->
+            ( { model | activeOverlay = Nothing }, Cmd.none )
 
         DprUpdated dpr ->
             ( { model | dpr = dpr }, Cmd.none )
@@ -465,8 +486,30 @@ port updateRenderTime : (Float -> msg) -> Sub msg
 menuLink : msg -> String -> H.Html msg
 menuLink action iconText =
     H.div [ HA.class "item" ]
-        [ H.div [ HA.class "icon overlay-style", HE.onClick action ] [ H.text iconText ]
+        [ H.div [ HA.class "icon overlay", HE.onClick action ] [ H.text iconText ]
         ]
+
+viewOverlay : Overlay -> H.Html Msg
+viewOverlay overlay =
+    case overlay of
+        Help ->
+            H.div [ HA.class "modal-backdrop", HE.onClick CloseOverlay ]
+                [ H.div [ HA.class "modal-content overlay" ]
+                    [ H.text helpText ]
+                ]
+
+helpText : String
+helpText =
+    """👋 ⛄➡️🎩
+
+1️⃣ 🌬️⛄
+2️⃣ 💨🎩🪽
+3️⃣ ⛄❓🎩
+4️⃣ 🧭⛄🕹️
+  ✳️ 📱👆↕️↔️
+  ✳️ 💻🖱️↕️↔️
+  ✳️ 💻⌨️🔼🔽◀️▶️
+5️⃣ ⛄➡️🎩  🏆👑😎"""
 
 view : Model -> Browser.Document Msg
 view model =
@@ -487,13 +530,16 @@ view model =
         [ H.div [ HA.id "menu" ]
             [ menuLink Noop "🚀"
             , menuLink Noop "🔧"
-            , menuLink Noop "💡"
+            , menuLink (ShowOverlay Help) "💡"
             , menuLink ToggleDebug "🧪"
             ]
         , H.div (HA.id "three-container" :: watchNow)
             [ viewJoystick model ]
+        , case model.activeOverlay of
+            Just overlay -> viewOverlay overlay
+            Nothing -> H.text ""
         , if model.debugInfo then
-            H.div [ HA.id "debug-info", HA.class "overlay-style" ]
+            H.div [ HA.id "debug-info", HA.class "overlay" ]
                 [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
           else
             H.text ""
