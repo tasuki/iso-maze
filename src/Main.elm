@@ -462,11 +462,10 @@ port updateRenderTime : (Float -> msg) -> Sub msg
 
 -- View
 
-menuLink : msg -> String -> String -> H.Html msg
-menuLink action iconText tooltip =
+menuLink : msg -> String -> H.Html msg
+menuLink action iconText =
     H.div [ HA.class "item" ]
-        [ H.div [ HA.class "icon overlay-style", HE.onClick action ]
-            [ H.text iconText, H.span [ HA.class "tooltip" ] [ H.text <| " " ++ tooltip ] ]
+        [ H.div [ HA.class "icon overlay-style", HE.onClick action ] [ H.text iconText ]
         ]
 
 view : Model -> Browser.Document Msg
@@ -486,10 +485,10 @@ view model =
     { title = "Iso Maze"
     , body =
         [ H.div [ HA.id "menu" ]
-            [ menuLink Noop "#" "maze"
-            , menuLink Noop "*" "settings"
-            , menuLink Noop "?" "help"
-            , menuLink ToggleDebug "~" "debug"
+            [ menuLink Noop "🚀"
+            , menuLink Noop "🔧"
+            , menuLink Noop "💡"
+            , menuLink ToggleDebug "🧪"
             ]
         , H.div (HA.id "three-container" :: watchNow)
             [ viewJoystick model ]
