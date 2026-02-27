@@ -29,6 +29,7 @@ secondsPerStep = 0.25
 
 type Overlay
     = Help
+    | Settings
 
 type alias Model =
     { navKey : Nav.Key
@@ -75,7 +76,8 @@ type Msg
     | ToggleBridge
     | PlaceStart
     | PlaceEnd
-    | ToggleDebug
+    | SetDebug Bool
+    | ResetProgress
     | ShowOverlay Overlay
     | CloseOverlay
     | DprUpdated Float
@@ -294,8 +296,11 @@ updateModel message model =
 
         KeyDown key ->
             case model.activeOverlay of
-                Just Help ->
-                    ( { model | activeOverlay = Nothing, keysDown = Set.empty }, Cmd.none )
+                Just _ ->
+                    if key == "Escape" then
+                        ( { model | activeOverlay = Nothing, keysDown = Set.empty }, Cmd.none )
+                    else
+                        ( model, Cmd.none )
 
                 Nothing ->
                     let
@@ -305,8 +310,8 @@ updateModel message model =
                     case (model.mode, key) of
                         (_, "e") -> updateModel ToggleMode newModel
                         (_, "c") -> updateModel CameraReset newModel
-                        (_, "`") -> updateModel ToggleDebug newModel
-                        (_, "~") -> updateModel ToggleDebug newModel
+                        (_, "`") -> updateModel (SetDebug (not model.debugInfo)) newModel
+                        (_, "~") -> updateModel (SetDebug (not model.debugInfo)) newModel
                         (ME.Editing, _) ->
                             let
                                 msg = keydown model.mode key
@@ -318,8 +323,11 @@ updateModel message model =
         KeyUp key ->
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
-        ToggleDebug ->
-            ( { model | debugInfo = not model.debugInfo }, Cmd.none )
+        SetDebug debug ->
+            ( { model | debugInfo = debug }, Cmd.none )
+
+        ResetProgress ->
+            ( model, Cmd.none )
 
         ShowOverlay overlay ->
             if model.activeOverlay == Just overlay then
@@ -489,14 +497,41 @@ menuLink action iconText =
         [ H.div [ HA.class "icon overlay", HE.onClick action ] [ H.text iconText ]
         ]
 
-viewOverlay : Overlay -> H.Html Msg
-viewOverlay overlay =
-    case overlay of
-        Help ->
-            H.div [ HA.class "modal-backdrop", HE.onClick CloseOverlay ]
-                [ H.div [ HA.class "modal-content overlay" ]
+viewOverlay : Model -> Overlay -> H.Html Msg
+viewOverlay model overlay =
+    let
+        stopProp msg =
+            HE.stopPropagationOn "click" (Decode.succeed ( msg, True ))
+
+        content =
+            case overlay of
+                Help ->
                     [ H.text helpText ]
-                ]
+
+                Settings ->
+                    [ H.div [ HA.class "settings-row" ]
+                        [ H.div [ HA.class "settings-label" ] [ H.text "Reset Progress" ]
+                        , H.div [ HA.class "icon", HE.onClick ResetProgress ] [ H.text "⚠️⏮️⚠️" ]
+                        ]
+                    , H.div [ HA.class "settings-row" ]
+                        [ H.div [ HA.class "settings-label" ] [ H.text "Debug Info" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if model.debugInfo then " active" else "")
+                            , HE.onClick (SetDebug True)
+                            ]
+                            [ H.text "🧪✔️" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if not model.debugInfo then " active" else "")
+                            , HE.onClick (SetDebug False)
+                            ]
+                            [ H.text "🧪❌" ]
+                        ]
+                    ]
+    in
+    H.div [ HA.class "modal-backdrop", HE.onClick CloseOverlay ]
+        [ H.div [ HA.class "modal-content overlay", stopProp Noop ]
+            content
+        ]
 
 helpText : String
 helpText =
@@ -529,14 +564,13 @@ view model =
     , body =
         [ H.div [ HA.id "menu" ]
             [ menuLink Noop "🚀"
-            , menuLink Noop "🔧"
+            , menuLink (ShowOverlay Settings) "🔧"
             , menuLink (ShowOverlay Help) "💡"
-            , menuLink ToggleDebug "🧪"
             ]
         , H.div (HA.id "three-container" :: watchNow)
             [ viewJoystick model ]
         , case model.activeOverlay of
-            Just overlay -> viewOverlay overlay
+            Just overlay -> viewOverlay model overlay
             Nothing -> H.text ""
         , if model.debugInfo then
             H.div [ HA.id "debug-info", HA.class "overlay" ]
