@@ -7,30 +7,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; font-family: monospace; font-size: 32px; user-select: none; }
-        .overlay { background: #0003; color: #FFF; border-radius: 8px; padding: 10px; white-space: pre; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: monospace; user-select: none; }
+        .overlay-style { background: rgba(0, 0, 0, 0.4); color: white; border-radius: 8px; padding: 10px; white-space: pre; font-family: sans-serif; }
         #three-container { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; position: relative; touch-action: none; }
 
         .modal-backdrop {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0009; z-index: 1000;
+            background: rgba(0, 0, 0, 0.3); z-index: 1000;
             display: flex; align-items: center; justify-content: center;
         }
-        .modal-content { pointer-events: auto; line-height: 1.5; padding: 25px; }
+        .modal-content {
+            pointer-events: auto; line-height: 1.5; font-size: 18px; padding: 25px;
+            max-height: 90vh; overflow-y: auto;
+        }
 
         #menu { position: absolute; left: 0px; top: 0px; z-index: 9; }
         #menu .item { float: left; padding: 1px 0 0 1px; }
         @media screen and (min-aspect-ratio: 1/1) { #menu .item { float: none; } }
 
         #menu .icon {
-            display: block; cursor: pointer; border-radius: 40px; font-size: 24px;
-            line-height: 40px; width: 40px; height: 40px; text-align: center;
+            display: block; cursor: pointer; font-size: 30px; border-radius: 30px;
+            line-height: 60px; width: 60px; height: 60px; text-align: center;
         }
         #menu .icon:active { background: #FFF3; }
 
         #debug-info {
             position: absolute; top: 10px; right: 10px;
-            pointer-events: none; z-index: 10; font-size: 16px;
+            pointer-events: none; z-index: 10; font-size: 12px;
+            font-family: monospace;
         }
 
         .joystick-container { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 100; }
