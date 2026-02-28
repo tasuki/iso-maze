@@ -6,20 +6,24 @@ import Maze as M
 
 encode : M.Maze -> String
 encode maze =
-    let cut = cutout maze in
-    "sz:"
-        ++ (String.fromInt cut.xSize) ++ ","
-        ++ (String.fromInt cut.ySize)
-        ++ ";off:"
-        ++ (String.fromInt cut.xOffset) ++ ","
-        ++ (String.fromInt cut.yOffset)
-        ++ ";st:"
-        ++ (String.fromInt <| M.posX <| maze.start) ++ ","
-        ++ (String.fromInt <| M.posY <| maze.start)
-        ++ ";end:"
-        ++ (String.fromInt <| M.posX <| maze.end) ++ ","
-        ++ (String.fromInt <| M.posY <| maze.end)
-        ++ ";mz:" ++ (String.join "" <| List.map encodeBlock cut.maze)
+    let
+        cut = cutout maze
+        config = maze.config
+        encodeLight l = l.color ++ "," ++ (String.fromInt <| round l.intensity)
+
+        parts =
+            [ "sz:" ++ (String.fromInt cut.xSize) ++ "," ++ (String.fromInt cut.ySize)
+            , "off:" ++ (String.fromInt cut.xOffset) ++ "," ++ (String.fromInt cut.yOffset)
+            , "st:" ++ (String.fromInt <| M.posX <| maze.start) ++ "," ++ (String.fromInt <| M.posY <| maze.start)
+            , "end:" ++ (String.fromInt <| M.posX <| maze.end) ++ "," ++ (String.fromInt <| M.posY <| maze.end)
+            ]
+            ++ (if config.left == M.defaultConfig.left then [] else [ "left:" ++ encodeLight config.left ])
+            ++ (if config.right == M.defaultConfig.right then [] else [ "right:" ++ encodeLight config.right ])
+            ++ (if config.above == M.defaultConfig.above then [] else [ "above:" ++ encodeLight config.above ])
+            ++ (if config.bg == M.defaultConfig.bg then [] else [ "bg:" ++ config.bg ])
+            ++ [ "mz:" ++ (String.join "" <| List.map encodeBlock cut.maze) ]
+    in
+    String.join ";" parts
 
 removeSpaces : String -> String
 removeSpaces = String.filter (\c -> c /= ' ')
@@ -46,8 +50,18 @@ decode str =
         st = findPart "st:" |> Maybe.andThen parseIntPair
         end = findPart "end:" |> Maybe.andThen parseIntPair
         mz = findPart "mz:"
+
+        parseLight s = case String.split "," s of
+            [ c, i ] -> Maybe.map (M.LightConfig c) (String.toFloat i)
+            _ -> Nothing
+
+        left = findPart "left:" |> Maybe.andThen parseLight |> Maybe.withDefault M.defaultConfig.left
+        right = findPart "right:" |> Maybe.andThen parseLight |> Maybe.withDefault M.defaultConfig.right
+        above = findPart "above:" |> Maybe.andThen parseLight |> Maybe.withDefault M.defaultConfig.above
+        bg = findPart "bg:" |> Maybe.withDefault M.defaultConfig.bg
+        config = { left = left, right = right, above = above, bg = bg }
     in
-    Maybe.map4 SubMaze
+    Maybe.map4 (SubMaze config)
         (sz |> Maybe.map Tuple.first)
         (sz |> Maybe.map Tuple.second)
         (off |> Maybe.map Tuple.first)
@@ -113,7 +127,8 @@ decodeBlocks chars =
 -- Cutout maze to minimum rectangle
 
 type alias SubMaze =
-    { xSize : Int
+    { config : M.MazeConfig
+    , xSize : Int
     , ySize : Int
     , xOffset : Int
     , yOffset : Int
@@ -130,7 +145,8 @@ cutout maze =
         yRange = List.reverse <| List.range limits.minY limits.maxY
         getBlock y x = Array.get (M.toIndex x y) maze.maze
     in
-    { xSize = limits.maxX - limits.minX + 1
+    { config = maze.config
+    , xSize = limits.maxX - limits.minX + 1
     , ySize = limits.maxY - limits.minY + 1
     , xOffset = limits.minX
     , yOffset = limits.minY
@@ -155,7 +171,7 @@ insertCutout subMaze =
     List.indexedMap toBlock subMaze.maze
         |> List.filterMap identity
         |> List.foldl M.set
-            { maze | start = subMaze.start, end = subMaze.end }
+            { maze | start = subMaze.start, end = subMaze.end, config = subMaze.config }
 
 
 -- Limits

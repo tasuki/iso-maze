@@ -16,11 +16,25 @@ furthest = 16
 sideSize = maxTileCoord - minTileCoord + 1
 coordsRange = List.range minTileCoord maxTileCoord
 
+type alias LightConfig =
+    { color : String
+    , intensity : Float
+    }
+
+type alias MazeConfig =
+    { left : LightConfig
+    , right : LightConfig
+    , above : LightConfig
+    , bg : String
+    }
+
 type alias Maze =
     { maze : Array MazeBlock
     , start : Pos2d
     , end : Pos2d
+    , config : MazeConfig
     }
+
 type MazeBlock
     = EmptyBlock
     | BaseBlock Int
@@ -50,6 +64,14 @@ type PlayerState
 
 -- Maze
 
+defaultConfig : MazeConfig
+defaultConfig =
+    { left = { color = "fc9", intensity = 30 }
+    , right = { color = "6bf", intensity = 15 }
+    , above = { color = "fff", intensity = 40 }
+    , bg = "689"
+    }
+
 emptyMaze : Maze
 emptyMaze = emptyMazeSize sideSize sideSize
 
@@ -58,13 +80,14 @@ emptyMazeSize xSize ySize =
     { maze = Array.initialize (ySize * xSize) (always EmptyBlock)
     , start = (0, 0)
     , end = (0, 0)
+    , config = defaultConfig
     }
 
 toIndex : Int -> Int -> Int
 toIndex x y = (y - minTileCoord) * sideSize + (x - minTileCoord)
 
 fromBlocks : List Block -> Maze
-fromBlocks blocks = List.foldl set emptyMaze blocks
+fromBlocks blocks = List.foldl set (emptyMazeSize sideSize sideSize) blocks
 
 set : Block -> Maze -> Maze
 set block maze =
