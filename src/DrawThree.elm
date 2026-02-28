@@ -60,6 +60,8 @@ sceneData : Model -> E.Value
 sceneData model =
     let
         config = computeCameraConfig model
+        mazeConfig = model.maze.config
+        encodeLight l = E.object [ ( "color", E.string l.color ), ( "intensity", E.float l.intensity ) ]
 
         common =
             [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
@@ -72,6 +74,14 @@ sceneData model =
               )
             , ( "dynamic", E.list encodeRenderable (dynamicRenderables model) )
             , ( "staticUpdate", E.bool model.staticUpdate )
+            , ( "config"
+              , E.object
+                    [ ( "left", encodeLight mazeConfig.left )
+                    , ( "right", encodeLight mazeConfig.right )
+                    , ( "above", encodeLight mazeConfig.above )
+                    , ( "bg", E.string mazeConfig.bg )
+                    ]
+              )
             ]
     in
     if model.staticUpdate then

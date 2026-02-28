@@ -24,7 +24,7 @@ cutoutTest =
     describe "Cutout"
         [ test "Cuts out the roundabout" <|
             \_ -> Expect.equal
-                { xSize = 9, ySize = 9, xOffset = -3, yOffset = -3, start = (0, 0), end = (4, 4), maze =
+                { config = defaultConfig, xSize = 9, ySize = 9, xOffset = -3, yOffset = -3, start = (0, 0), end = (4, 4), maze =
                     [  EmptyBlock, EmptyBlock,       BaseBlock 2,      BaseBlock 3,      BaseBlock 3,      BaseBlock 4,      BaseBlock 4,       EmptyBlock,  EmptyBlock
                     ,  EmptyBlock, BaseBlock 1,      BaseBlock 2, StairsBlock 3 SW,      BaseBlock 3, StairsBlock 4 SW,      BaseBlock 4,      BaseBlock 4,  EmptyBlock
                     , BaseBlock 0, BaseBlock 1, StairsBlock 2 SE,      BaseBlock 2,      BaseBlock 2,      BaseBlock 3,      BaseBlock 3,      BaseBlock 4, BaseBlock 4
@@ -39,7 +39,7 @@ cutoutTest =
                 (cutout SM.roundabout)
         , test "Cuts out assymetric" <|
             \_ -> Expect.equal
-                { xSize = 2, ySize = 6, xOffset = 0, yOffset = -1, start = (0, -1), end = (1, 4), maze =
+                { config = defaultConfig, xSize = 2, ySize = 6, xOffset = 0, yOffset = -1, start = (0, -1), end = (1, 4), maze =
                     [ EmptyBlock , BaseBlock 0
                     , BaseBlock 0, BaseBlock 0
                     , BaseBlock 0, EmptyBlock
@@ -67,7 +67,9 @@ encodeTest =
     describe "Encode"
         [ test "Encodes assymetric" <|
             \_ -> Expect.equal
-                (removeSpaces ("sz:2,6;off:0,-1;st:0,-1;end:1,4;mz:"
+                (removeSpaces ("sz:2,6;off:0,-1;st:0,-1;end:1,4"
+                    ++ ";left:fc9.30;right:6bf.15;above:fff.40;bg:689"
+                    ++ ";mz:"
                     ++ "x o0"
                     ++ "o0o0"
                     ++ "o0x "
@@ -78,7 +80,9 @@ encodeTest =
                 (encode SM.assymetric)
         , test "Encodes the roundabout" <|
             \_ -> Expect.equal
-                (removeSpaces ("sz:9,9;off:-3,-3;st:0,0;end:4,4;mz:"
+                (removeSpaces ("sz:9,9;off:-3,-3;st:0,0;end:4,4"
+                    ++ ";left:fc9.30;right:6bf.15;above:fff.40;bg:689"
+                    ++ ";mz:"
                     ++ "x x o2o3o3o4o4x x "
                     ++ "x o1o2z3o3z4o4o4x "
                     ++ "o0o1s2o2o2o3o3o4o4"

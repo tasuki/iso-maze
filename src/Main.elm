@@ -155,6 +155,7 @@ update message model =
                 KeyDown key ->
                     if preModel.mode == ME.Editing then True
                     else key == "e" || key == "c"
+                UrlChanged _ -> True
                 _ -> False
     in
     if shouldRender then
@@ -435,6 +436,7 @@ changeRouteTo url model =
                 | maze = maze
                 , playerState = M.Idle startPos
                 , animator = Animate.initAnimator targets
+                , staticUpdate = True
             }
         Nothing -> model
 

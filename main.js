@@ -45,25 +45,31 @@ const staticMeshCache = new Map();
 const dynamicMeshCache = new Map();
 
 // Scenes & Lights
-function addLights(s) {
-    const fillLeft = new THREE.PointLight(0xffcc99, 30);
-    fillLeft.position.set(-2, 0, 3);
-    s.add(fillLeft);
+function createLights() {
+    return {
+        left: new THREE.PointLight(0xffcc99, 30),
+        right: new THREE.PointLight(0x66bbff, 15),
+        above: new THREE.PointLight(0xffffff, 40),
+    };
+}
 
-    const fillRight = new THREE.PointLight(0x66bbff, 15);
-    fillRight.position.set(0, -2, 3);
-    s.add(fillRight);
-
-    const fillAbove = new THREE.PointLight(0xffffff, 40);
-    fillAbove.position.set(2, 2, 6);
-    s.add(fillAbove);
+function addLightsToScene(s, ls) {
+    ls.left.position.set(-2, 0, 3);
+    s.add(ls.left);
+    ls.right.position.set(0, -2, 3);
+    s.add(ls.right);
+    ls.above.position.set(2, 2, 6);
+    s.add(ls.above);
 }
 
 staticScene = new THREE.Scene();
 staticScene.background = new THREE.Color(0x668899);
-addLights(staticScene);
+const staticLights = createLights();
+addLightsToScene(staticScene, staticLights);
+
 dynamicScene = new THREE.Scene();
-addLights(dynamicScene);
+const dynamicLights = createLights();
+addLightsToScene(dynamicScene, dynamicLights);
 
 // Background scene
 backgroundScene = new THREE.Scene();
@@ -236,8 +242,32 @@ function updateMesh(mesh, r, unitScale) {
     }
 }
 
+function parseHex(hex) {
+    if (hex.length === 3) {
+        return new THREE.Color(
+            parseInt(hex[0] + hex[0], 16) / 255,
+            parseInt(hex[1] + hex[1], 16) / 255,
+            parseInt(hex[2] + hex[2], 16) / 255
+        );
+    }
+    return new THREE.Color(parseInt(hex, 16));
+}
+
 function updateScene(data) {
     const unitScale = 0.01;
+
+    if (data.config) {
+        const c = data.config;
+        [staticLights, dynamicLights].forEach(ls => {
+            ls.left.color.copy(parseHex(c.left.color));
+            ls.left.intensity = c.left.intensity;
+            ls.right.color.copy(parseHex(c.right.color));
+            ls.right.intensity = c.right.intensity;
+            ls.above.color.copy(parseHex(c.above.color));
+            ls.above.intensity = c.above.intensity;
+        });
+        staticScene.background.copy(parseHex(c.bg));
+    }
 
     const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
     if (staticToUse) {
