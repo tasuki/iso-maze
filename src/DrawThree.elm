@@ -74,18 +74,18 @@ sceneData model =
               )
             , ( "dynamic", E.list encodeRenderable (dynamicRenderables model) )
             , ( "staticUpdate", E.bool model.staticUpdate )
-            , ( "config", E.object
+            ]
+    in
+    if model.staticUpdate then
+        E.object
+            ( ( "static", E.list encodeRenderable (staticRenderables model) ) ::
+            ( "config", E.object
                 [ ( "left", encodeLight mazeConfig.left )
                 , ( "right", encodeLight mazeConfig.right )
                 , ( "above", encodeLight mazeConfig.above )
                 , ( "bg", E.string mazeConfig.bg )
                 ]
-              )
-            ]
-    in
-    if model.staticUpdate then
-        E.object (( "static", E.list encodeRenderable (staticRenderables model) ) :: common)
-
+            ) :: common)
     else
         E.object common
 

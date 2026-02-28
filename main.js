@@ -175,6 +175,21 @@ app.ports.renderThreeJS.subscribe(data => {
         pendingStatic = data.static;
     }
 
+    if (data.staticUpdate) {
+        const c = data.config;
+        console.log(c);
+        [staticLights, dynamicLights].forEach(ls => {
+            ls.left.color.copy(parseHex(c.left.color));
+            ls.left.intensity = c.left.intensity;
+            ls.right.color.copy(parseHex(c.right.color));
+            ls.right.intensity = c.right.intensity;
+            ls.above.color.copy(parseHex(c.above.color));
+            ls.above.intensity = c.above.intensity;
+        });
+        staticScene.background.copy(parseHex(c.bg));
+    }
+
+
     if (!rafId) {
         rafId = requestAnimationFrame(() => {
             const t0 = performance.now();
@@ -250,19 +265,6 @@ function parseHex(hex) {
 
 function updateScene(data) {
     const unitScale = 0.01;
-
-    if (data.config) {
-        const c = data.config;
-        [staticLights, dynamicLights].forEach(ls => {
-            ls.left.color.copy(parseHex(c.left.color));
-            ls.left.intensity = c.left.intensity;
-            ls.right.color.copy(parseHex(c.right.color));
-            ls.right.intensity = c.right.intensity;
-            ls.above.color.copy(parseHex(c.above.color));
-            ls.above.intensity = c.above.intensity;
-        });
-        staticScene.background.copy(parseHex(c.bg));
-    }
 
     const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
     if (staticToUse) {
