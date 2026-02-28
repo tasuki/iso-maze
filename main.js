@@ -177,7 +177,6 @@ app.ports.renderThreeJS.subscribe(data => {
 
     if (data.staticUpdate) {
         const c = data.config;
-        console.log(c);
         [staticLights, dynamicLights].forEach(ls => {
             ls.left.color.copy(parseHex(c.left.color));
             ls.left.intensity = c.left.intensity;

@@ -9,7 +9,7 @@ encode maze =
     let
         cut = cutout maze
         config = maze.config
-        encodeLight l = l.color ++ "." ++ (String.fromInt <| round l.intensity)
+        encodeLight l = l.color ++ "," ++ (String.fromInt <| round l.intensity)
 
         parts =
             [ "sz:" ++ (String.fromInt cut.xSize) ++ "," ++ (String.fromInt cut.ySize)
@@ -51,7 +51,7 @@ decode str =
         end = findPart "end:" |> Maybe.andThen parseIntPair
         mz = findPart "mz:"
 
-        parseLight s = case String.split "." s of
+        parseLight s = case String.split "," s of
             [ c, i ] -> Maybe.map (M.LightConfig c) (String.toFloat i)
             _ -> Nothing
 

@@ -106,7 +106,7 @@ encodeTest =
                 in
                 Expect.equal
                     (removeSpaces ("sz:2,6;off:0,-1;st:0,-1;end:1,4"
-                        ++ ";left:123.50;bg:abc"
+                        ++ ";left:123,50;bg:abc"
                         ++ ";mz:"
                         ++ "x o0"
                         ++ "o0o0"
