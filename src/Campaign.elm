@@ -73,3 +73,10 @@ levels finishedLevels = List.map
         , finished = Set.member m.name finishedLevels
         }
     ) mazeDefs
+
+getNextUnsolvedLevel : Set String -> Maybe String
+getNextUnsolvedLevel finishedLevels =
+    mazeDefs
+        |> List.filter (\m -> not (Set.member m.name finishedLevels))
+        |> List.head
+        |> Maybe.map .name

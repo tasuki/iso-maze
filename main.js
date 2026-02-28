@@ -4,7 +4,10 @@ import { N8AOPostPass } from 'n8ao';
 
 import { Elm } from './src/Main.elm';
 const app = Elm.Main.init({
-    flags: getDpr()
+    flags: {
+        dpr: getDpr(),
+        finishedLevels: JSON.parse(localStorage.getItem('finishedLevels') || '[]')
+    }
 });
 
 let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer;
@@ -167,6 +170,10 @@ let latestData = null;
 let lastRenderTimeReport = 0;
 let needsStaticRender = true;
 let pendingStatic = null;
+
+app.ports.saveFinishedLevels.subscribe(levels => {
+    localStorage.setItem('finishedLevels', JSON.stringify(levels));
+});
 
 app.ports.renderThreeJS.subscribe(data => {
     latestData = data;

@@ -8,19 +8,10 @@
 
     <style>
         body { margin: 0; padding: 0; overflow: hidden; font-family: monospace; font-size: 32px; user-select: none; }
-        .overlay { background: #0003; color: #FFF; border-radius: 8px; padding: 10px; white-space: pre; }
+        a { text-decoration: none; }
         #three-container { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; position: relative; touch-action: none; }
 
-        .modal-backdrop {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0006; z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .modal-content {
-            background: #000C;
-            pointer-events: auto; line-height: 1.5; padding: 25px;
-            max-height: 90vh; overflow-y: auto;
-        }
+        .overlay { background: #0003; color: #FFF; border-radius: 8px; padding: 10px; white-space: pre; }
 
         #menu { position: absolute; left: 0px; top: 0px; z-index: 9; }
         #menu .item { float: left; padding: 1px 0 0 1px; }
@@ -32,12 +23,25 @@
         }
         #menu .icon:active { background: #FFF3; }
 
-        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 50px; }
-        .settings-row:last-child { margin-bottom: 0; }
-        .settings-label { flex-grow: 1; }
+        .modal-backdrop {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+        }
+        .modal-dimmer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0006;
+        }
+        .modal-content {
+            position: relative; background: #000C;
+            pointer-events: auto; line-height: 1.5; padding: 25px;
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        .modal-row { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 50px; }
+        .modal-row:last-child { margin-bottom: 0; }
+        .center { text-align: center; }
         .modal-content .icon {
             display: inline-block; cursor: pointer; border-radius: 8px;
-            padding: 5px 10px; margin-left: 5px; background: #9993;
+            padding: 5px 20px; background: #9993;
         }
         .modal-content .icon.active { background: #FFF6; }
         .modal-content .icon:active { background: #FFF9; }
@@ -55,6 +59,16 @@
         .joystick-crosshair-h { position: absolute; left: -30px; top: 0; width: 60px; height: 2px; background: #FFF3; }
         .joystick-crosshair-v { position: absolute; left: 0; top: -30px; width: 2px; height: 60px; background: #FFF3; }
         .joystick-knob { position: absolute; width: 30px; height: 30px; background: #FFF6; border-radius: 50%; }
+
+        .campaign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; min-width: 200px; max-width: 420px; }
+        .campaign-level {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 40px; cursor: pointer; text-decoration: none;
+            border-radius: 8px; background: #9993; aspect-ratio: 1;
+        }
+        .campaign-level:active { background: #FFF3; }
+        .campaign-level.finished { background: #0F03; position: relative; }
+        .campaign-level.finished::after { content: '✅'; position: absolute; font-size: 16px; bottom: 0; right: 0; }
     </style>
 </head>
 <body>
