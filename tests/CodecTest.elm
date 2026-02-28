@@ -65,10 +65,9 @@ insertCutoutTest =
 
 encodeTest =
     describe "Encode"
-        [ test "Encodes assymetric" <|
+        [ test "Encodes assymetric (with defaults omitted)" <|
             \_ -> Expect.equal
                 (removeSpaces ("sz:2,6;off:0,-1;st:0,-1;end:1,4"
-                    ++ ";left:fc9.30;right:6bf.15;above:fff.40;bg:689"
                     ++ ";mz:"
                     ++ "x o0"
                     ++ "o0o0"
@@ -78,10 +77,9 @@ encodeTest =
                     ++ "o0x "
                 ))
                 (encode SM.assymetric)
-        , test "Encodes the roundabout" <|
+        , test "Encodes the roundabout (with defaults omitted)" <|
             \_ -> Expect.equal
                 (removeSpaces ("sz:9,9;off:-3,-3;st:0,0;end:4,4"
-                    ++ ";left:fc9.30;right:6bf.15;above:fff.40;bg:689"
                     ++ ";mz:"
                     ++ "x x o2o3o3o4o4x x "
                     ++ "x o1o2z3o3z4o4o4x "
@@ -94,6 +92,30 @@ encodeTest =
                     ++ "x x x x x o0o0x x "
                 ))
                 (encode SM.roundabout)
+        , test "Encodes with custom config" <|
+            \_ ->
+                let
+                    customConfig =
+                        { left = { color = "123", intensity = 50 }
+                        , right = defaultConfig.right
+                        , above = defaultConfig.above
+                        , bg = "abc"
+                        }
+                    oldMaze = SM.assymetric
+                    maze = { oldMaze | config = customConfig }
+                in
+                Expect.equal
+                    (removeSpaces ("sz:2,6;off:0,-1;st:0,-1;end:1,4"
+                        ++ ";left:123.50;bg:abc"
+                        ++ ";mz:"
+                        ++ "x o0"
+                        ++ "o0o0"
+                        ++ "o0x "
+                        ++ "o0x "
+                        ++ "o0x "
+                        ++ "o0x "
+                    ))
+                    (encode maze)
         ]
 
 decodeTest =

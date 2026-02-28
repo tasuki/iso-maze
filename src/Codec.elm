@@ -10,24 +10,20 @@ encode maze =
         cut = cutout maze
         config = maze.config
         encodeLight l = l.color ++ "." ++ (String.fromInt <| round l.intensity)
+
+        parts =
+            [ "sz:" ++ (String.fromInt cut.xSize) ++ "," ++ (String.fromInt cut.ySize)
+            , "off:" ++ (String.fromInt cut.xOffset) ++ "," ++ (String.fromInt cut.yOffset)
+            , "st:" ++ (String.fromInt <| M.posX <| maze.start) ++ "," ++ (String.fromInt <| M.posY <| maze.start)
+            , "end:" ++ (String.fromInt <| M.posX <| maze.end) ++ "," ++ (String.fromInt <| M.posY <| maze.end)
+            ]
+            ++ (if config.left == M.defaultConfig.left then [] else [ "left:" ++ encodeLight config.left ])
+            ++ (if config.right == M.defaultConfig.right then [] else [ "right:" ++ encodeLight config.right ])
+            ++ (if config.above == M.defaultConfig.above then [] else [ "above:" ++ encodeLight config.above ])
+            ++ (if config.bg == M.defaultConfig.bg then [] else [ "bg:" ++ config.bg ])
+            ++ [ "mz:" ++ (String.join "" <| List.map encodeBlock cut.maze) ]
     in
-    "sz:"
-        ++ (String.fromInt cut.xSize) ++ ","
-        ++ (String.fromInt cut.ySize)
-        ++ ";off:"
-        ++ (String.fromInt cut.xOffset) ++ ","
-        ++ (String.fromInt cut.yOffset)
-        ++ ";st:"
-        ++ (String.fromInt <| M.posX <| maze.start) ++ ","
-        ++ (String.fromInt <| M.posY <| maze.start)
-        ++ ";end:"
-        ++ (String.fromInt <| M.posX <| maze.end) ++ ","
-        ++ (String.fromInt <| M.posY <| maze.end)
-        ++ ";left:" ++ encodeLight config.left
-        ++ ";right:" ++ encodeLight config.right
-        ++ ";above:" ++ encodeLight config.above
-        ++ ";bg:" ++ config.bg
-        ++ ";mz:" ++ (String.join "" <| List.map encodeBlock cut.maze)
+    String.join ";" parts
 
 removeSpaces : String -> String
 removeSpaces = String.filter (\c -> c /= ' ')
