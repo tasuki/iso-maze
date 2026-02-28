@@ -6,6 +6,7 @@ import Browser
 import Browser.Dom
 import Browser.Events as BE
 import Browser.Navigation as Nav
+import Campaign
 import Codec
 import DrawThree as D
 import DocumentDecoders as DD
@@ -22,6 +23,7 @@ import Quantity
 import SampleMazes as SM
 import Task
 import Url exposing (Url)
+import Url.Parser as UP exposing ((</>))
 
 defaultMaze = SM.ziggurat2
 secondsPerStep = 0.25
@@ -30,9 +32,12 @@ secondsPerStep = 0.25
 type Overlay
     = Help
     | Settings
+    | Campaign
 
 type alias Model =
     { navKey : Nav.Key
+    , finishedLevels : Set String
+    , currentLevel : Maybe String
     , widthPx : Int
     , heightPx : Int
     , elapsedTime : Duration
@@ -83,7 +88,12 @@ type Msg
     | DprUpdated Float
     | RenderTimeUpdated Float
 
-main : Program Float Model Msg
+type alias Flags =
+    { dpr : Float
+    , finishedLevels : List String
+    }
+
+main : Program Flags Model Msg
 main =
     Browser.application
         { init = init
@@ -94,14 +104,16 @@ main =
         , onUrlChange = UrlChanged
         }
 
-init : Float -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init dpr url navKey =
+init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url navKey =
     let
         initialPos = M.startPosition defaultMaze
         initialTargets = Animate.getPlayerTargets (M.Idle initialPos) defaultMaze
 
         model =
             { navKey = navKey
+            , finishedLevels = Set.fromList flags.finishedLevels
+            , currentLevel = Nothing
             , widthPx = 0
             , heightPx = 0
             , elapsedTime = Quantity.zero
@@ -117,7 +129,7 @@ init dpr url navKey =
             , playerState = M.Idle initialPos
             , animator = Animate.initAnimator initialTargets
             , focus = ( 0, 0, 1 )
-            , dpr = dpr
+            , dpr = flags.dpr
             , renderHistory = []
             , tickHistory = []
             , staticUpdate = True
@@ -184,6 +196,14 @@ update message model =
 updateModel : Msg -> Model -> ( Model, Cmd Msg )
 updateModel message model =
     case message of
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.navKey (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
         UrlChanged url ->
             ( changeRouteTo url model, Cmd.none )
 
@@ -201,6 +221,23 @@ updateModel message model =
                     else
                         model.playerState
 
+                isAtGoal =
+                    case (model.currentLevel, newPlayerState, model.playerState) of
+                        (Just name, M.Idle pos, M.Moving m) ->
+                            pos == M.endPosition model.maze && m.to == pos && not (Set.member name model.finishedLevels)
+                        _ -> False
+
+                (newFinishedLevels, saveCmd) =
+                    if isAtGoal then
+                        let
+                            updated = case model.currentLevel of
+                                Just name -> Set.insert name model.finishedLevels
+                                Nothing -> model.finishedLevels
+                        in
+                        (updated, saveFinishedLevels (Set.toList updated))
+                    else
+                        (model.finishedLevels, Cmd.none)
+
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
 
@@ -215,8 +252,9 @@ updateModel message model =
                 , playerState = newPlayerState
                 , animator = newAnimator
                 , tickHistory = newTickHistory
+                , finishedLevels = newFinishedLevels
               }
-            , Cmd.none
+            , saveCmd
             )
 
         Started dc ->
@@ -289,11 +327,11 @@ updateModel message model =
             , Cmd.none
             )
 
-        ToggleBlock -> updateMaze ME.toggleBlock model
-        ToggleStairs -> updateMaze ME.toggleStairs model
-        ToggleBridge -> updateMaze ME.toggleBridge model
-        PlaceStart -> updateMaze ME.placeStart model
-        PlaceEnd -> updateMaze ME.placeEnd model
+        ToggleBlock -> updateMaze ME.toggleBlock { model | currentLevel = Nothing }
+        ToggleStairs -> updateMaze ME.toggleStairs { model | currentLevel = Nothing }
+        ToggleBridge -> updateMaze ME.toggleBridge { model | currentLevel = Nothing }
+        PlaceStart -> updateMaze ME.placeStart { model | currentLevel = Nothing }
+        PlaceEnd -> updateMaze ME.placeEnd { model | currentLevel = Nothing }
 
         KeyDown key ->
             case model.activeOverlay of
@@ -424,11 +462,25 @@ getDesiredDirection keysDown pointerStart pointerLast =
         Just d -> Just d
         Nothing -> joyDir
 
+type Route
+    = Home (Maybe M.Maze)
+    | Level String
+
+routeParser : UP.Parser (Route -> a) a
+routeParser =
+    UP.oneOf
+        [ UP.map Level (UP.s "level" </> UP.string)
+        ]
+
 changeRouteTo : Url.Url -> Model -> Model
 changeRouteTo url model =
-    case Maybe.andThen Codec.decode url.query of
-        Just maze ->
+    let
+        route = UP.parse routeParser url |> Maybe.withDefault (Home (Maybe.andThen Codec.decode url.query))
+    in
+    case route of
+        Home maybeMaze ->
             let
+                maze = maybeMaze |> Maybe.withDefault defaultMaze
                 startPos = M.startPosition maze
                 targets = Animate.getPlayerTargets (M.Idle startPos) maze
             in
@@ -437,8 +489,27 @@ changeRouteTo url model =
                 , playerState = M.Idle startPos
                 , animator = Animate.initAnimator targets
                 , staticUpdate = True
+                , currentLevel = Nothing
+                , activeOverlay = Nothing
             }
-        Nothing -> model
+
+        Level name ->
+            case List.filter (\m -> m.name == name) Campaign.mazeDefs |> List.head of
+                Just def ->
+                    let
+                        maze = Codec.decode def.maze |> Maybe.withDefault M.emptyMaze
+                        startPos = M.startPosition maze
+                        targets = Animate.getPlayerTargets (M.Idle startPos) maze
+                    in
+                    { model
+                        | maze = maze
+                        , playerState = M.Idle startPos
+                        , animator = Animate.initAnimator targets
+                        , staticUpdate = True
+                        , currentLevel = Just name
+                        , activeOverlay = Nothing
+                    }
+                Nothing -> model
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
@@ -488,6 +559,7 @@ subscriptions _ =
 
 port updateDpr : (Float -> msg) -> Sub msg
 port updateRenderTime : (Float -> msg) -> Sub msg
+port saveFinishedLevels : List String -> Cmd msg
 
 
 -- View
@@ -502,7 +574,7 @@ viewOverlay : Model -> Overlay -> H.Html Msg
 viewOverlay model overlay =
     let
         stopProp msg =
-            HE.stopPropagationOn "click" (Decode.succeed ( msg, True ))
+            HE.stopPropagationOn "click" (Decode.succeed ( msg, False ))
 
         content =
             case overlay of
@@ -526,9 +598,23 @@ viewOverlay model overlay =
                             [ H.text "🧪✔️" ]
                         ]
                     ]
+
+                Campaign ->
+                    [ H.div [ HA.class "campaign-grid" ]
+                        (Campaign.levels model.finishedLevels |> List.map viewCampaignLevel)
+                    ]
     in
-    H.div [ HA.class "modal-backdrop", HE.onClick CloseOverlay ]
-        [ H.div [ HA.class "modal-content overlay", stopProp Noop ] content ]
+    H.div [ HA.class "modal-backdrop" ]
+        [ H.div [ HA.class "modal-dimmer", HE.onClick CloseOverlay ] []
+        , H.div [ HA.class "modal-content overlay" ] content ]
+
+viewCampaignLevel : Campaign.Level -> H.Html Msg
+viewCampaignLevel level =
+    H.a
+        [ HA.class ("campaign-level" ++ (if level.finished then " finished" else ""))
+        , HA.href ("/level/" ++ level.name)
+        ]
+        [ H.text level.emoji ]
 
 helpText : String
 helpText =
@@ -560,7 +646,7 @@ view model =
     { title = "Iso Maze"
     , body =
         [ H.div [ HA.id "menu" ]
-            [ menuLink Noop "🚀"
+            [ menuLink (ShowOverlay Campaign) "🚀"
             , menuLink (ShowOverlay Settings) "🔧"
             , menuLink (ShowOverlay Help) "💡"
             ]

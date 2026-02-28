@@ -13,10 +13,15 @@
 
         .modal-backdrop {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0006; z-index: 1000;
+            z-index: 1000;
             display: flex; align-items: center; justify-content: center;
         }
+        .modal-dimmer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0006;
+        }
         .modal-content {
+            position: relative;
             background: #000C;
             pointer-events: auto; line-height: 1.5; padding: 25px;
             max-height: 90vh; overflow-y: auto;
@@ -55,6 +60,16 @@
         .joystick-crosshair-h { position: absolute; left: -30px; top: 0; width: 60px; height: 2px; background: #FFF3; }
         .joystick-crosshair-v { position: absolute; left: 0; top: -30px; width: 2px; height: 60px; background: #FFF3; }
         .joystick-knob { position: absolute; width: 30px; height: 30px; background: #FFF6; border-radius: 50%; }
+
+        .campaign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; min-width: 200px; max-width: 420px; }
+        .campaign-level {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 40px; cursor: pointer; text-decoration: none;
+            border-radius: 8px; background: #9993; aspect-ratio: 1;
+        }
+        .campaign-level:hover { background: #FFF3; }
+        .campaign-level.finished { background: #0F03; position: relative; }
+        .campaign-level.finished::after { content: '✅'; position: absolute; font-size: 16px; bottom: 0; right: 0; }
     </style>
 </head>
 <body>
