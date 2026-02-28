@@ -243,14 +243,9 @@ function updateMesh(mesh, r, unitScale) {
 }
 
 function parseHex(hex) {
-    if (hex.length === 3) {
-        return new THREE.Color(
-            parseInt(hex[0] + hex[0], 16) / 255,
-            parseInt(hex[1] + hex[1], 16) / 255,
-            parseInt(hex[2] + hex[2], 16) / 255
-        );
-    }
-    return new THREE.Color(parseInt(hex, 16));
+    return new THREE.Color(
+        '#' + hex.split('').map(char => char + char).join('')
+    );
 }
 
 function updateScene(data) {

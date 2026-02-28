@@ -52,7 +52,6 @@ type alias Model =
     , renderHistory : List { timestamp : Float, duration : Float }
     , tickHistory : List { timestamp : Float, duration : Float }
     , staticUpdate : Bool
-    , configUpdate : Bool
     , activeOverlay : Maybe Overlay
     }
 
@@ -122,7 +121,6 @@ init dpr url navKey =
             , renderHistory = []
             , tickHistory = []
             , staticUpdate = True
-            , configUpdate = True
             , activeOverlay = Nothing
             }
     in
@@ -159,11 +157,6 @@ update message model =
                     else key == "e" || key == "c"
                 UrlChanged _ -> True
                 _ -> False
-
-        configUpdate =
-            case message of
-                UrlChanged _ -> True
-                _ -> preModel.configUpdate
     in
     if shouldRender then
         let
@@ -180,10 +173,9 @@ update message model =
                     , widthPx = preModel.widthPx
                     , heightPx = preModel.heightPx
                     , staticUpdate = preModel.staticUpdate
-                    , configUpdate = configUpdate
                     }
         in
-        ( { preModel | staticUpdate = False, configUpdate = False }
+        ( { preModel | staticUpdate = False }
         , Cmd.batch [ cmd, D.renderThreeJS sceneDataValue ]
         )
     else ( preModel, cmd )
@@ -445,7 +437,6 @@ changeRouteTo url model =
                 , playerState = M.Idle startPos
                 , animator = Animate.initAnimator targets
                 , staticUpdate = True
-                , configUpdate = True
             }
         Nothing -> model
 
