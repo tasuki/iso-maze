@@ -608,8 +608,8 @@ viewOverlay model overlay =
 
                 LevelComplete name ->
                     [ H.div [ HA.style "text-align" "center" ]
-                        [ H.div [ HA.style "font-size" "48px", HA.style "margin-bottom" "20px" ] [ H.text "LEVEL COMPLETE!" ]
-                        , H.div [ HA.class "settings-row", HA.style "justify-content" "center", HA.style "gap" "20px" ]
+                        [ H.div [ HA.style "font-size" "80px", HA.style "margin-bottom" "40px" ] [ H.text "🏆" ]
+                        , H.div [ HA.class "settings-row", HA.style "justify-content" "center", HA.style "gap" "40px" ]
                             [ H.a [ HA.class "icon", HA.href ("/level/" ++ name), HA.style "text-decoration" "none" ] [ H.text "🔄" ]
                             , case Campaign.getNextUnsolvedLevel model.finishedLevels of
                                 Just nextName ->
