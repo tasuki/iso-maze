@@ -374,7 +374,7 @@ updateModel message model =
             ( { model | debugInfo = debug }, Cmd.none )
 
         ResetProgress ->
-            ( model, Cmd.none )
+            ( { model | finishedLevels = Set.empty }, saveFinishedLevels [] )
 
         ShowOverlay overlay ->
             if model.activeOverlay == Just overlay then
