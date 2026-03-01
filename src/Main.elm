@@ -33,6 +33,7 @@ type Overlay
     = Help
     | Settings
     | Campaign
+    | LevelComplete String
 
 type alias Model =
     { navKey : Nav.Key
@@ -221,22 +222,19 @@ updateModel message model =
                     else
                         model.playerState
 
-                isAtGoal =
+                maybeFinishedLevelName =
                     case (model.currentLevel, newPlayerState, model.playerState) of
                         (Just name, M.Idle pos, M.Moving m) ->
-                            pos == M.endPosition model.maze && m.to == pos && not (Set.member name model.finishedLevels)
-                        _ -> False
+                            if pos == M.endPosition model.maze && m.to == pos then Just name else Nothing
+                        _ -> Nothing
 
                 (newFinishedLevels, saveCmd) =
-                    if isAtGoal then
-                        let
-                            updated = case model.currentLevel of
-                                Just name -> Set.insert name model.finishedLevels
-                                Nothing -> model.finishedLevels
-                        in
-                        (updated, saveFinishedLevels (Set.toList updated))
-                    else
-                        (model.finishedLevels, Cmd.none)
+                    case maybeFinishedLevelName of
+                        Just name ->
+                            let updated = Set.insert name model.finishedLevels in
+                            (updated, saveFinishedLevels (Set.toList updated))
+                        Nothing ->
+                            (model.finishedLevels, Cmd.none)
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
@@ -253,6 +251,10 @@ updateModel message model =
                 , animator = newAnimator
                 , tickHistory = newTickHistory
                 , finishedLevels = newFinishedLevels
+                , activeOverlay =
+                    case maybeFinishedLevelName of
+                        Just name -> Just (LevelComplete name)
+                        Nothing -> model.activeOverlay
               }
             , saveCmd
             )
@@ -602,6 +604,20 @@ viewOverlay model overlay =
                 Campaign ->
                     [ H.div [ HA.class "campaign-grid" ]
                         (Campaign.levels model.finishedLevels |> List.map viewCampaignLevel)
+                    ]
+
+                LevelComplete name ->
+                    [ H.div [ HA.style "text-align" "center" ]
+                        [ H.div [ HA.style "font-size" "48px", HA.style "margin-bottom" "20px" ] [ H.text "LEVEL COMPLETE!" ]
+                        , H.div [ HA.class "settings-row", HA.style "justify-content" "center", HA.style "gap" "20px" ]
+                            [ H.a [ HA.class "icon", HA.href ("/level/" ++ name), HA.style "text-decoration" "none" ] [ H.text "🔄" ]
+                            , case Campaign.getNextUnsolvedLevel model.finishedLevels of
+                                Just nextName ->
+                                    H.a [ HA.class "icon", HA.href ("/level/" ++ nextName), HA.style "text-decoration" "none" ] [ H.text "➡️" ]
+                                Nothing ->
+                                    H.a [ HA.class "icon", HE.onClick (ShowOverlay Campaign), HA.style "text-decoration" "none" ] [ H.text "🚀" ]
+                            ]
+                        ]
                     ]
     in
     H.div [ HA.class "modal-backdrop" ]
