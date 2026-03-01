@@ -67,7 +67,8 @@ mazeDefs =
 
     , { emoji = "🐒"
       , name = "monkey"
-      , maze = "sz:18,14;off:-7,-4;st:1,9;end:2,-4;mz:"
+      , maze = "bg:7a0;left:9c3,35;right:c93,10;above:fff,45;"
+        ++ "sz:18,14;off:-7,-4;st:1,9;end:2,-4;mz:"
         ++ "x x x x o5z6o6z7o7Z7o6x x x x x x x "
         ++ "x x x o3o5o5l6o5o5o5o6o6x x x x x x "
         ++ "x x o3o3s5o4o6o5o6o5o5o6x x x x x x "
@@ -86,7 +87,8 @@ mazeDefs =
 
     , { emoji = "🦙"
       , name = "llama"
-      , maze = "sz:22,23;off:-8,-8;st:0,14;end:7,-8;mz:"
+      , maze = "bg:960;left:ff9,25;right:9ff,10;above:fcf,35;"
+        ++ "sz:22,23;off:-8,-8;st:0,14;end:7,-8;mz:"
         ++ "x x x x x x o2z3o3x x x x x x x x x x x x x "
         ++ "x x x x x x o2o1s3x x x x x x x x x x x x x "
         ++ "x x x x x x s2o1o2x x x x x x x x x x x x x "
