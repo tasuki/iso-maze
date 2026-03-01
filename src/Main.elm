@@ -136,14 +136,19 @@ init flags url navKey =
             , staticUpdate = True
             , activeOverlay = Nothing
             }
+
+        ( routedModel, routeCmd ) = changeRouteTo url model
     in
-    ( changeRouteTo url model
-    , Task.perform
-        (\{ viewport } -> Resize
-            (round viewport.width)
-            (round viewport.height)
-        )
-        Browser.Dom.getViewport
+    ( routedModel
+    , Cmd.batch
+        [ routeCmd
+        , Task.perform
+            (\{ viewport } -> Resize
+                (round viewport.width)
+                (round viewport.height)
+            )
+            Browser.Dom.getViewport
+        ]
     )
 
 
@@ -206,7 +211,7 @@ updateModel message model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( changeRouteTo url model, Cmd.none )
+            changeRouteTo url model
 
         Resize width height ->
             ( { model | widthPx = width, heightPx = height, staticUpdate = True }, Cmd.none )
@@ -476,44 +481,46 @@ routeParser =
         [ UP.map Level (UP.s "level" </> UP.string)
         ]
 
-changeRouteTo : Url.Url -> Model -> Model
+changeRouteTo : Url.Url -> Model -> ( Model, Cmd Msg )
 changeRouteTo url model =
     let
         route = UP.parse routeParser url |> Maybe.withDefault (Home (Maybe.andThen Codec.decode url.query))
     in
     case route of
         Home maybeMaze ->
-            let
-                maze = maybeMaze |> Maybe.withDefault defaultMaze
-                startPos = M.startPosition maze
-                targets = Animate.getPlayerTargets (M.Idle startPos) maze
-            in
-            { model
-                | maze = maze
-                , playerState = M.Idle startPos
-                , animator = Animate.initAnimator targets
-                , staticUpdate = True
-                , currentLevel = Nothing
-                , activeOverlay = Nothing
-            }
+            if url.path == "/" && url.query == Nothing then
+                case Campaign.getNextUnsolvedLevel model.finishedLevels of
+                    Just nextLevelName ->
+                        ( model, Nav.replaceUrl model.navKey ("/level/" ++ nextLevelName) )
+
+                    Nothing ->
+                        ( loadMaze (maybeMaze |> Maybe.withDefault defaultMaze) Nothing model, Cmd.none )
+            else
+                ( loadMaze (maybeMaze |> Maybe.withDefault defaultMaze) Nothing model, Cmd.none )
 
         Level name ->
             case List.filter (\m -> m.name == name) Campaign.mazeDefs |> List.head of
                 Just def ->
-                    let
-                        maze = Codec.decode def.maze |> Maybe.withDefault M.emptyMaze
-                        startPos = M.startPosition maze
-                        targets = Animate.getPlayerTargets (M.Idle startPos) maze
-                    in
-                    { model
-                        | maze = maze
-                        , playerState = M.Idle startPos
-                        , animator = Animate.initAnimator targets
-                        , staticUpdate = True
-                        , currentLevel = Just name
-                        , activeOverlay = Nothing
-                    }
-                Nothing -> model
+                    ( loadMaze (Codec.decode def.maze |> Maybe.withDefault M.emptyMaze) (Just name) model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+
+loadMaze : M.Maze -> Maybe String -> Model -> Model
+loadMaze maze maybeName model =
+    let
+        startPos = M.startPosition maze
+        targets = Animate.getPlayerTargets (M.Idle startPos) maze
+    in
+    { model
+        | maze = maze
+        , playerState = M.Idle startPos
+        , animator = Animate.initAnimator targets
+        , staticUpdate = True
+        , currentLevel = maybeName
+        , activeOverlay = Nothing
+    }
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
