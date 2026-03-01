@@ -147,6 +147,12 @@ levels finishedLevels = List.map
         }
     ) mazeDefs
 
+getLevel : String -> Maybe Level
+getLevel levelName =
+    levels Set.empty
+        |> List.filter(\l -> l.name == levelName)
+        |> List.head
+
 getNextUnsolvedLevel : Set String -> Maybe String
 getNextUnsolvedLevel finishedLevels =
     mazeDefs

@@ -634,7 +634,7 @@ viewCampaignLevel level =
 
 helpText : String
 helpText =
-    """👋 ⛄➡️🎩
+    """👋 ⛄🔎🎩
 
 1️⃣ 🌬️⛄
 2️⃣ 💨🎩🪽
@@ -658,8 +658,13 @@ view model =
                 (HE.preventDefaultOn "pointermove" <| Decode.map (\m -> ( m, True )) (DD.decodePrimary Moved))
                     :: alwaysWatch
             else alwaysWatch
+        title = case model.currentLevel of
+            Just levelName -> case Campaign.getLevel levelName of
+                Just level -> level.emoji ++ " - ⛄🔎🎩"
+                Nothing -> "⛄🔎🎩"
+            Nothing -> "⛄🔎🎩"
     in
-    { title = "Iso Maze"
+    { title = title
     , body =
         [ H.div [ HA.id "menu" ]
             [ menuLink (ShowOverlay Campaign) "🚀"

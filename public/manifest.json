@@ -1,0 +1,16 @@
+{
+    "name": "Snowman Hat Maze ⛄🔎🎩",
+    "short_name": "⛄🔎🎩",
+    "start_url": "/",
+    "scope": "/",
+    "display": "fullscreen",
+    "background_color": "#689",
+    "theme_color": "#689",
+    "icons": [
+        {
+            "src": "favicon.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+        }
+    ]
+}
