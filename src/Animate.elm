@@ -29,6 +29,18 @@ initAnimator ( t1, t2, t3 ) =
     , timer = 0
     }
 
+initAnimatorAt : Triple Vec3 -> AnimatorState
+initAnimatorAt ( t1, t2, t3 ) =
+    let
+        initSphere target =
+            { current = target
+            , velocity = { x = 0, y = 0, z = 0 }
+            }
+    in
+    { spheres = ( initSphere t1, initSphere t2, initSphere t3 )
+    , timer = 0
+    }
+
 isAnimatorMoving : Triple Vec3 -> AnimatorState -> Bool
 isAnimatorMoving ( t1, t2, t3 ) state =
     let

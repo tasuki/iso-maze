@@ -127,7 +127,7 @@ init flags url navKey =
             , azimuth = Angle.degrees D.initialAzimuth
             , mode = ME.Running
             , maze = defaultMaze
-            , playerState = M.Idle initialPos
+            , playerState = M.Idle ( 999, 999, 999 )
             , animator = Animate.initAnimator initialTargets
             , focus = ( 0, 0, 1 )
             , dpr = flags.dpr
@@ -512,11 +512,19 @@ loadMaze maze maybeName model =
     let
         startPos = M.startPosition maze
         targets = Animate.getPlayerTargets (M.Idle startPos) maze
+        ( oldX, oldY ) = case model.playerState of
+            M.Idle ( x, y, _ ) -> ( x, y )
+            M.Moving m ->
+                let ( x, y, _ ) = m.from in ( x, y )
+        ( newX, newY, _ ) = startPos
+        shouldFall = oldX /= newX || oldY /= newY
     in
     { model
         | maze = maze
         , playerState = M.Idle startPos
-        , animator = Animate.initAnimator targets
+        , animator =
+            if shouldFall then Animate.initAnimator targets
+            else Animate.initAnimatorAt targets
         , staticUpdate = True
         , currentLevel = maybeName
         , activeOverlay = Nothing
