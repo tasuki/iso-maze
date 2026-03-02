@@ -673,16 +673,20 @@ view model =
                 (HE.preventDefaultOn "pointermove" <| Decode.map (\m -> ( m, True )) (DD.decodePrimary Moved))
                     :: alwaysWatch
             else alwaysWatch
-        title = case model.currentLevel of
-            Just levelName -> case Campaign.getLevel levelName of
-                Just level -> level.emoji ++ " - ⛄🔎🎩"
-                Nothing -> "⛄🔎🎩"
+        maybeEmoji = model.currentLevel
+            |> Maybe.andThen Campaign.getLevel
+            |> Maybe.map .emoji
+        menuEmoji = case maybeEmoji of
+            Just emoji -> emoji
+            Nothing -> "🚀"
+        title = case maybeEmoji of
+            Just emoji -> emoji ++ " – ⛄🔎🎩"
             Nothing -> "⛄🔎🎩"
     in
     { title = title
     , body =
         [ H.div [ HA.id "menu" ]
-            [ menuLink (ShowOverlay Campaign) "🚀"
+            [ menuLink (ShowOverlay Campaign) menuEmoji
             , menuLink (ShowOverlay Settings) "🔧"
             , menuLink (ShowOverlay Help) "💡"
             ]
