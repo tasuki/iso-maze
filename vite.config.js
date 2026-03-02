@@ -1,12 +1,11 @@
 import { defineConfig } from 'vite';
-import { viteSingleFile } from 'vite-plugin-singlefile'
 import { visualizer } from 'rollup-plugin-visualizer';
 import elmPlugin from 'vite-plugin-elm';
 
 export default defineConfig({
+    base: '/',
     plugins: [
         elmPlugin({ debug: false }),
-        viteSingleFile(),
         // visualizer({
         //     open: true,
         //     gzipSize: true,
