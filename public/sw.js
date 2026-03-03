@@ -1,4 +1,4 @@
-const CACHE_NAME = 'v3';
+const CACHE_NAME = 'v4';
 const ASSETS_TO_CACHE = [
     '/',
     '/manifest.json',
@@ -8,6 +8,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             return cache.addAll(ASSETS_TO_CACHE);
@@ -15,30 +16,19 @@ self.addEventListener('install', (event) => {
     );
 });
 
-self.addEventListener('fetch', (event) => {
-    if (event.request.mode === 'navigate') {
-        event.respondWith(caches.match('/'));
-        return;
-    }
-
-    event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
-        })
+self.addEventListener('activate', (event) => {
+    self.clients.claim();
+    event.waitUntil(
+        caches.keys().then((cacheNames) => Promise.all(
+            cacheNames.map((key) => key !== CACHE_NAME && caches.delete(key))
+        ));
     );
 });
 
-self.addEventListener('activate', (event) => {
-    const cacheWhitelist = [CACHE_NAME];
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (!cacheWhitelist.includes(cacheName)) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
-    );
+self.addEventListener('fetch', (event) => {
+    const response = event.request.mode === 'navigate'
+        ? caches.match('/')
+        : caches.match(event.request).then(res => res || fetch(event.request));
+
+    event.respondWith(response);
 });
