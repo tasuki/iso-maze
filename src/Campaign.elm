@@ -19,7 +19,36 @@ type alias MazeDef =
 
 mazeDefs : List MazeDef
 mazeDefs =
-    [ { emoji = "🦋"
+    [ { emoji = "🐞"
+      , name = "ladybug"
+      , maze = "sz:3,5;off:0,0;st:0,0;end:2,4;mz:"
+        ++ "o0x o0"
+        ++ "o0x o0"
+        ++ "o0o0o0"
+        ++ "o0x o0"
+        ++ "o0x o0"
+      }
+
+    , { emoji = "🐛"
+      , name = "bug"
+      , maze = "sz:4,4;off:0,0;st:0,0;end:3,0;mz:"
+        ++ "o2o2x x "
+        ++ "s2o2o2o2"
+        ++ "o1o1o1o2"
+        ++ "o0z1o1o2"
+      }
+
+    , { emoji = "🐝"
+      , name = "bee"
+      , maze = "sz:5,5;off:0,0;st:0,0;end:4,3;mz:"
+        ++ "x o0z1o1o1"
+        ++ "x o0o0o0o1"
+        ++ "o1l1o1o0x "
+        ++ "o1o0s1x x "
+        ++ "o1o0o0x x "
+      }
+
+    , { emoji = "🦋"
       , name = "butterfly"
       , maze = "sz:9,9;off:-3,-3;st:0,0;end:4,4;mz:"
         ++ "x x o2o2o3o3o3o3o3"
