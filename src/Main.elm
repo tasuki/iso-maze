@@ -328,12 +328,23 @@ updateModel message model =
             else ( model, Cmd.none )
 
         ToggleMode ->
-            ( { model | mode =
-                if model.mode == ME.Running then ME.Editing
-                else ME.Running
-              , staticUpdate = True
+            let
+                newMode =
+                    if model.mode == ME.Running then ME.Editing
+                    else ME.Running
+
+                cmd =
+                    if newMode == ME.Editing then
+                        pushUrl model.navKey model.maze
+
+                    else
+                        Cmd.none
+            in
+            ( { model
+                | mode = newMode
+                , staticUpdate = True
               }
-            , Cmd.none
+            , cmd
             )
 
         ToggleBlock -> updateMaze ME.toggleBlock { model | currentLevel = Nothing }
@@ -539,7 +550,7 @@ updateMaze fun model =
 
 pushUrl : Nav.Key -> M.Maze -> Cmd msg
 pushUrl navKey maze =
-    Nav.pushUrl navKey <| "?" ++ Codec.encode maze
+    Nav.pushUrl navKey <| "/?" ++ Codec.encode maze
 
 
 -- Subscriptions
