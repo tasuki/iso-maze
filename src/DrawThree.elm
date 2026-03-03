@@ -98,7 +98,7 @@ dynamicRenderables model =
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
         , List.map SphereRenderable (drawFocus model.mode model.focus)
-        , List.map BoxRenderable (drawEnd (M.endPosition model.maze) model.playerState model.playerSpheres)
+        , List.map BoxRenderable (drawEnd model.maze model.playerState model.playerSpheres)
         ]
 
 encodeRenderable : Renderable -> E.Value
@@ -210,11 +210,11 @@ drawBlock block =
             List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
 
 
-drawEnd : M.Position -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> List Box
-drawEnd goal playerState ( _, _, head ) =
+drawEnd : M.Maze -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> List Box
+drawEnd maze playerState ( _, _, head ) =
     let
-        hatTransform = Animate.computeHatTransform goal playerState head.z
-        ( gx, gy, _ ) = goal
+        hatTransform = Animate.computeHatTransform maze playerState head.z
+        ( gx, gy, _ ) = M.endPosition maze
 
         sZ = 1.0 - 0.6 * hatTransform.squash
         sXY = 1.0 + 0.6 * hatTransform.squash

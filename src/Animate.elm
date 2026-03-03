@@ -135,28 +135,32 @@ type alias HatTransform =
     , squash : Float
     }
 
-computeHatTransform : M.Position -> M.PlayerState -> Float -> HatTransform
-computeHatTransform ( gx, gy, gz ) playerState headZ =
+computeHatTransform : M.Maze -> M.PlayerState -> Float -> HatTransform
+computeHatTransform maze playerState headZ =
     let
-        ( from2d, to2d, progress ) =
+        goal = M.endPosition maze
+        ( gx, gy, gz ) = goal
+
+        ( from, to, progress ) =
             case playerState of
-                M.Idle ( px, py, _ ) -> ( ( px, py ), ( px, py ), 1.0 )
-                M.Moving m ->
-                    let
-                        ( fx, fy, _ ) = m.from
-                        ( tx, ty, _ ) = m.to
-                    in
-                    ( ( fx, fy ), ( tx, ty ), m.progress )
+                M.Idle p -> ( p, p, 1.0 )
+                M.Moving m -> ( m.from, m.to, m.progress )
+
+        ( fx, fy, _ ) = from
+        ( tx, ty, _ ) = to
+
+        canMoveTo fromPos targetPos =
+            List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
 
         goal2d = ( gx, gy )
-        isNeighbor ( x1, y1 ) ( x2, y2 ) = abs (x1 - x2) + abs (y1 - y2) == 1
+        to2d = ( tx, ty )
 
         fz = toFloat gz * 10
         jumpHeight = 18.0
 
         ( currentBaseZ, squashFactor ) =
             if to2d == goal2d then
-                if isNeighbor from2d goal2d then
+                if canMoveTo from goal then
                     -- Moving to goal
                     let
                         -- Jump up fast
@@ -177,7 +181,7 @@ computeHatTransform ( gx, gy, gz ) playerState headZ =
                         squash = clamp 0 1 (1.0 - progress * 5.0)
                     in
                     ( currentZ, squash )
-                else if from2d == goal2d then
+                else if ( fx, fy ) == goal2d then
                     -- Already at goal
                     ( headZ + 1.4, 0 )
                 else
@@ -185,9 +189,9 @@ computeHatTransform ( gx, gy, gz ) playerState headZ =
             else
                 let
                     squash =
-                        if isNeighbor to2d goal2d && progress >= 1.0 then 1.0
-                        else if isNeighbor to2d goal2d && progress < 1.0 then progress
-                        else if isNeighbor from2d goal2d && progress < 1.0 then 1.0 - progress
+                        if canMoveTo to goal && progress >= 1.0 then 1.0
+                        else if canMoveTo to goal && progress < 1.0 then progress
+                        else if canMoveTo from goal && progress < 1.0 then 1.0 - progress
                         else 0
                 in
                 ( fz, squash )
