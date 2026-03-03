@@ -111,7 +111,6 @@ mazeDefs =
         ++ "o0o0o0o0o0o0x x x x "
       }
 
-
     , { emoji = "🐹"
       , name = "hamster"
       , maze = "bg:863;"
@@ -127,9 +126,7 @@ mazeDefs =
         ++ "o0o0z1o1o0o0o1x x x x "
         ++ "x o0o0o1l1o1o1x x x x "
         ++ "x x o0o0o0o0x x x x x "
-
       }
-
 
     , { emoji = "🦇"
       , name = "bat"
