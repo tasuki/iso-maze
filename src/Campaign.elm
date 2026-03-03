@@ -95,6 +95,42 @@ mazeDefs =
         ++ "x x o1o1o1o1o1x x x x "
       }
 
+    , { emoji = "🐭"
+      , name = "mouse"
+      , maze = "bg:a47;left:a47,20;right:749,20;above:fff,75;"
+        ++ "sz:10,10;off:-1,-1;st:-1,-1;end:8,3;mz:"
+        ++ "x x x x o3o2o2o2o2o2"
+        ++ "x x o2z3o3o3l3o3o2S3"
+        ++ "x o1o2o2o2o1l2o1o1o3"
+        ++ "o0o1s2o1o2o1s2o2o2o3"
+        ++ "o0o1s1o1o2o1o1o2o1s3"
+        ++ "o0o1o0o1l2o1o2o2o1o2"
+        ++ "o0l1o0o1o2o2o2o1o1x "
+        ++ "o0o1o1o1o2s2o1o1x x "
+        ++ "o0o1s1o0z1o1o1x x x "
+        ++ "o0o0o0o0o0o0x x x x "
+      }
+
+
+    , { emoji = "🐹"
+      , name = "hamster"
+      , maze = "bg:863;"
+        ++ "sz:11,11;off:-2,-3;st:-1,-1;end:7,7;mz:"
+        ++ "x x x o1o2z3o3o3o3o3x "
+        ++ "x x o0s1o2o1z2o2o2o3x "
+        ++ "x x o0o0o2l2o2Z2o1s3o1"
+        ++ "o0o0o0o1o1o1o1o2o1o2o1"
+        ++ "o0o1z2l2o2o2o1l2o1o2o1"
+        ++ "o0o1o0s1s2o0o0s2o0z1o1"
+        ++ "o0o1o0o0l1o0z1o1o0o0x "
+        ++ "o0s1o1o1o1o0o0o0o0x x "
+        ++ "o0o0z1o1o0o0o1x x x x "
+        ++ "x o0o0o1l1o1o1x x x x "
+        ++ "x x o0o0o0o0x x x x x "
+
+      }
+
+
     , { emoji = "🦇"
       , name = "bat"
       , maze = "bg:234;left:6bf,15;right:234,25;above:fff,20;"
