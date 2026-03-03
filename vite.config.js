@@ -16,4 +16,16 @@ export default defineConfig({
         port: 8423,
         // hmr: false, // breaks elm reload
     },
+    build: {
+        rollupOptions: {
+            output: {
+                entryFileNames: `assets/[name].js`,
+                chunkFileNames: `assets/[name].js`,
+                assetFileNames: `assets/[name].[ext]`,
+                manualChunks: {
+                    vendor: ['three', 'n8ao', 'postprocessing'],
+                },
+            },
+        },
+    },
 });
