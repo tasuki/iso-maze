@@ -31,7 +31,8 @@ mazeDefs =
 
     , { emoji = "🐛"
       , name = "bug"
-      , maze = "sz:4,4;off:0,0;st:0,0;end:3,0;mz:"
+      , maze = "bg:560;left:df0,20;right:df0,5;"
+        ++ "sz:4,4;off:0,0;st:0,0;end:3,0;mz:"
         ++ "o2o2x x "
         ++ "s2o2o2o2"
         ++ "o1o1o1o2"
