@@ -329,16 +329,13 @@ updateModel message model =
 
         ToggleMode ->
             let
-                newMode =
-                    if model.mode == ME.Running then ME.Editing
+                newMode = if model.mode == ME.Running
+                    then ME.Editing
                     else ME.Running
 
-                cmd =
-                    if newMode == ME.Editing then
-                        pushUrl model.navKey model.maze
-
-                    else
-                        Cmd.none
+                cmd = if newMode == ME.Editing
+                    then pushUrl model.navKey model.maze
+                    else Cmd.none
             in
             ( { model
                 | mode = newMode
