@@ -38,7 +38,7 @@ type Overlay
 type alias Model =
     { navKey : Nav.Key
     , finishedLevels : Set String
-    , currentLevel : Maybe String
+    , currentLevel : Maybe Campaign.Level
     , widthPx : Int
     , heightPx : Int
     , elapsedTime : Duration
@@ -229,9 +229,9 @@ updateModel message model =
 
                 maybeFinishedLevelName =
                     case (model.currentLevel, newPlayerState) of
-                        (Just name, M.Idle pos) ->
+                        (Just level, M.Idle pos) ->
                             if pos == M.endPosition model.maze
-                                then Just name
+                                then Just level.name
                                 else Nothing
                         _ -> Nothing
 
@@ -526,7 +526,7 @@ loadMaze maze maybeName model =
             if shouldFall then Animate.initAnimator targets
             else Animate.initAnimatorAt targets
         , staticUpdate = True
-        , currentLevel = maybeName
+        , currentLevel = maybeName |> Maybe.andThen Campaign.getLevel
         , activeOverlay = Nothing
     }
 
@@ -673,15 +673,9 @@ view model =
                 (HE.preventDefaultOn "pointermove" <| Decode.map (\m -> ( m, True )) (DD.decodePrimary Moved))
                     :: alwaysWatch
             else alwaysWatch
-        maybeEmoji = model.currentLevel
-            |> Maybe.andThen Campaign.getLevel
-            |> Maybe.map .emoji
-        menuEmoji = case maybeEmoji of
-            Just emoji -> emoji
-            Nothing -> "🚀"
-        title = case maybeEmoji of
-            Just emoji -> emoji ++ " – ⛄🔎🎩"
-            Nothing -> "⛄🔎🎩"
+        ( menuEmoji, title ) = case model.currentLevel of
+            Just l -> ( l.emoji, l.emoji ++ " – ⛄🔎🎩" )
+            Nothing -> ( "🚀", "⛄🔎🎩" )
     in
     { title = title
     , body =
