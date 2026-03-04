@@ -9,7 +9,7 @@
     <link rel="icon" href="/favicon.svg">
     <link rel="manifest" href="/manifest.json">
     <script>
-    if ('serviceWorker' in navigator) {
+    if (window.location.hostname !== 'localhost' && 'serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js');
     }
     </script>

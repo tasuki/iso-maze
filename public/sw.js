@@ -1,4 +1,4 @@
-const CACHE_NAME = 'v6';
+const CACHE_NAME = 'v7';
 const ASSETS_TO_CACHE = [
     '/',
     '/manifest.json',
@@ -6,6 +6,8 @@ const ASSETS_TO_CACHE = [
     '/assets/index.js',
     '/assets/vendor.js',
 ];
+
+let hasCheckedForUpdates = false;
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -24,9 +26,33 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    const response = event.request.mode === 'navigate'
-        ? caches.match('/')
-        : caches.match(event.request).then(res => res || fetch(event.request));
+    const url = new URL(event.request.url);
+    const request = ASSETS_TO_CACHE.includes(url.pathname) ? event.request : '/';
 
-    event.respondWith(response);
+    if (!hasCheckedForUpdates) {
+        hasCheckedForUpdates = true;
+        event.respondWith(
+            Promise.race([
+                fetchAndRefreshCache(request),
+                timeout(3000),
+            ]).catch(() => caches.match(request))
+        );
+    } else {
+        event.respondWith(caches.match(request));
+    }
 });
+
+async function fetchAndRefreshCache(request) {
+    const response = await fetch(request);
+    if (response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, response.clone());
+    }
+    return response;
+}
+
+function timeout(ms) {
+    return new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), ms)
+    );
+}
