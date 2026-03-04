@@ -160,6 +160,11 @@ update message model =
     let
         ( preModel, cmd ) = updateModel message model
         targets = Animate.getPlayerTargets preModel.playerState preModel.maze
+        wasMoving =
+            case model.playerState of
+                M.Idle _ -> Animate.isAnimatorMoving (Animate.getPlayerTargets model.playerState model.maze) model.animator
+                M.Moving _ -> True
+
         isMoving =
             case preModel.playerState of
                 M.Idle _ -> Animate.isAnimatorMoving targets preModel.animator
@@ -168,7 +173,7 @@ update message model =
         shouldRender =
             case message of
                 Resize _ _ -> True
-                Tick _ -> isMoving
+                Tick _ -> isMoving || wasMoving
                 Moved _ -> preModel.mode == ME.Editing && preModel.orbiting
                 Finished _ -> model.orbiting
                 KeyDown key ->
@@ -187,6 +192,8 @@ update message model =
                     , maze = preModel.maze
                     , playerState = preModel.playerState
                     , playerSpheres = ( s1.current, s2.current, s3.current )
+                    , animatorTimer = preModel.animator.timer
+                    , animatorInitialFall = preModel.animator.initialFall
                     , focus = preModel.focus
                     , mode = preModel.mode
                     , widthPx = preModel.widthPx
@@ -487,13 +494,14 @@ loadMaze maze maybeName model =
                 let ( x, y, _ ) = m.from in ( x, y )
         ( newX, newY, _ ) = startPos
         shouldFall = oldX /= newX || oldY /= newY
+        newAnimator =
+            if shouldFall then Animate.initAnimator targets
+            else Animate.initAnimatorAt targets
     in
     { model
         | maze = maze
         , playerState = M.Idle startPos
-        , animator =
-            if shouldFall then Animate.initAnimator targets
-            else Animate.initAnimatorAt targets
+        , animator = newAnimator
         , staticUpdate = True
         , currentLevel = maybeName |> Maybe.andThen Campaign.getLevel
         , activeOverlay = Nothing

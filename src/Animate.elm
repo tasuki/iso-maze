@@ -15,7 +15,12 @@ type alias Triple a = ( a, a, a )
 type alias AnimatorState =
     { spheres : Triple SphereState
     , timer : Float
+    , initialFall : Bool
     }
+
+fallDuration : Float
+fallDuration =
+    2.0
 
 initAnimator : Triple Vec3 -> AnimatorState
 initAnimator ( t1, t2, t3 ) =
@@ -27,6 +32,7 @@ initAnimator ( t1, t2, t3 ) =
     in
     { spheres = ( initSphere t1, initSphere t2, initSphere t3 )
     , timer = 0
+    , initialFall = True
     }
 
 initAnimatorAt : Triple Vec3 -> AnimatorState
@@ -39,6 +45,7 @@ initAnimatorAt ( t1, t2, t3 ) =
     in
     { spheres = ( initSphere t1, initSphere t2, initSphere t3 )
     , timer = 0
+    , initialFall = False
     }
 
 isAnimatorMoving : Triple Vec3 -> AnimatorState -> Bool
@@ -58,20 +65,21 @@ isAnimatorMoving ( t1, t2, t3 ) state =
             dv2 > velThreshold * velThreshold || dp2 > posThreshold * posThreshold
         ( s1, s2, s3 ) = state.spheres
     in
-    isSphereMoving t1 s1 || isSphereMoving t2 s2 || isSphereMoving t3 s3
+    (state.initialFall && state.timer <= fallDuration)
+    || isSphereMoving t1 s1 || isSphereMoving t2 s2 || isSphereMoving t3 s3
 
 updateAnimator : Float -> Triple Vec3 -> AnimatorState -> AnimatorState
 updateAnimator totalDt ( t1, t2, t3 ) state =
     let
-        ( bottomSphere, _, _ ) = state.spheres
-        isInitialFall = bottomSphere.current.z > t1.z + 10.0
-
         subSteps = 5
         dt = min totalDt 0.2 / toFloat subSteps
         staggerDelay = 0.1
 
-        springK = if isInitialFall then 40 else 600
-        damping = if isInitialFall then 15 else 30
+        ( bottomSphere, _, _ ) = state.spheres
+        isIntroFalling = bottomSphere.current.z > t1.z + 10.0
+
+        springK = if isIntroFalling then 40 else 600
+        damping = if isIntroFalling then 15 else 30
 
         updateSphere curT i target s prevC prevT =
             if curT < toFloat i * staggerDelay then s
@@ -124,70 +132,97 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
             in
             ( ( ns1, ns2, ns3 ), newTimer )
         runSubSteps n ( s, t ) =
-            if n <= 0 then { state | spheres = s, timer = t }
+            if n <= 0 then ( s, t )
             else runSubSteps (n - 1) (step s t)
+
+        ( finalSpheres, finalTimer ) = runSubSteps subSteps ( state.spheres, state.timer )
     in
-    runSubSteps subSteps ( state.spheres, state.timer )
+    { state
+    | spheres = finalSpheres
+    , timer = finalTimer
+    , initialFall = state.initialFall && finalTimer <= fallDuration
+    }
 
 
 type alias HatTransform =
-    { z : Float
+    { x : Float
+    , y : Float
+    , z : Float
     , squash : Float
     }
 
-computeHatTransform : M.Maze -> M.PlayerState -> Float -> HatTransform
-computeHatTransform maze playerState headZ =
+computeHatTransform : M.Maze -> M.PlayerState -> Vec3 -> Float -> Bool -> HatTransform
+computeHatTransform maze playerState head timer initialFall =
     let
         goal = M.endPosition maze
-        goal2d = M.positionTo2d goal
-
-        ( from, to, progress ) =
-            case playerState of
-                M.Idle p -> ( p, p, 1.0 )
-                M.Moving m -> ( m.from, m.to, m.progress )
-
-        canMoveTo fromPos targetPos =
-            List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
-
-        fz = toFloat (M.positionZ goal) * 10
-        jumpHeight = 18.0
-
-        ( currentBaseZ, squashFactor ) =
-            if M.positionTo2d to == goal2d then
-                if M.positionTo2d from == goal2d then
-                    -- Already at goal
-                    ( headZ + 1.4, 0 )
-                else
-                    -- Moving to goal
-                    let
-                        -- Jump up fast
-                        t = clamp 0 0.333 (progress * 0.2)
-                        hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
-
-                        -- Descend slowly
-                        descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
-                        targetZ = headZ + 1.4
-                        currentZ =
-                            if progress < 1.0 then fz + hJump
-                            else
-                                let startDescendZ = fz + jumpHeight
-                                in startDescendZ + (targetZ - startDescendZ) * descendProgress
-
-                        -- Squash should dissipate as it jumps
-                        squash = clamp 0 1 (1.0 - progress * 5.0)
-                    in
-                    ( currentZ, squash )
-            else
-                let
-                    squash =
-                        if canMoveTo to goal && progress >= 1.0 then 1.0
-                        else if canMoveTo to goal && progress < 1.0 then progress
-                        else if canMoveTo from goal && progress < 1.0 then 1.0 - progress
-                        else 0
-                in
-                ( fz, squash )
+        ( gx, gy, gz ) = goal
+        goalX = toFloat gx * 10
+        goalY = toFloat gy * 10
+        fz = toFloat gz * 10
     in
-    { z = currentBaseZ, squash = squashFactor }
+    if initialFall && timer <= fallDuration then
+        let
+            startPos = M.startPosition maze
+            ( _, _, startHead ) = getPlayerTargets (M.Idle startPos) maze
+            t = clamp 0 1 (timer / fallDuration)
+            jumpHeight = 40.0
+            startZ = startHead.z + 30.0 + 1.4
+            targetZ = fz
+            currentZ = startZ * (1.0 - t) + targetZ * t + jumpHeight * 4.0 * t * (1.0 - t)
+        in
+        { x = startHead.x * (1.0 - t) + goalX * t
+        , y = startHead.y * (1.0 - t) + goalY * t
+        , z = currentZ
+        , squash = 0
+        }
+    else
+        let
+            jumpHeight = 18.0
+            goal2d = M.positionTo2d goal
+            ( from, to, progress ) =
+                case playerState of
+                    M.Idle p -> ( p, p, 1.0 )
+                    M.Moving m -> ( m.from, m.to, m.progress )
+
+            canMoveTo fromPos targetPos =
+                List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
+
+            ( currentBaseZ, squashFactor ) =
+                if M.positionTo2d to == goal2d then
+                    if M.positionTo2d from == goal2d then
+                        -- Already at goal
+                        ( head.z + 1.4, 0 )
+                    else
+                        -- Moving to goal
+                        let
+                            -- Jump up fast
+                            t = clamp 0 0.333 (progress * 0.2)
+                            hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
+
+                            -- Descend slowly
+                            descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
+                            targetZ = head.z + 1.4
+                            currentZ =
+                                if progress < 1.0 then fz + hJump
+                                else
+                                    let startDescendZ = fz + jumpHeight
+                                    in startDescendZ + (targetZ - startDescendZ) * descendProgress
+
+                            -- Squash should dissipate as it jumps
+                            squash = clamp 0 1 (1.0 - progress * 5.0)
+                        in
+                        ( currentZ, squash )
+                else
+                    let
+                        squash =
+                            if canMoveTo to goal && progress >= 1.0 then 1.0
+                            else if canMoveTo to goal && progress < 1.0 then progress
+                            else if canMoveTo from goal && progress < 1.0 then 1.0 - progress
+                            else 0
+                    in
+                    ( fz, squash )
+        in
+        { x = goalX, y = goalY, z = currentBaseZ, squash = squashFactor }
 
 
 interpolatedPosition : M.PlayerState -> (Float, Float, Float)

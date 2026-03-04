@@ -24,6 +24,8 @@ type alias Model =
     , maze : M.Maze
     , playerState : M.PlayerState
     , playerSpheres : ( Vec3, Vec3, Vec3 )
+    , animatorTimer : Float
+    , animatorInitialFall : Bool
     , focus : M.Position
     , mode : ME.Mode
     , widthPx : Int
@@ -98,7 +100,7 @@ dynamicRenderables model =
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
         , List.map SphereRenderable (drawFocus model.mode model.focus)
-        , List.map BoxRenderable (drawEnd model.maze model.playerState model.playerSpheres)
+        , List.map BoxRenderable (drawEnd model.maze model.playerState model.playerSpheres model.animatorTimer model.animatorInitialFall)
         ]
 
 encodeRenderable : Renderable -> E.Value
@@ -210,18 +212,17 @@ drawBlock block =
             List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
 
 
-drawEnd : M.Maze -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> List Box
-drawEnd maze playerState ( _, _, head ) =
+drawEnd : M.Maze -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> Float -> Bool -> List Box
+drawEnd maze playerState ( _, _, head ) timer initialFall =
     let
-        hatTransform = Animate.computeHatTransform maze playerState head.z
-        ( gx, gy, _ ) = M.endPosition maze
+        hatTransform = Animate.computeHatTransform maze playerState head timer initialFall
 
         sZ = 1.0 - 0.6 * hatTransform.squash
         sXY = 1.0 + 0.6 * hatTransform.squash
 
         hatPart rotation =
-            { x = toFloat gx * 10
-            , y = toFloat gy * 10
+            { x = hatTransform.x
+            , y = hatTransform.y
             , z = hatTransform.z + (0.8 * sZ)
             , sizeX = 1.6 * sXY
             , sizeY = 1.6 * sXY
