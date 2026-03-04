@@ -7,7 +7,7 @@ const ASSETS_TO_CACHE = [
     '/assets/vendor.js',
 ];
 
-let hasCheckedForUpdates = false;
+const checkedInSession = new Set();
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -29,8 +29,8 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     const request = ASSETS_TO_CACHE.includes(url.pathname) ? event.request : '/';
 
-    if (!hasCheckedForUpdates) {
-        hasCheckedForUpdates = true;
+    if (!checkedInSession.has(request)) {
+        checkedInSession.add(request);
         event.respondWith(
             Promise.race([
                 fetchAndRefreshCache(request),
