@@ -427,6 +427,7 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
                                 Just nextTo ->
                                     M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
                                 Nothing ->
+                                    -- This case is now unreachable as resolveIntent only returns valid directions
                                     M.Idle pos
                         Nothing ->
                             case maybePrevDir of

@@ -4,15 +4,7 @@ import Maze as M
 import Set exposing (Set)
 import DocumentDecoders as DD
 
-type MovementIntent
-    = North (Maybe Float)
-    | South (Maybe Float)
-    | East (Maybe Float)
-    | West (Maybe Float)
-    | NW_Strict
-    | NE_Strict
-    | SW_Strict
-    | SE_Strict
+type MovementIntent = Intent Float
 
 getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
 getIntent keysDown pointerStart pointerLast =
@@ -34,14 +26,14 @@ getIntentFromKeyboard keys =
         eps = 0.01
     in
     case ( ( up, down ), ( left, right ) ) of
-        ( ( True, False ), ( True, False ) ) -> Just NW_Strict
-        ( ( True, False ), ( False, True ) ) -> Just NE_Strict
-        ( ( False, True ), ( True, False ) ) -> Just SW_Strict
-        ( ( False, True ), ( False, True ) ) -> Just SE_Strict
-        ( ( True, False ), _ ) -> Just (North (Just (-pi/2 - eps)))
-        ( ( False, True ), _ ) -> Just (South (Just (pi/2 - eps)))
-        ( _, ( True, False ) ) -> Just (West (Just (pi - eps)))
-        ( _, ( False, True ) ) -> Just (East (Just (0 - eps)))
+        ( ( True, False ), ( True, False ) ) -> Just (Intent (directionToAngle M.NW))
+        ( ( True, False ), ( False, True ) ) -> Just (Intent (directionToAngle M.NE))
+        ( ( False, True ), ( True, False ) ) -> Just (Intent (directionToAngle M.SW))
+        ( ( False, True ), ( False, True ) ) -> Just (Intent (directionToAngle M.SE))
+        ( ( True, False ), _ ) -> Just (Intent (-pi/2 - eps))
+        ( ( False, True ), _ ) -> Just (Intent (pi/2 - eps))
+        ( _, ( True, False ) ) -> Just (Intent (pi - eps))
+        ( _, ( False, True ) ) -> Just (Intent (0 - eps))
         _ -> Nothing
 
 getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
@@ -55,61 +47,33 @@ getIntentFromJoystick pointerStart pointerLast =
                 deadzone = 10
             in
             if dist > deadzone then
-                let
-                    angle = atan2 dy dx
-                    -- PI/8 = 0.3927
-                    -- sectors of 45 deg centered on cardinals and diagonals
-                in
-                if angle >= -pi/8 && angle < pi/8 then Just (East (Just angle))
-                else if angle >= pi/8 && angle < 3*pi/8 then Just SE_Strict
-                else if angle >= 3*pi/8 && angle < 5*pi/8 then Just (South (Just angle))
-                else if angle >= 5*pi/8 && angle < 7*pi/8 then Just SW_Strict
-                else if angle >= 7*pi/8 || angle < -7*pi/8 then Just (West (Just angle))
-                else if angle >= -7*pi/8 && angle < -5*pi/8 then Just NW_Strict
-                else if angle >= -5*pi/8 && angle < -3*pi/8 then Just (North (Just angle))
-                else Just NE_Strict
+                Just (Intent (atan2 dy dx))
             else
                 Nothing
         _ -> Nothing
 
 resolveIntent : M.Position -> Maybe M.Direction -> MovementIntent -> M.Maze -> Maybe M.Direction
-resolveIntent pos maybePrevDir intent maze =
-    case intent of
-        NW_Strict -> M.move pos M.NW maze |> Maybe.map (always M.NW)
-        NE_Strict -> M.move pos M.NE maze |> Maybe.map (always M.NE)
-        SW_Strict -> M.move pos M.SW maze |> Maybe.map (always M.SW)
-        SE_Strict -> M.move pos M.SE maze |> Maybe.map (always M.SE)
-
-        North maybeAngle -> resolveCardinal pos maybePrevDir maybeAngle M.NW M.NE maze
-        South maybeAngle -> resolveCardinal pos maybePrevDir maybeAngle M.SW M.SE maze
-        East maybeAngle -> resolveCardinal pos maybePrevDir maybeAngle M.NE M.SE maze
-        West maybeAngle -> resolveCardinal pos maybePrevDir maybeAngle M.NW M.SW maze
-
-resolveCardinal : M.Position -> Maybe M.Direction -> Maybe Float -> M.Direction -> M.Direction -> M.Maze -> Maybe M.Direction
-resolveCardinal pos maybePrevDir maybeAngle d1 d2 maze =
+resolveIntent pos maybePrevDir (Intent angle) maze =
     let
-        m1 = M.move pos d1 maze
-        m2 = M.move pos d2 maze
-    in
-    case (m1, m2) of
-        (Just _, Just _) ->
-            -- Both available! Tie-break.
-            case maybeAngle of
-                Just angle ->
-                    -- Joystick: pick closest
-                    if angleDiff angle (directionToAngle d1) < angleDiff angle (directionToAngle d2) then
-                        Just d1
-                    else
-                        Just d2
-                Nothing ->
-                    -- Keyboard: continue current if it's one of them
-                    if maybePrevDir == Just d1 then Just d1
-                    else if maybePrevDir == Just d2 then Just d2
-                    else Just d1 -- Default to d1 (arbitrary)
+        allDirs = [ M.NW, M.NE, M.SW, M.SE ]
+        validDirs = List.filter (\d -> M.move pos d maze /= Nothing) allDirs
 
-        (Just _, Nothing) -> Just d1
-        (Nothing, Just _) -> Just d2
-        (Nothing, Nothing) -> Nothing
+        diff d = angleDiff angle (directionToAngle d)
+
+        sortByDiff d1 d2 =
+            let
+                diff1 = diff d1
+                diff2 = diff d2
+            in
+            if diff1 < diff2 then LT
+            else if diff1 > diff2 then GT
+            else if Just d1 == maybePrevDir then LT
+            else if Just d2 == maybePrevDir then GT
+            else EQ
+    in
+    validDirs
+        |> List.sortWith sortByDiff
+        |> List.head
 
 directionToAngle : M.Direction -> Float
 directionToAngle dir =
