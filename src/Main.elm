@@ -8,6 +8,7 @@ import Browser.Events as BE
 import Browser.Navigation as Nav
 import Campaign
 import Codec
+import Controls
 import DrawThree as D
 import DocumentDecoders as DD
 import Duration exposing (Duration)
@@ -418,11 +419,15 @@ updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.D
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
         maybeMove pos progress maybePrevDir =
-            case getDesiredDirection keysDown pointerStart pointerLast of
-                Just dir ->
-                    case M.move pos dir maze of
-                        Just nextTo ->
-                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
+            case Controls.getIntent keysDown pointerStart pointerLast of
+                Just intent ->
+                    case Controls.resolveIntent pos maybePrevDir intent maze of
+                        Just dir ->
+                            case M.move pos dir maze of
+                                Just nextTo ->
+                                    M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
+                                Nothing ->
+                                    M.Idle pos
                         Nothing ->
                             case maybePrevDir of
                                 Just prevDir ->
@@ -446,38 +451,6 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
             in
             if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress) (Just m.dir)
             else M.Moving { m | progress = newProgress }
-
-getDesiredDirection : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.Direction
-getDesiredDirection keysDown pointerStart pointerLast =
-    let
-        kbdDir =
-            if Set.member "ArrowLeft" keysDown then Just M.SW
-            else if Set.member "ArrowDown" keysDown then Just M.SE
-            else if Set.member "ArrowUp" keysDown then Just M.NW
-            else if Set.member "ArrowRight" keysDown then Just M.NE
-            else Nothing
-
-        joyDir =
-            case (pointerStart, pointerLast) of
-                (Just start, Just last) ->
-                    let
-                        dx = last.x - start.x
-                        dy = last.y - start.y
-                        dist = sqrt (dx*dx + dy*dy)
-                        deadzone = 10
-                    in
-                    if dist > deadzone then
-                        if dy < 0 then
-                            if dx < 0 then Just M.NW else Just M.NE
-                        else
-                            if dx < 0 then Just M.SW else Just M.SE
-                    else
-                        Nothing
-                _ -> Nothing
-    in
-    case kbdDir of
-        Just d -> Just d
-        Nothing -> joyDir
 
 type Route
     = Home (Maybe M.Maze)
