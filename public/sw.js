@@ -7,7 +7,7 @@ const ASSETS_TO_CACHE = [
     '/assets/vendor.js',
 ];
 
-let hasCheckedForUpdates = false;
+const checkedAssets = new Set();
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -27,28 +27,52 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
-    const request = ASSETS_TO_CACHE.includes(url.pathname) ? event.request : '/';
+    const path = url.pathname;
 
-    if (!hasCheckedForUpdates) {
-        hasCheckedForUpdates = true;
-        event.respondWith(
-            Promise.race([
-                fetchAndRefreshCache(request),
-                timeout(3000),
-            ]).catch(() => caches.match(request))
-        );
-    } else {
-        event.respondWith(caches.match(request));
+    // Navigation requests (HTML)
+    if (event.request.mode === 'navigate') {
+        checkedAssets.clear(); // Start of a new session/load
+        event.respondWith(handleRequest('/', event.request));
+        return;
+    }
+
+    // Known static assets
+    if (ASSETS_TO_CACHE.includes(path)) {
+        event.respondWith(handleRequest(path, event.request));
     }
 });
 
-async function fetchAndRefreshCache(request) {
-    const response = await fetch(request);
-    if (response.ok) {
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(request, response.clone());
+async function handleRequest(cacheKey, request) {
+    if (!checkedAssets.has(cacheKey)) {
+        checkedAssets.add(cacheKey);
+        try {
+            const networkResponse = await Promise.race([
+                fetchAndRefreshCache(cacheKey, request),
+                timeout(3000),
+            ]);
+            if (networkResponse && networkResponse.ok) {
+                return networkResponse;
+            }
+        } catch (e) {
+            // Fallback to cache on timeout or network error
+        }
     }
-    return response;
+
+    const cachedResponse = await caches.match(cacheKey);
+    return cachedResponse || fetch(request);
+}
+
+async function fetchAndRefreshCache(cacheKey, request) {
+    try {
+        const response = await fetch(request, { cache: 'reload' });
+        if (response.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(cacheKey, response.clone());
+        }
+        return response;
+    } catch (e) {
+        return null;
+    }
 }
 
 function timeout(ms) {
