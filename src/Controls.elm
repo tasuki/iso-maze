@@ -56,9 +56,17 @@ resolveIntent : M.Position -> MovementIntent -> M.Maze -> Maybe ( M.Direction, M
 resolveIntent pos (Intent angle) maze =
     let
         allDirs = [ M.NW, M.NE, M.SW, M.SE ]
-        validMoves = List.filterMap (\d -> M.move pos d maze |> Maybe.map (Tuple.pair d)) allDirs
 
         diff d = angleDiff angle (directionToAngle d)
+
+        validMoves = List.filterMap
+            (\d ->
+                if diff d < (pi / 2) then
+                    M.move pos d maze |> Maybe.map (Tuple.pair d)
+                else
+                    Nothing
+            )
+            allDirs
 
         sortByDiff ( d1, _ ) ( d2, _ ) =
             let
