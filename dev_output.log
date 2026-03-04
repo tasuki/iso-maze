@@ -1,0 +1,12 @@
+
+> iso-maze@0.0.1 dev
+> vite
+
+Port 8423 is in use, trying another one...
+
+  VITE v7.3.1  ready in 518 ms
+
+  ➜  Local:   http://localhost:8424/
+  ➜  Network: use --host to expose
+9:35:50 PM [vite] (client) hmr update /src/Main.elm
+9:36:11 PM [vite] (client) hmr update /src/Main.elm

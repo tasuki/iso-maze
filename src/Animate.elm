@@ -61,20 +61,22 @@ isAnimatorMoving ( t1, t2, t3 ) state =
             dv2 > velThreshold * velThreshold || dp2 > posThreshold * posThreshold
         ( s1, s2, s3 ) = state.spheres
     in
-    isSphereMoving t1 s1 || isSphereMoving t2 s2 || isSphereMoving t3 s3
+    (state.initialFall && state.timer < 2.0)
+    || isSphereMoving t1 s1 || isSphereMoving t2 s2 || isSphereMoving t3 s3
 
 updateAnimator : Float -> Triple Vec3 -> AnimatorState -> AnimatorState
 updateAnimator totalDt ( t1, t2, t3 ) state =
     let
-        ( bottomSphere, _, _ ) = state.spheres
-        isInitialFall = bottomSphere.current.z > t1.z + 10.0
-
         subSteps = 5
         dt = min totalDt 0.2 / toFloat subSteps
         staggerDelay = 0.1
 
-        springK = if isInitialFall then 40 else 600
-        damping = if isInitialFall then 15 else 30
+        ( s1, s2, s3 ) = state.spheres
+        isIntroFalling =
+            state.initialFall && (s3.current.z - t3.z) > 1.0
+
+        springK = if isIntroFalling then 40 else 600
+        damping = if isIntroFalling then 10 else 30
 
         updateSphere curT i target s prevC prevT =
             if curT < toFloat i * staggerDelay then s
@@ -127,10 +129,16 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
             in
             ( ( ns1, ns2, ns3 ), newTimer )
         runSubSteps n ( s, t ) =
-            if n <= 0 then { state | spheres = s, timer = t }
+            if n <= 0 then ( s, t )
             else runSubSteps (n - 1) (step s t)
+
+        ( finalSpheres, finalTimer ) = runSubSteps subSteps ( state.spheres, state.timer )
     in
-    runSubSteps subSteps ( state.spheres, state.timer )
+    { state
+    | spheres = finalSpheres
+    , timer = finalTimer
+    , initialFall = state.initialFall && finalTimer < 2.0
+    }
 
 
 type alias HatTransform =
@@ -155,11 +163,12 @@ computeHatTransform maze playerState head timer initialFall =
         let
             t = timer / fallDuration
             jumpHeight = 20.0
-            targetZ = fz + 1.4
-            currentZ = head.z + (targetZ - head.z) * t + jumpHeight * 4.0 * t * (1.0 - t)
+            startZ = head.z + 1.4
+            targetZ = fz
+            currentZ = startZ * (1.0 - t) + targetZ * t + jumpHeight * 4.0 * t * (1.0 - t)
         in
-        { x = head.x + (goalX - head.x) * t
-        , y = head.y + (goalY - head.y) * t
+        { x = head.x * (1.0 - t) + goalX * t
+        , y = head.y * (1.0 - t) + goalY * t
         , z = currentZ
         , squash = 0
         }
