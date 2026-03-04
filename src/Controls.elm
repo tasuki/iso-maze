@@ -52,8 +52,8 @@ getIntentFromJoystick pointerStart pointerLast =
                 Nothing
         _ -> Nothing
 
-resolveIntent : M.Position -> Maybe M.Direction -> MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
-resolveIntent pos maybePrevDir (Intent angle) maze =
+resolveIntent : M.Position -> MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
+resolveIntent pos (Intent angle) maze =
     let
         allDirs = [ M.NW, M.NE, M.SW, M.SE ]
         validMoves = List.filterMap (\d -> M.move pos d maze |> Maybe.map (Tuple.pair d)) allDirs
@@ -67,8 +67,6 @@ resolveIntent pos maybePrevDir (Intent angle) maze =
             in
             if diff1 < diff2 then LT
             else if diff1 > diff2 then GT
-            else if Just d1 == maybePrevDir then LT
-            else if Just d2 == maybePrevDir then GT
             else EQ
     in
     validMoves

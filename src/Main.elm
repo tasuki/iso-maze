@@ -418,34 +418,26 @@ updateModel message model =
 updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> M.PlayerState -> M.PlayerState
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
-        maybeMove pos progress maybePrevDir =
+        maybeMove pos progress =
             case Controls.getIntent keysDown pointerStart pointerLast of
                 Just intent ->
-                    case Controls.resolveIntent pos maybePrevDir intent maze of
+                    case Controls.resolveIntent pos intent maze of
                         Just ( dir, nextTo ) ->
                             M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
                         Nothing ->
-                            case maybePrevDir of
-                                Just prevDir ->
-                                    case M.move pos prevDir maze of
-                                        Just nextTo ->
-                                            M.Moving { from = pos, to = nextTo, dir = prevDir, progress = progress }
-                                        Nothing ->
-                                            M.Idle pos
-                                Nothing ->
-                                    M.Idle pos
+                            M.Idle pos
                 Nothing ->
                     M.Idle pos
     in
     case playerState of
-        M.Idle pos -> maybeMove pos 0 Nothing
+        M.Idle pos -> maybeMove pos 0
         M.Moving m ->
             let
                 newProgress = m.progress + (dt / secondsPerStep)
                 isAtGoal = m.to == M.endPosition maze
                 maxProgress = if isAtGoal then 4.0 else 1.0
             in
-            if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress) (Just m.dir)
+            if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress)
             else M.Moving { m | progress = newProgress }
 
 type Route
