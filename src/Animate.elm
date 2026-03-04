@@ -150,17 +150,7 @@ computeHatTransform maze playerState headZ =
         ( tx, ty, _ ) = to
 
         canMoveTo fromPos targetPos =
-            let
-                ( f_x, f_y, _ ) = fromPos
-                ( t_x, t_y, _ ) = targetPos
-                dx = t_x - f_x
-                dy = t_y - f_y
-            in
-            if dx == 0 && dy == -1 then M.move fromPos M.SE maze == Just targetPos
-            else if dx == -1 && dy == 0 then M.move fromPos M.SW maze == Just targetPos
-            else if dx == 0 && dy == 1 then M.move fromPos M.NW maze == Just targetPos
-            else if dx == 1 && dy == 0 then M.move fromPos M.NE maze == Just targetPos
-            else False
+            List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
 
         goal2d = ( gx, gy )
         to2d = ( tx, ty )
