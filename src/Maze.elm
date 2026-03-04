@@ -251,6 +251,12 @@ shiftPos2d ( x, y ) dir =
         NW -> ( x, y + 1 )
         NE -> ( x + 1, y )
 
+positionTo2d : Position -> Pos2d
+positionTo2d ( px, py, _ ) = ( px, py )
+
+positionZ : Position -> Int
+positionZ ( _, _, pz ) = pz
+
 posX : Pos2d -> Int
 posX = Tuple.first
 

@@ -139,28 +139,25 @@ computeHatTransform : M.Maze -> M.PlayerState -> Float -> HatTransform
 computeHatTransform maze playerState headZ =
     let
         goal = M.endPosition maze
-        ( gx, gy, gz ) = goal
+        goal2d = M.positionTo2d goal
 
         ( from, to, progress ) =
             case playerState of
                 M.Idle p -> ( p, p, 1.0 )
                 M.Moving m -> ( m.from, m.to, m.progress )
 
-        ( fx, fy, _ ) = from
-        ( tx, ty, _ ) = to
-
         canMoveTo fromPos targetPos =
             List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
 
-        goal2d = ( gx, gy )
-        to2d = ( tx, ty )
-
-        fz = toFloat gz * 10
+        fz = toFloat (M.positionZ goal) * 10
         jumpHeight = 18.0
 
         ( currentBaseZ, squashFactor ) =
-            if to2d == goal2d then
-                if canMoveTo from goal then
+            if M.positionTo2d to == goal2d then
+                if M.positionTo2d from == goal2d then
+                    -- Already at goal
+                    ( headZ + 1.4, 0 )
+                else
                     -- Moving to goal
                     let
                         -- Jump up fast
@@ -170,7 +167,6 @@ computeHatTransform maze playerState headZ =
                         -- Descend slowly
                         descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
                         targetZ = headZ + 1.4
-
                         currentZ =
                             if progress < 1.0 then fz + hJump
                             else
@@ -181,11 +177,6 @@ computeHatTransform maze playerState headZ =
                         squash = clamp 0 1 (1.0 - progress * 5.0)
                     in
                     ( currentZ, squash )
-                else if ( fx, fy ) == goal2d then
-                    -- Already at goal
-                    ( headZ + 1.4, 0 )
-                else
-                    ( fz, 0 )
             else
                 let
                     squash =
