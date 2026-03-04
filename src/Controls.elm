@@ -31,16 +31,17 @@ getIntentFromKeyboard keys =
         down = Set.member "ArrowDown" keys
         left = Set.member "ArrowLeft" keys
         right = Set.member "ArrowRight" keys
+        eps = 0.01
     in
     case ( ( up, down ), ( left, right ) ) of
         ( ( True, False ), ( True, False ) ) -> Just NW_Strict
         ( ( True, False ), ( False, True ) ) -> Just NE_Strict
         ( ( False, True ), ( True, False ) ) -> Just SW_Strict
         ( ( False, True ), ( False, True ) ) -> Just SE_Strict
-        ( ( True, False ), _ ) -> Just (North Nothing)
-        ( ( False, True ), _ ) -> Just (South Nothing)
-        ( _, ( True, False ) ) -> Just (West Nothing)
-        ( _, ( False, True ) ) -> Just (East Nothing)
+        ( ( True, False ), _ ) -> Just (North (Just (-pi/2 - eps)))
+        ( ( False, True ), _ ) -> Just (South (Just (pi/2 - eps)))
+        ( _, ( True, False ) ) -> Just (West (Just (pi - eps)))
+        ( _, ( False, True ) ) -> Just (East (Just (0 - eps)))
         _ -> Nothing
 
 getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
