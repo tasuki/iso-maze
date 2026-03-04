@@ -15,6 +15,7 @@ type alias Triple a = ( a, a, a )
 type alias AnimatorState =
     { spheres : Triple SphereState
     , timer : Float
+    , initialFall : Bool
     }
 
 initAnimator : Triple Vec3 -> AnimatorState
@@ -27,6 +28,7 @@ initAnimator ( t1, t2, t3 ) =
     in
     { spheres = ( initSphere t1, initSphere t2, initSphere t3 )
     , timer = 0
+    , initialFall = True
     }
 
 initAnimatorAt : Triple Vec3 -> AnimatorState
@@ -39,6 +41,7 @@ initAnimatorAt ( t1, t2, t3 ) =
     in
     { spheres = ( initSphere t1, initSphere t2, initSphere t3 )
     , timer = 0
+    , initialFall = False
     }
 
 isAnimatorMoving : Triple Vec3 -> AnimatorState -> Bool
@@ -131,63 +134,74 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
 
 
 type alias HatTransform =
-    { z : Float
+    { x : Float
+    , y : Float
+    , z : Float
     , squash : Float
     }
 
-computeHatTransform : M.Maze -> M.PlayerState -> Float -> HatTransform
-computeHatTransform maze playerState headZ =
+computeHatTransform : M.Maze -> M.PlayerState -> Vec3 -> Float -> Bool -> HatTransform
+computeHatTransform maze playerState head timer initialFall =
     let
         goal = M.endPosition maze
-        goal2d = M.positionTo2d goal
+        ( gx, gy, gz ) = goal
+        goalX = toFloat gx * 10
+        goalY = toFloat gy * 10
+        fz = toFloat gz * 10
 
-        ( from, to, progress ) =
-            case playerState of
-                M.Idle p -> ( p, p, 1.0 )
-                M.Moving m -> ( m.from, m.to, m.progress )
-
-        canMoveTo fromPos targetPos =
-            List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
-
-        fz = toFloat (M.positionZ goal) * 10
-        jumpHeight = 18.0
-
-        ( currentBaseZ, squashFactor ) =
-            if M.positionTo2d to == goal2d then
-                if M.positionTo2d from == goal2d then
-                    -- Already at goal
-                    ( headZ + 1.4, 0 )
-                else
-                    -- Moving to goal
-                    let
-                        -- Jump up fast
-                        t = clamp 0 0.333 (progress * 0.2)
-                        hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
-
-                        -- Descend slowly
-                        descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
-                        targetZ = headZ + 1.4
-                        currentZ =
-                            if progress < 1.0 then fz + hJump
-                            else
-                                let startDescendZ = fz + jumpHeight
-                                in startDescendZ + (targetZ - startDescendZ) * descendProgress
-
-                        -- Squash should dissipate as it jumps
-                        squash = clamp 0 1 (1.0 - progress * 5.0)
-                    in
-                    ( currentZ, squash )
-            else
-                let
-                    squash =
-                        if canMoveTo to goal && progress >= 1.0 then 1.0
-                        else if canMoveTo to goal && progress < 1.0 then progress
-                        else if canMoveTo from goal && progress < 1.0 then 1.0 - progress
-                        else 0
-                in
-                ( fz, squash )
+        fallDuration = 2.0
     in
-    { z = currentBaseZ, squash = squashFactor }
+    if initialFall && timer < fallDuration then
+        let
+            t = timer / fallDuration
+            jumpHeight = 20.0
+            targetZ = fz + 1.4
+            currentZ = head.z + (targetZ - head.z) * t + jumpHeight * 4.0 * t * (1.0 - t)
+        in
+        { x = head.x + (goalX - head.x) * t
+        , y = head.y + (goalY - head.y) * t
+        , z = currentZ
+        , squash = 0
+        }
+    else
+        let
+            goal2d = M.positionTo2d goal
+            ( from, to, progress ) =
+                case playerState of
+                    M.Idle p -> ( p, p, 1.0 )
+                    M.Moving m -> ( m.from, m.to, m.progress )
+            canMoveTo fromPos targetPos =
+                List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
+            jumpHeight = 18.0
+            ( currentBaseZ, squashFactor ) =
+                if M.positionTo2d to == goal2d then
+                    if M.positionTo2d from == goal2d then
+                        ( head.z + 1.4, 0 )
+                    else
+                        let
+                            t = clamp 0 0.333 (progress * 0.2)
+                            hJump = 6.75 * jumpHeight * t * (1.0 - t) ^ 2
+                            descendProgress = clamp 0 1 ((progress - 1.0) / 3.0)
+                            targetZ = head.z + 1.4
+                            cz =
+                                if progress < 1.0 then fz + hJump
+                                else
+                                    let startDescendZ = fz + jumpHeight
+                                    in startDescendZ + (targetZ - startDescendZ) * descendProgress
+                            squash = clamp 0 1 (1.0 - progress * 5.0)
+                        in
+                        ( cz, squash )
+                else
+                    let
+                        squash =
+                            if canMoveTo to goal && progress >= 1.0 then 1.0
+                            else if canMoveTo to goal && progress < 1.0 then progress
+                            else if canMoveTo from goal && progress < 1.0 then 1.0 - progress
+                            else 0
+                    in
+                    ( fz, squash )
+        in
+        { x = goalX, y = goalY, z = currentBaseZ, squash = squashFactor }
 
 
 interpolatedPosition : M.PlayerState -> (Float, Float, Float)
