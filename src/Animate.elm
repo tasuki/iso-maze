@@ -18,6 +18,10 @@ type alias AnimatorState =
     , initialFall : Bool
     }
 
+fallDuration : Float
+fallDuration =
+    2.0
+
 initAnimator : Triple Vec3 -> AnimatorState
 initAnimator ( t1, t2, t3 ) =
     let
@@ -61,7 +65,7 @@ isAnimatorMoving ( t1, t2, t3 ) state =
             dv2 > velThreshold * velThreshold || dp2 > posThreshold * posThreshold
         ( s1, s2, s3 ) = state.spheres
     in
-    (state.initialFall && state.timer < 2.0)
+    (state.initialFall && state.timer <= fallDuration)
     || isSphereMoving t1 s1 || isSphereMoving t2 s2 || isSphereMoving t3 s3
 
 updateAnimator : Float -> Triple Vec3 -> AnimatorState -> AnimatorState
@@ -136,7 +140,7 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
     { state
     | spheres = finalSpheres
     , timer = finalTimer
-    , initialFall = state.initialFall && finalTimer < 2.0
+    , initialFall = state.initialFall && finalTimer <= fallDuration
     }
 
 
@@ -155,14 +159,12 @@ computeHatTransform maze playerState head timer initialFall =
         goalX = toFloat gx * 10
         goalY = toFloat gy * 10
         fz = toFloat gz * 10
-
-        fallDuration = 2.0
     in
-    if initialFall && timer < fallDuration then
+    if initialFall && timer <= fallDuration then
         let
             startPos = M.startPosition maze
             ( _, _, startHead ) = getPlayerTargets (M.Idle startPos) maze
-            t = timer / fallDuration
+            t = clamp 0 1 (timer / fallDuration)
             jumpHeight = 20.0
             startZ = startHead.z + 30.0 + 1.4
             targetZ = fz
