@@ -71,12 +71,11 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
         dt = min totalDt 0.2 / toFloat subSteps
         staggerDelay = 0.1
 
-        ( s1, s2, s3 ) = state.spheres
-        isIntroFalling =
-            state.initialFall && (s3.current.z - t3.z) > 1.0
+        ( bottomSphere, _, _ ) = state.spheres
+        isIntroFalling = bottomSphere.current.z > t1.z + 10.0
 
         springK = if isIntroFalling then 40 else 600
-        damping = if isIntroFalling then 10 else 30
+        damping = if isIntroFalling then 15 else 30
 
         updateSphere curT i target s prevC prevT =
             if curT < toFloat i * staggerDelay then s
@@ -120,12 +119,12 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
                         , z = s.current.z + newV.z * dt
                         }
                 in { current = newC, velocity = newV }
-        step ( s1, s2, s3 ) currentTimer =
+        step ( ss1, ss2, ss3 ) currentTimer =
             let
                 newTimer = currentTimer + dt
-                ns1 = updateSphere newTimer 0 t1 s1 { x = 0, y = 0, z = 0 } { x = 0, y = 0, z = 0 }
-                ns2 = updateSphere newTimer 1 t2 s2 ns1.current t1
-                ns3 = updateSphere newTimer 2 t3 s3 ns2.current t2
+                ns1 = updateSphere newTimer 0 t1 ss1 { x = 0, y = 0, z = 0 } { x = 0, y = 0, z = 0 }
+                ns2 = updateSphere newTimer 1 t2 ss2 ns1.current t1
+                ns3 = updateSphere newTimer 2 t3 ss3 ns2.current t2
             in
             ( ( ns1, ns2, ns3 ), newTimer )
         runSubSteps n ( s, t ) =
