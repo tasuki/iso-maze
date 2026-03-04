@@ -1,82 +1,23 @@
 const CACHE_NAME = 'v7';
-const ASSETS_TO_CACHE = [
-    '/',
-    '/manifest.json',
-    '/favicon.svg',
-    '/assets/index.js',
-    '/assets/vendor.js',
-];
+const ASSETS = ['/', '/manifest.json', '/favicon.svg', '/assets/index.js', '/assets/vendor.js'];
+const seen = new Set();
 
-const checkedAssets = new Set();
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS))));
+self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.map(k => k != CACHE_NAME && caches.delete(k))))));
 
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
-        })
-    );
+self.addEventListener('fetch', e => {
+  const path = new URL(e.request.url).pathname;
+  if (e.request.mode === 'navigate') seen.clear();
+  const key = ASSETS.includes(path) ? path : (e.request.mode === 'navigate' ? '/' : null);
+  if (!key) return;
+
+  e.respondWith(caches.match(key).then(cached => {
+    if (seen.has(key) && cached) return cached;
+    seen.add(key);
+    const net = fetch(key === '/' ? '/' : e.request, { cache: 'reload' }).then(r => {
+      if (r.ok) caches.open(CACHE_NAME).then(c => c.put(key, r.clone()));
+      return r;
+    });
+    return Promise.race([net, new Promise((_, rej) => setTimeout(rej, 3000))]).catch(() => cached || net);
+  }));
 });
-
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => Promise.all(
-            cacheNames.map((key) => key !== CACHE_NAME && caches.delete(key))
-        ))
-    );
-});
-
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-    const path = url.pathname;
-
-    // Navigation requests (HTML)
-    if (event.request.mode === 'navigate') {
-        checkedAssets.clear(); // Start of a new session/load
-        event.respondWith(handleRequest('/', event.request));
-        return;
-    }
-
-    // Known static assets
-    if (ASSETS_TO_CACHE.includes(path)) {
-        event.respondWith(handleRequest(path, event.request));
-    }
-});
-
-async function handleRequest(cacheKey, request) {
-    if (!checkedAssets.has(cacheKey)) {
-        checkedAssets.add(cacheKey);
-        try {
-            const networkResponse = await Promise.race([
-                fetchAndRefreshCache(cacheKey, request),
-                timeout(3000),
-            ]);
-            if (networkResponse && networkResponse.ok) {
-                return networkResponse;
-            }
-        } catch (e) {
-            // Fallback to cache on timeout or network error
-        }
-    }
-
-    const cachedResponse = await caches.match(cacheKey);
-    return cachedResponse || fetch(request);
-}
-
-async function fetchAndRefreshCache(cacheKey, request) {
-    try {
-        const response = await fetch(request, { cache: 'reload' });
-        if (response.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(cacheKey, response.clone());
-        }
-        return response;
-    } catch (e) {
-        return null;
-    }
-}
-
-function timeout(ms) {
-    return new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout')), ms)
-    );
-}
