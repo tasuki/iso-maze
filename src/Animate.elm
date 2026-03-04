@@ -160,15 +160,16 @@ computeHatTransform maze playerState head timer initialFall =
     in
     if initialFall && timer < fallDuration then
         let
-            ( _, _, targetHead ) = getPlayerTargets playerState maze
+            startPos = M.startPosition maze
+            ( _, _, startHead ) = getPlayerTargets (M.Idle startPos) maze
             t = timer / fallDuration
             jumpHeight = 20.0
-            startZ = targetHead.z + 30.0 + 1.4
+            startZ = startHead.z + 30.0 + 1.4
             targetZ = fz
             currentZ = startZ * (1.0 - t) + targetZ * t + jumpHeight * 4.0 * t * (1.0 - t)
         in
-        { x = targetHead.x * (1.0 - t) + goalX * t
-        , y = targetHead.y * (1.0 - t) + goalY * t
+        { x = startHead.x * (1.0 - t) + goalX * t
+        , y = startHead.y * (1.0 - t) + goalY * t
         , z = currentZ
         , squash = 0
         }
