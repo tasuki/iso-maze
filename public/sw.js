@@ -1,23 +1,84 @@
 const CACHE_NAME = 'v7';
-const ASSETS = ['/', '/manifest.json', '/favicon.svg', '/assets/index.js', '/assets/vendor.js'];
-const seen = new Set();
+const ASSETS_TO_CACHE = [
+    '/',
+    '/manifest.json',
+    '/favicon.svg',
+    '/assets/index.js',
+    '/assets/vendor.js',
+];
 
-self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS))));
-self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.map(k => k != CACHE_NAME && caches.delete(k))))));
+// Track which assets have been checked for updates in the current session
+const checkedInSession = new Set();
 
-self.addEventListener('fetch', e => {
-  const path = new URL(e.request.url).pathname;
-  if (e.request.mode === 'navigate') seen.clear();
-  const key = ASSETS.includes(path) ? path : (e.request.mode === 'navigate' ? '/' : null);
-  if (!key) return;
-
-  e.respondWith(caches.match(key).then(cached => {
-    if (seen.has(key) && cached) return cached;
-    seen.add(key);
-    const net = fetch(key === '/' ? '/' : e.request, { cache: 'reload' }).then(r => {
-      if (r.ok) caches.open(CACHE_NAME).then(c => c.put(key, r.clone()));
-      return r;
-    });
-    return Promise.race([net, new Promise((_, rej) => setTimeout(rej, 3000))]).catch(() => cached || net);
-  }));
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+    );
 });
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((keys) => Promise.all(
+            keys.map((k) => k !== CACHE_NAME && caches.delete(k))
+        ))
+    );
+});
+
+self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+    const path = url.pathname;
+
+    // Reset session checks on every new page navigation
+    if (event.request.mode === 'navigate') {
+        checkedInSession.clear();
+    }
+
+    // Determine the cache key: fall back to '/' for navigation requests
+    const isAsset = ASSETS_TO_CACHE.includes(path);
+    const cacheKey = isAsset ? path : (event.request.mode === 'navigate' ? '/' : null);
+
+    if (!cacheKey) return;
+
+    event.respondWith(handleRequest(cacheKey, event.request));
+});
+
+async function handleRequest(cacheKey, request) {
+    const cachedResponse = await caches.match(cacheKey);
+
+    // If we've already checked this asset in this session, return from cache immediately
+    if (checkedInSession.has(cacheKey) && cachedResponse) {
+        return cachedResponse;
+    }
+
+    checkedInSession.add(cacheKey);
+
+    // Try a network-first fetch with a 3-second timeout
+    const fetchPromise = fetchAndRefreshCache(cacheKey, request);
+    const timeoutPromise = new Promise((_, reject) => setTimeout(reject, 3000));
+
+    try {
+        const networkResponse = await Promise.race([fetchPromise, timeoutPromise]);
+        if (networkResponse && networkResponse.ok) {
+            return networkResponse;
+        }
+    } catch (e) {
+        // Fallback to cache on timeout or network error
+    }
+
+    // If network failed or timed out, use the cached version or wait for the network to finish
+    return cachedResponse || fetchPromise;
+}
+
+async function fetchAndRefreshCache(cacheKey, request) {
+    try {
+        // Use cache: 'reload' to bypass intermediate caches
+        const response = await fetch(request, { cache: 'reload' });
+        if (response.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(cacheKey, response.clone());
+        }
+        return response;
+    } catch (e) {
+        return null;
+    }
+}
