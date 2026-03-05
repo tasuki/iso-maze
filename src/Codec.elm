@@ -7,23 +7,50 @@ import Maze as M
 encode : M.Maze -> String
 encode maze =
     let
-        cut = cutout maze
+        limits = M.getLimits maze
         config = maze.config
         encodeLight l = l.color ++ "," ++ (String.fromInt <| round l.intensity)
 
-        parts =
-            [ "sz:" ++ (String.fromInt cut.xSize) ++ "," ++ (String.fromInt cut.ySize)
-            , "off:" ++ (String.fromInt cut.xOffset) ++ "," ++ (String.fromInt cut.yOffset)
-            , "st:" ++ (String.fromInt <| M.posX <| maze.start) ++ "," ++ (String.fromInt <| M.posY <| maze.start)
-            , "end:" ++ (String.fromInt <| M.posX <| maze.end) ++ "," ++ (String.fromInt <| M.posY <| maze.end)
-            ]
+        -- Relative start and end
+        relStart = ( M.posX maze.start - limits.minX, M.posY maze.start - limits.minY )
+        relEnd = ( M.posX maze.end - limits.minX, M.posY maze.end - limits.minY )
+
+        xSize = limits.maxX - limits.minX + 1
+        ySize = limits.maxY - limits.minY + 1
+
+        -- Get blocks in the normalized range
+        xRange = List.range limits.minX limits.maxX
+        yRange = List.reverse <| List.range limits.minY limits.maxY
+        getMazeBlock y x =
+            case M.get (x, y) maze of
+                Just (M.Base ( _, _, z )) -> M.BaseBlock z
+                Just (M.Bridge ( _, _, z )) -> M.BridgeBlock z
+                Just (M.Stairs ( _, _, z ) dir) -> M.StairsBlock z dir
+                Nothing -> M.EmptyBlock
+
+        parts = []
+            ++ (if config.bg == M.defaultConfig.bg then [] else [ "bg:" ++ config.bg ])
             ++ (if config.left == M.defaultConfig.left then [] else [ "left:" ++ encodeLight config.left ])
             ++ (if config.right == M.defaultConfig.right then [] else [ "right:" ++ encodeLight config.right ])
             ++ (if config.above == M.defaultConfig.above then [] else [ "above:" ++ encodeLight config.above ])
-            ++ (if config.bg == M.defaultConfig.bg then [] else [ "bg:" ++ config.bg ])
-            ++ [ "mz:" ++ (String.join "" <| List.map encodeBlock cut.maze) ]
+            ++ [ "sz:" ++ (String.fromInt xSize) ++ "," ++ (String.fromInt ySize)
+               , "st:" ++ (String.fromInt <| Tuple.first relStart) ++ "," ++ (String.fromInt <| Tuple.second relStart)
+               , "end:" ++ (String.fromInt <| Tuple.first relEnd) ++ "," ++ (String.fromInt <| Tuple.second relEnd)
+               , "mz:" ++ (String.join "" <| List.map encodeMazeBlock (M.mapCoords yRange xRange getMazeBlock))
+               ]
     in
     String.join ";" parts
+
+encodeMazeBlock : M.MazeBlock -> String
+encodeMazeBlock block =
+    case block of
+        M.EmptyBlock -> "x"
+        M.BaseBlock z -> "o" ++ charFromIndex z
+        M.BridgeBlock z -> "l" ++ charFromIndex z
+        M.StairsBlock z M.SE -> "s" ++ charFromIndex z
+        M.StairsBlock z M.SW -> "z" ++ charFromIndex z
+        M.StairsBlock z M.NE -> "Z" ++ charFromIndex z
+        M.StairsBlock z M.NW -> "S" ++ charFromIndex z
 
 removeSpaces : String -> String
 removeSpaces = String.filter (\c -> c /= ' ')
@@ -46,7 +73,6 @@ decode str =
             _ -> Nothing
 
         sz = findPart "sz:" |> Maybe.andThen parseIntPair
-        off = findPart "off:" |> Maybe.andThen parseIntPair
         st = findPart "st:" |> Maybe.andThen parseIntPair
         end = findPart "end:" |> Maybe.andThen parseIntPair
         mz = findPart "mz:"
@@ -61,14 +87,27 @@ decode str =
         bg = findPart "bg:" |> Maybe.withDefault M.defaultConfig.bg
         config = { left = left, right = right, above = above, bg = bg }
     in
-    Maybe.map4 (SubMaze config)
-        (sz |> Maybe.map Tuple.first)
-        (sz |> Maybe.map Tuple.second)
-        (off |> Maybe.map Tuple.first)
-        (off |> Maybe.map Tuple.second)
-        |> Maybe.andThen (\pf -> Maybe.map3 pf st end
-            (mz |> Maybe.map (String.toList >> decodeBlocks)))
-        |> Maybe.map insertCutout
+    case ( ( sz, st ), ( end, mz ) ) of
+        ( ( Just ( xSize, ySize ), Just ( stX, stY ) ), ( Just ( endX, endY ), Just mazeStr ) ) ->
+            let
+                blocks = decodeBlocks (String.toList mazeStr)
+                toBlock_ i mb =
+                    let
+                        x = modBy xSize i
+                        y = (ySize - 1) - (i // xSize)
+                    in
+                    case mb of
+                        M.EmptyBlock -> Nothing
+                        M.BaseBlock z -> Just (M.Base ( x, y, z ))
+                        M.BridgeBlock z -> Just (M.Bridge ( x, y, z ))
+                        M.StairsBlock z dir -> Just (M.Stairs ( x, y, z ) dir)
+
+                mazeBlocks = List.indexedMap toBlock_ blocks |> List.filterMap identity
+                finalMaze = M.fromBlocks mazeBlocks
+            in
+            Just { finalMaze | start = ( stX, stY ), end = ( endX, endY ), config = config }
+
+        _ -> Nothing
 
 
 -- Block encoder/decoder
@@ -82,17 +121,6 @@ charFromIndex drop =
         |> List.head
         |> Maybe.withDefault '*'
         |> String.fromChar
-
-encodeBlock : M.MazeBlock -> String
-encodeBlock block =
-    case block of
-        M.EmptyBlock -> "x"
-        M.BaseBlock z -> "o" ++ charFromIndex z
-        M.BridgeBlock z -> "l" ++ charFromIndex z
-        M.StairsBlock z M.SE -> "s" ++ charFromIndex z
-        M.StairsBlock z M.SW -> "z" ++ charFromIndex z
-        M.StairsBlock z M.NE -> "Z" ++ charFromIndex z
-        M.StairsBlock z M.NW -> "S" ++ charFromIndex z
 
 charToIndex : Char -> Maybe Int
 charToIndex c =
@@ -122,84 +150,3 @@ decodeBlocks chars =
                 Just block -> block :: decodeBlocks rest
                 Nothing -> decodeBlocks rest
         _ -> []
-
-
--- Cutout maze to minimum rectangle
-
-type alias SubMaze =
-    { config : M.MazeConfig
-    , xSize : Int
-    , ySize : Int
-    , xOffset : Int
-    , yOffset : Int
-    , start : M.Pos2d
-    , end : M.Pos2d
-    , maze : List M.MazeBlock
-    }
-
-cutout : M.Maze -> SubMaze
-cutout maze =
-    let
-        limits = mazeLimits maze
-        xRange = List.range limits.minX limits.maxX
-        yRange = List.reverse <| List.range limits.minY limits.maxY
-        getBlock y x = Array.get (M.toIndex x y) maze.maze
-    in
-    { config = maze.config
-    , xSize = limits.maxX - limits.minX + 1
-    , ySize = limits.maxY - limits.minY + 1
-    , xOffset = limits.minX
-    , yOffset = limits.minY
-    , start = maze.start
-    , end = maze.end
-    , maze = M.mapCoords yRange xRange getBlock |> List.filterMap identity
-    }
-
-insertCutout : SubMaze -> M.Maze
-insertCutout subMaze =
-    let
-        toBlock : Int -> M.MazeBlock -> Maybe M.Block
-        toBlock i block =
-            let
-                x = (modBy subMaze.xSize i) + subMaze.xOffset
-                y = (subMaze.ySize - 1) - (i // subMaze.xSize) + subMaze.yOffset
-            in
-            M.toBlock ( x, y ) block
-
-        maze = M.emptyMaze
-    in
-    List.indexedMap toBlock subMaze.maze
-        |> List.filterMap identity
-        |> List.foldl M.set
-            { maze | start = subMaze.start, end = subMaze.end, config = subMaze.config }
-
-
--- Limits
-
-type alias Limits =
-    { minX: Int
-    , maxX: Int
-    , minY: Int
-    , maxY: Int
-    }
-
-mazeLimits : M.Maze -> Limits
-mazeLimits maze =
-    let
-        extremes : M.Position -> Limits -> Limits
-        extremes (x, y, _) acc =
-            { minX = min acc.minX x
-            , maxX = max acc.maxX x
-            , minY = min acc.minY y
-            , maxY = max acc.maxY y
-            }
-    in
-    M.mapAllCoords (\x y -> (M.get (x, y) maze))
-        |> List.filterMap identity
-        |> List.map M.blockPosition
-        |> List.foldl extremes
-            { minX = 1000
-            , maxX = -100
-            , minY = 1000
-            , maxY = -100
-            }

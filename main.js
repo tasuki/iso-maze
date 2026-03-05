@@ -76,7 +76,7 @@ addLightsToScene(dynamicScene, dynamicLights);
 
 // Background scene
 backgroundScene = new THREE.Scene();
-backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 10);
+backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 2, 20);
 backgroundCamera.position.z = 5;
 backgroundQuad = new THREE.Mesh(
     new THREE.PlaneGeometry(2, 2),
@@ -97,7 +97,7 @@ function updateCamera() {
     camera.updateProjectionMatrix();
 }
 container = document.getElementById('three-container');
-camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 5);
+camera = new THREE.OrthographicCamera(0, 0, 0, 0, 2, 20);
 camera.up.set(0, 0, 1);
 
 // Renderer
@@ -176,6 +176,7 @@ app.ports.saveFinishedLevels.subscribe(levels => {
 });
 
 app.ports.renderThreeJS.subscribe(data => {
+    const unitScale = 0.01;
     latestData = data;
     if (data.staticUpdate && data.static) {
         needsStaticRender = true;
@@ -187,10 +188,15 @@ app.ports.renderThreeJS.subscribe(data => {
         [staticLights, dynamicLights].forEach(ls => {
             ls.left.color.copy(parseHex(c.left.color));
             ls.left.intensity = c.left.intensity;
+            ls.left.position.set(c.left.position.x * unitScale, c.left.position.y * unitScale, c.left.position.z * unitScale);
+
             ls.right.color.copy(parseHex(c.right.color));
             ls.right.intensity = c.right.intensity;
+            ls.right.position.set(c.right.position.x * unitScale, c.right.position.y * unitScale, c.right.position.z * unitScale);
+
             ls.above.color.copy(parseHex(c.above.color));
             ls.above.intensity = c.above.intensity;
+            ls.above.position.set(c.above.position.x * unitScale, c.above.position.y * unitScale, c.above.position.z * unitScale);
         });
         staticScene.background.copy(parseHex(c.bg));
     }
@@ -199,7 +205,7 @@ app.ports.renderThreeJS.subscribe(data => {
     if (!rafId) {
         rafId = requestAnimationFrame(() => {
             const t0 = performance.now();
-            updateScene(latestData);
+            updateScene(latestData, unitScale);
 
             if (needsStaticRender) {
                 staticComposer.render();
@@ -269,9 +275,7 @@ function parseHex(hex) {
     );
 }
 
-function updateScene(data) {
-    const unitScale = 0.01;
-
+function updateScene(data, unitScale) {
     const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
     if (staticToUse) {
         const currentStaticKeys = new Set();

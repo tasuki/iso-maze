@@ -333,8 +333,7 @@ updateModel message model =
             let
                 newFocus = M.shiftPosition model.focus vector
             in
-            if M.isValidPosition newFocus then ( { model | focus = newFocus, staticUpdate = True }, Cmd.none )
-            else ( model, Cmd.none )
+            ( { model | focus = newFocus, staticUpdate = True }, Cmd.none )
 
         ToggleMode ->
             let
@@ -469,7 +468,6 @@ changeRouteTo url model =
                 case Campaign.getNextUnsolvedLevel model.finishedLevels of
                     Just nextLevelName ->
                         ( model, Nav.replaceUrl model.navKey ("/level/" ++ nextLevelName) )
-
                     Nothing ->
                         ( loadMaze (maybeMaze |> Maybe.withDefault defaultMaze) Nothing model, Cmd.none )
             else
@@ -479,7 +477,6 @@ changeRouteTo url model =
             case List.filter (\m -> m.name == name) Campaign.mazeDefs |> List.head of
                 Just def ->
                     ( loadMaze (Codec.decode def.maze |> Maybe.withDefault M.emptyMaze) (Just name) model, Cmd.none )
-
                 Nothing ->
                     ( model, Cmd.none )
 
@@ -510,8 +507,40 @@ loadMaze maze maybeName model =
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
-    let newMaze = fun model.focus model.maze in
-    ( { model | maze = newMaze, staticUpdate = True }
+    let
+        newMazeRaw = fun model.focus model.maze
+        ( newMaze, ( dx, dy ) ) = M.normalize newMazeRaw
+
+        shiftSpheres ( s1, s2, s3 ) =
+            let
+                shiftS s =
+                    { s
+                    | current = { x = s.current.x + toFloat dx * 10, y = s.current.y + toFloat dy * 10, z = s.current.z }
+                    , velocity = s.velocity
+                    }
+            in
+            ( shiftS s1, shiftS s2, shiftS s3 )
+
+        newPlayerState =
+            case model.playerState of
+                M.Idle ( x, y, z ) -> M.Idle ( x + dx, y + dy, z )
+                M.Moving m ->
+                    let
+                        ( fx, fy, fz ) = m.from
+                        ( tx, ty, tz ) = m.to
+                    in
+                    M.Moving { m | from = ( fx + dx, fy + dy, fz ), to = ( tx + dx, ty + dy, tz ) }
+
+        newAnimator = model.animator
+        updatedAnimator = { newAnimator | spheres = shiftSpheres newAnimator.spheres }
+    in
+    ( { model
+        | maze = newMaze
+        , focus = M.shiftPosition model.focus ( dx, dy, 0 )
+        , playerState = newPlayerState
+        , animator = updatedAnimator
+        , staticUpdate = True
+      }
     , pushUrl model.navKey newMaze
     )
 

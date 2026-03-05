@@ -87,8 +87,7 @@ fourStairs =
 
 maxMaze : M.Maze
 maxMaze =
-    M.mapAllCoords (\x y -> ( x, y, 0 ))
-        |> List.filter M.isValidPosition
+    List.concatMap (\y -> List.map (\x -> ( x, y, 0 )) (List.range -10 15)) (List.range -10 15)
         |> List.map M.Base
         |> M.fromBlocks
         |> setStartEnd ( 0, 0 ) ( 8, 8 )
@@ -109,10 +108,10 @@ assymetric =
 
 -- enter a new era of representing mazes
 
-empty = "sz:1,1;off:0,0;st:0,0;end:0,0;mz:o0"
+empty = "sz:1,1;st:0,0;end:0,0;mz:o0"
     |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
-ziggurat = "sz:9,9;off:-3,-3;st:0,0;end:4,4;mz:"
+ziggurat = "sz:9,9;st:3,3;end:7,7;mz:"
     ++ "x x o2o2o3o3o3o3o3"
     ++ "x x o2z3o3z4z5o5o3"
     ++ "x o1s2o1o3o3o3s5o3"
@@ -124,7 +123,7 @@ ziggurat = "sz:9,9;off:-3,-3;st:0,0;end:4,4;mz:"
     ++ "x x x x o0o0x x x "
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
-ziggurat2 = "sz:11,11;off:-4,-4;st:0,0;end:4,4;mz:"
+ziggurat2 = "sz:11,11;st:4,4;end:8,8;mz:"
     ++ "o0o0o1o2o3o3x x x x x "
     ++ "S1o0o1o2o2o3o3o3o3o3x "
     ++ "o1z2l2o2z3o3z4z5o5o3x "
