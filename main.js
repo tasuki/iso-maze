@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 
@@ -12,18 +13,19 @@ const app = Elm.Main.init({
 
 let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer;
 let backgroundScene, backgroundCamera, backgroundQuad;
+let groundPlane;
 
 // Z is up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 // Caches
 const materials = {
-    base: new THREE.MeshLambertMaterial({ color: 0xffffff }),
-    stairs: new THREE.MeshLambertMaterial({ color: 0xffccaa }),
-    bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
-    player: new THREE.MeshLambertMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1 }),
-    goal: new THREE.MeshLambertMaterial({ color: 0x555555 }),
-    focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4 }),
+    base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
+    stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
+    bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
+    player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1, roughness: 0.5, metalness: 0.5 }),
+    goal: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
+    focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
 
@@ -31,7 +33,8 @@ const geometryCache = new Map();
 function getBoxGeometry(sx, sy, sz) {
     const key = `box_${sx}_${sy}_${sz}`;
     if (!geometryCache.has(key)) {
-        geometryCache.set(key, new THREE.BoxGeometry(sx, sy, sz));
+        const radius = Math.min(sx, sy, sz) * 0.1;
+        geometryCache.set(key, new RoundedBoxGeometry(sx, sy, sz, 4, radius));
     }
     return geometryCache.get(key);
 }
@@ -65,10 +68,26 @@ function addLightsToScene(s, ls) {
     s.add(ls.above);
 }
 
+function parseHex(hex) {
+    if (hex.length === 3) {
+        return new THREE.Color('#' + hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]);
+    }
+    return new THREE.Color('#' + hex);
+}
+
 staticScene = new THREE.Scene();
-staticScene.background = new THREE.Color(0x668899);
+const defaultBg = parseHex('689');
+staticScene.background = defaultBg;
 const staticLights = createLights();
 addLightsToScene(staticScene, staticLights);
+
+groundPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(200, 200),
+    new THREE.MeshStandardMaterial({ color: defaultBg, roughness: 1, metalness: 0 })
+);
+// Z is up in this project, and PlaneGeometry is in the XY plane by default, so it's already a floor.
+groundPlane.position.z = -0.15;
+staticScene.add(groundPlane);
 
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
@@ -198,7 +217,9 @@ app.ports.renderThreeJS.subscribe(data => {
             ls.above.intensity = c.above.intensity;
             ls.above.position.set(c.above.position.x * unitScale, c.above.position.y * unitScale, c.above.position.z * unitScale);
         });
-        staticScene.background.copy(parseHex(c.bg));
+        const bgColor = parseHex(c.bg);
+        staticScene.background.copy(bgColor);
+        groundPlane.material.color.copy(bgColor);
     }
 
 
@@ -267,12 +288,6 @@ function updateMesh(mesh, r, unitScale) {
     if (mesh.material === materials.occlusion) {
         mesh.renderOrder -= 10000;
     }
-}
-
-function parseHex(hex) {
-    return new THREE.Color(
-        '#' + hex.split('').map(char => char + char).join('')
-    );
 }
 
 function updateScene(data, unitScale) {
