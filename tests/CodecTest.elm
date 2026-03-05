@@ -81,25 +81,11 @@ encodeTest =
 decodeTest =
     describe "Decode"
         [ test "Decodes assymetric" <|
-            \_ ->
-                let
-                    decoded = decode <| encode SM.assymetric
-                in
-                case decoded of
-                    Just m ->
-                        Expect.equal
-                            (toBlocks SM.assymetric |> List.length)
-                            (toBlocks m |> List.length)
-                    Nothing -> Expect.fail "Failed to decode"
+            \_ -> Expect.equal
+                (Just SM.assymetric)
+                (decode <| encode SM.assymetric)
         , test "Decodes roundabout" <|
-            \_ ->
-                let
-                    decoded = decode <| encode SM.roundabout
-                in
-                case decoded of
-                    Just m ->
-                        Expect.equal
-                            (toBlocks SM.roundabout |> List.length)
-                            (toBlocks m |> List.length)
-                    Nothing -> Expect.fail "Failed to decode"
+            \_ -> Expect.equal
+                (Just SM.roundabout)
+                (decode <| encode SM.roundabout)
         ]
