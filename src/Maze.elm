@@ -3,18 +3,8 @@ module Maze exposing (..)
 import Array exposing (Array)
 import Maybe.Extra
 
-minTileCoord = -10
-maxTileCoord = 15
-
 minHeight = 0
 maxHeight = 10
-
-sidest = 18
-nearest = -3
-furthest = 16
-
-sideSize = maxTileCoord - minTileCoord + 1
-coordsRange = List.range minTileCoord maxTileCoord
 
 type alias LightConfig =
     { color : String
@@ -30,6 +20,10 @@ type alias MazeConfig =
 
 type alias Maze =
     { maze : Array MazeBlock
+    , width : Int
+    , height : Int
+    , offsetX : Int
+    , offsetY : Int
     , start : Pos2d
     , end : Pos2d
     , config : MazeConfig
@@ -73,51 +67,125 @@ defaultConfig =
     }
 
 emptyMaze : Maze
-emptyMaze = emptyMazeSize sideSize sideSize
+emptyMaze = emptyMazeSize 1 1
 
 emptyMazeSize : Int -> Int -> Maze
 emptyMazeSize xSize ySize =
     { maze = Array.initialize (ySize * xSize) (always EmptyBlock)
+    , width = xSize
+    , height = ySize
+    , offsetX = 0
+    , offsetY = 0
     , start = (0, 0)
     , end = (0, 0)
     , config = defaultConfig
     }
 
-toIndex : Int -> Int -> Int
-toIndex x y = (y - minTileCoord) * sideSize + (x - minTileCoord)
+toIndex : Int -> Int -> Int -> Int -> Int -> Int
+toIndex width offX offY x y = (y - offY) * width + (x - offX)
+
+fromIndex : Int -> Int -> Int -> Int -> (Int, Int)
+fromIndex width offX offY i = (offX + modBy width i, offY + i // width)
 
 fromBlocks : List Block -> Maze
-fromBlocks blocks = List.foldl set (emptyMazeSize sideSize sideSize) blocks
+fromBlocks blocks =
+    let
+        extremes ( x, y, _ ) acc =
+            { minX = min acc.minX x
+            , maxX = max acc.maxX x
+            , minY = min acc.minY y
+            , maxY = max acc.maxY y
+            }
+
+        limits =
+            case blocks of
+                [] -> { minX = 0, maxX = 0, minY = 0, maxY = 0 }
+                first :: rest ->
+                    List.foldl (\b acc -> extremes (blockPosition b) acc)
+                        (let ( fx, fy, _ ) = blockPosition first in { minX = fx, maxX = fx, minY = fy, maxY = fy })
+                        rest
+
+        width = limits.maxX - limits.minX + 1
+        height = limits.maxY - limits.minY + 1
+
+        maze =
+            { maze = Array.initialize (width * height) (always EmptyBlock)
+            , width = width
+            , height = height
+            , offsetX = limits.minX
+            , offsetY = limits.minY
+            , start = (0, 0)
+            , end = (0, 0)
+            , config = defaultConfig
+            }
+
+        setBlock b m =
+            let ( x, y, _ ) = blockPosition b in
+            { m | maze = Array.set (toIndex m.width m.offsetX m.offsetY x y) (blockToMazeBlock b) m.maze }
+    in
+    List.foldl setBlock maze blocks
+
+blockToMazeBlock : Block -> MazeBlock
+blockToMazeBlock block =
+    case block of
+        Base ( _, _, z ) -> BaseBlock z
+        Bridge ( _, _, z ) -> BridgeBlock z
+        Stairs ( _, _, z ) dir -> StairsBlock z dir
+
+setAt : Position -> MazeBlock -> Maze -> Maze
+setAt ( x, y, _ ) mazeBlock maze =
+    if x < maze.offsetX || y < maze.offsetY || x >= maze.offsetX + maze.width || y >= maze.offsetY + maze.height then
+        -- Grow the maze if needed
+        let
+            newMinX = min maze.offsetX x
+            newMinY = min maze.offsetY y
+            newMaxX = max (maze.offsetX + maze.width - 1) x
+            newMaxY = max (maze.offsetY + maze.height - 1) y
+            newWidth = newMaxX - newMinX + 1
+            newHeight = newMaxY - newMinY + 1
+
+            newArray = Array.initialize (newWidth * newHeight) (always EmptyBlock)
+
+            copy i block acc =
+                let
+                    ( ox, oy ) = fromIndex maze.width maze.offsetX maze.offsetY i
+                    newI = toIndex newWidth newMinX newMinY ox oy
+                in
+                Array.set newI block acc
+
+            expandedArray = Array.foldl (\b (i, arr) -> (i + 1, copy i b arr)) (0, newArray) maze.maze |> Tuple.second
+            finalI = toIndex newWidth newMinX newMinY x y
+        in
+        { maze
+            | maze = Array.set finalI mazeBlock expandedArray
+            , width = newWidth
+            , height = newHeight
+            , offsetX = newMinX
+            , offsetY = newMinY
+        }
+    else
+        { maze | maze = Array.set (toIndex maze.width maze.offsetX maze.offsetY x y) mazeBlock maze.maze }
 
 set : Block -> Maze -> Maze
 set block maze =
-    let
-        ( xx, yy, mazeBlock ) = case block of
-            Base ( x, y, z ) -> ( x, y, BaseBlock z )
-            Bridge ( x, y, z ) -> ( x, y, BridgeBlock z )
-            Stairs ( x, y, z ) dir -> ( x, y, StairsBlock z dir )
-    in
-    if isValidPosition <| blockPosition block then
-        { maze | maze = Array.set (toIndex xx yy) mazeBlock maze.maze }
-    else
-        maze
+    let ( x, y, z ) = blockPosition block in
+    setAt ( x, y, z ) (blockToMazeBlock block) maze
 
 clear : Pos2d -> Maze -> Maze
 clear ( x, y ) maze =
-    if isValidPos2d ( x, y ) then
-        { maze | maze = Array.set (toIndex x y) EmptyBlock maze.maze }
-    else
+    if x < maze.offsetX || y < maze.offsetY || x >= maze.offsetX + maze.width || y >= maze.offsetY + maze.height then
         maze
+    else
+        { maze | maze = Array.set (toIndex maze.width maze.offsetX maze.offsetY x y) EmptyBlock maze.maze }
+
+toBlocks : Maze -> List Block
+toBlocks maze =
+    Array.toIndexedList maze.maze
+        |> List.filterMap (\( i, mb ) -> toBlock (fromIndex maze.width maze.offsetX maze.offsetY i) mb)
 
 mapCoords : List Int -> List Int -> (Int -> Int -> a) -> List a
 mapCoords rangeY rangeX fun =
     List.concatMap (\y -> List.map (fun y) rangeX) rangeY
-
-mapAllCoords : (Int -> Int -> a) -> List a
-mapAllCoords = mapCoords coordsRange coordsRange
-
-toBlocks : Maze -> List Block
-toBlocks maze = List.filterMap (\c -> get c maze) (mapAllCoords Tuple.pair)
 
 toBlock : Pos2d -> MazeBlock -> Maybe Block
 toBlock ( x, y ) mazeBlock = case mazeBlock of
@@ -128,20 +196,20 @@ toBlock ( x, y ) mazeBlock = case mazeBlock of
 
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
-    if isValidPos2d ( x, y ) then
-        Array.get (toIndex x y) maze.maze
-            |> Maybe.andThen (toBlock ( x, y ))
-    else
+    if x < maze.offsetX || y < maze.offsetY || x >= maze.offsetX + maze.width || y >= maze.offsetY + maze.height then
         Nothing
+    else
+        Array.get (toIndex maze.width maze.offsetX maze.offsetY x y) maze.maze
+            |> Maybe.andThen (toBlock ( x, y ))
 
 getPosition : Pos2d -> Maze -> Maybe Position
 getPosition pos = get pos >> Maybe.map blockPosition
 
 startPosition : Maze -> Position
-startPosition m = getPosition m.start m |> Maybe.withDefault ( 0, 0, 0 )
+startPosition m = getPosition m.start m |> Maybe.withDefault ( Tuple.first m.start, Tuple.second m.start, 0 )
 
 endPosition : Maze -> Position
-endPosition m = getPosition m.end m |> Maybe.withDefault ( 0, 0, 0 )
+endPosition m = getPosition m.end m |> Maybe.withDefault ( Tuple.first m.end, Tuple.second m.end, 0 )
 
 isAtEnd : Position -> Maze -> Bool
 isAtEnd pos maze =
@@ -176,7 +244,6 @@ moveInHeight enterHeight block =
 
 move : Position -> Direction -> Maze -> Maybe Position
 move ( x, y, z ) dir maze =
-    -- I spent aeons writing this >.<
     let
         oldExitHeight : Maybe Int
         oldExitHeight = Maybe.andThen (exitHeight dir z) (get ( x, y ) maze)
@@ -218,27 +285,66 @@ blockPosition block = case block of
 
 -- Position
 
-invalidCoord : Int -> Bool
-invalidCoord c = c < minTileCoord || c > maxTileCoord
+type alias Limits =
+    { minX: Int
+    , maxX: Int
+    , minY: Int
+    , maxY: Int
+    }
 
-invalidHeight : Int -> Bool
-invalidHeight z = z < minHeight || z > maxHeight
+getLimits : Maze -> Limits
+getLimits maze =
+    let
+        extremes ( x, y ) acc =
+            { minX = min acc.minX x
+            , maxX = max acc.maxX x
+            , minY = min acc.minY y
+            , maxY = max acc.maxY y
+            }
 
-isValidPosition : Position -> Bool
-isValidPosition ( x, y, z ) =
-    if invalidCoord x || invalidCoord y || invalidHeight z then
-        False -- out of reasonable bounds
-    else if x + y < nearest then
-        False -- too near player
-    else if x - y > sidest || y - x > sidest then
-        False -- too far to the side
-    else if x + y > furthest then
-        False -- too far
+        allBlocks = toBlocks maze
+    in
+    case allBlocks of
+        [] -> { minX = 0, maxX = 0, minY = 0, maxY = 0 }
+        first :: rest ->
+            let ( fx, fy, _ ) = blockPosition first in
+            List.foldl (\b acc -> let ( x, y, _ ) = blockPosition b in extremes ( x, y ) acc)
+                { minX = fx, maxX = fx, minY = fy, maxY = fy }
+                rest
+
+normalize : Maze -> ( Maze, ( Int, Int ) )
+normalize maze =
+    let
+        limits = getLimits maze
+        dx = -limits.minX
+        dy = -limits.minY
+    in
+    if dx == 0 && dy == 0 && maze.width == (limits.maxX - limits.minX + 1) && maze.height == (limits.maxY - limits.minY + 1) && maze.offsetX == 0 && maze.offsetY == 0 then
+        ( maze, ( 0, 0 ) )
     else
-        True
+        let
+            newWidth = limits.maxX - limits.minX + 1
+            newHeight = limits.maxY - limits.minY + 1
 
-isValidPos2d : Pos2d -> Bool
-isValidPos2d ( x, y ) = isValidPosition ( x, y, 0 )
+            newMazeArray = Array.initialize (newWidth * newHeight) (always EmptyBlock)
+
+            reposition b arr =
+                let ( x, y, z ) = blockPosition b in
+                Array.set (toIndex newWidth 0 0 (x + dx) (y + dy)) (blockToMazeBlock b) arr
+
+            finalArray = List.foldl reposition newMazeArray (toBlocks maze)
+        in
+        ( { maze
+            | maze = finalArray
+            , width = newWidth
+            , height = newHeight
+            , offsetX = 0
+            , offsetY = 0
+            , start = ( Tuple.first maze.start + dx, Tuple.second maze.start + dy )
+            , end = ( Tuple.first maze.end + dx, Tuple.second maze.end + dy )
+          }
+        , ( dx, dy )
+        )
 
 shiftPosition : Position -> Vector -> Position
 shiftPosition ( x, y, z ) ( xd, yd, zd ) = ( x + xd, y + yd, z + zd )
@@ -262,6 +368,16 @@ posX = Tuple.first
 
 posY : Pos2d -> Int
 posY = Tuple.second
+
+isValidPosition : Position -> Bool
+isValidPosition _ = True
+
+isValidPos2d : Pos2d -> Bool
+isValidPos2d _ = True
+
+mapAllCoords : (Int -> Int -> a) -> List a
+mapAllCoords fun =
+    mapCoords (List.range -10 20) (List.range -10 20) fun
 
 
 -- Direction

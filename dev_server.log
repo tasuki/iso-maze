@@ -1,0 +1,14 @@
+
+> iso-maze@0.0.1 dev
+> vite
+
+
+  VITE v7.3.1  ready in 633 ms
+
+  ➜  Local:   http://localhost:8423/
+  ➜  Network: use --host to expose
+3:34:05 PM [vite] (client) hmr update /src/Main.elm
+3:34:05 PM [vite] (client) hmr update /src/Main.elm
+3:34:08 PM [vite] (client) hmr update /src/Main.elm
+3:34:19 PM [vite] (client) hmr update /src/Main.elm
+3:35:12 PM [vite] (client) hmr update /src/Main.elm

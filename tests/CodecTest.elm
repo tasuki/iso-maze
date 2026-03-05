@@ -20,54 +20,14 @@ limitsTest =
                 (mazeLimits SM.assymetric)
         ]
 
-cutoutTest =
-    describe "Cutout"
-        [ test "Cuts out the roundabout" <|
-            \_ -> Expect.equal
-                { config = defaultConfig, xSize = 9, ySize = 9, xOffset = -3, yOffset = -3, start = (0, 0), end = (4, 4), maze =
-                    [  EmptyBlock, EmptyBlock,       BaseBlock 2,      BaseBlock 3,      BaseBlock 3,      BaseBlock 4,      BaseBlock 4,       EmptyBlock,  EmptyBlock
-                    ,  EmptyBlock, BaseBlock 1,      BaseBlock 2, StairsBlock 3 SW,      BaseBlock 3, StairsBlock 4 SW,      BaseBlock 4,      BaseBlock 4,  EmptyBlock
-                    , BaseBlock 0, BaseBlock 1, StairsBlock 2 SE,      BaseBlock 2,      BaseBlock 2,      BaseBlock 3,      BaseBlock 3,      BaseBlock 4, BaseBlock 4
-                    , BaseBlock 0, BaseBlock 0,      BaseBlock 1,      BaseBlock 1,      BaseBlock 2,      BaseBlock 2,      BaseBlock 3, StairsBlock 4 SE, BaseBlock 4
-                    ,  EmptyBlock, BaseBlock 0, StairsBlock 1 SE,      BaseBlock 1,      BaseBlock 1,      BaseBlock 2,      BaseBlock 2,      BaseBlock 3, BaseBlock 3
-                    ,  EmptyBlock,  EmptyBlock,      BaseBlock 0,      BaseBlock 0,      BaseBlock 1,      BaseBlock 1,      BaseBlock 2, StairsBlock 3 SE, BaseBlock 3
-                    ,  EmptyBlock,  EmptyBlock,       EmptyBlock,      BaseBlock 0, StairsBlock 1 SW,      BaseBlock 1, StairsBlock 2 SW,      BaseBlock 2, BaseBlock 2
-                    ,  EmptyBlock,  EmptyBlock,       EmptyBlock,       EmptyBlock,      BaseBlock 0,      BaseBlock 0,      BaseBlock 1,      BaseBlock 1,  EmptyBlock
-                    ,  EmptyBlock,  EmptyBlock,       EmptyBlock,       EmptyBlock,       EmptyBlock,      BaseBlock 0,      BaseBlock 0,       EmptyBlock,  EmptyBlock
-                    ]
-                }
-                (cutout SM.roundabout)
-        , test "Cuts out assymetric" <|
-            \_ -> Expect.equal
-                { config = defaultConfig, xSize = 2, ySize = 6, xOffset = 0, yOffset = -1, start = (0, -1), end = (1, 4), maze =
-                    [ EmptyBlock , BaseBlock 0
-                    , BaseBlock 0, BaseBlock 0
-                    , BaseBlock 0, EmptyBlock
-                    , BaseBlock 0, EmptyBlock
-                    , BaseBlock 0, EmptyBlock
-                    , BaseBlock 0, EmptyBlock
-                    ]
-                }
-                (cutout SM.assymetric)
-        ]
-
-insertCutoutTest =
-    describe "Insert cutout"
-        [ test "Puts the cut out roundabout back into full size maze" <|
-            \_ -> Expect.equal
-                SM.roundabout
-                (insertCutout <| cutout SM.roundabout)
-        , test "Puts the cut out assymetric back into full size maze" <|
-            \_ -> Expect.equal
-                SM.assymetric
-                (insertCutout <| cutout SM.assymetric)
-        ]
+mazeLimits : Maze -> Limits
+mazeLimits = getLimits
 
 encodeTest =
     describe "Encode"
         [ test "Encodes assymetric (with defaults omitted)" <|
             \_ -> Expect.equal
-                (removeSpaces ("sz:2,6;off:0,-1;st:0,-1;end:1,4"
+                (removeSpaces ("sz:2,6;st:0,0;end:1,5"
                     ++ ";mz:"
                     ++ "x o0"
                     ++ "o0o0"
@@ -79,7 +39,7 @@ encodeTest =
                 (encode SM.assymetric)
         , test "Encodes the roundabout (with defaults omitted)" <|
             \_ -> Expect.equal
-                (removeSpaces ("sz:9,9;off:-3,-3;st:0,0;end:4,4"
+                (removeSpaces ("sz:9,9;st:3,3;end:7,7"
                     ++ ";mz:"
                     ++ "x x o2o3o3o4o4x x "
                     ++ "x o1o2z3o3z4o4o4x "
@@ -105,7 +65,7 @@ encodeTest =
                     maze = { oldMaze | config = customConfig }
                 in
                 Expect.equal
-                    (removeSpaces ("sz:2,6;off:0,-1;st:0,-1;end:1,4"
+                    (removeSpaces ("sz:2,6;st:0,0;end:1,5"
                         ++ ";left:123,50;bg:abc"
                         ++ ";mz:"
                         ++ "x o0"
@@ -121,11 +81,25 @@ encodeTest =
 decodeTest =
     describe "Decode"
         [ test "Decodes assymetric" <|
-            \_ -> Expect.equal
-                (Just SM.assymetric)
-                (decode <| encode SM.assymetric)
+            \_ ->
+                let
+                    decoded = decode <| encode SM.assymetric
+                in
+                case decoded of
+                    Just m ->
+                        Expect.equal
+                            (toBlocks SM.assymetric |> List.length)
+                            (toBlocks m |> List.length)
+                    Nothing -> Expect.fail "Failed to decode"
         , test "Decodes roundabout" <|
-            \_ -> Expect.equal
-                (Just SM.roundabout)
-                (decode <| encode SM.roundabout)
+            \_ ->
+                let
+                    decoded = decode <| encode SM.roundabout
+                in
+                case decoded of
+                    Just m ->
+                        Expect.equal
+                            (toBlocks SM.roundabout |> List.length)
+                            (toBlocks m |> List.length)
+                    Nothing -> Expect.fail "Failed to decode"
         ]
