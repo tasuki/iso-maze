@@ -6,7 +6,7 @@ import Maze exposing (..)
 import Test exposing (..)
 
 
-simpleEightMaze = "sz:5,5;off:0,0;st:4,4;end:0,0;mz:"
+simpleEightMaze = "sz:5,5;st:4,4;end:0,0;mz:"
     ++ "x x o1o1o1"
     ++ "x o0s1o1o1"
     ++ "o0z1l1o1o1"

@@ -40,6 +40,11 @@ setStartEnd start end maze =
     { maze | start = start, end = end }
 
 
+normalizeMaze : M.Maze -> M.Maze
+normalizeMaze =
+    M.normalize >> Tuple.first
+
+
 
 -- Mazes
 
@@ -54,12 +59,13 @@ zigZagBlocks =
         ]
 
 zigZag : M.Maze
-zigZag = M.fromBlocks <| zigZagBlocks
+zigZag =
+    M.fromBlocks zigZagBlocks |> normalizeMaze
+
 
 roundabout : M.Maze
 roundabout =
-    setStartEnd ( 0, 0 ) ( 4, 4 ) <|
-        M.fromBlocks <| zigZagBlocks ++
+    M.fromBlocks (zigZagBlocks ++
             [ M.createStairs -1  1 1 M.SE
             , M.createStairs  1 -1 1 M.SW
             , M.createStairs -1  3 2 M.SE
@@ -68,11 +74,14 @@ roundabout =
             , M.createStairs  0  4 3 M.SW
             , M.createStairs  4  2 4 M.SE
             , M.createStairs  2  4 4 M.SW
-            ]
+            ])
+        |> setStartEnd ( 0, 0 ) ( 4, 4 )
+        |> normalizeMaze
+
 
 fourStairs : M.Maze
 fourStairs =
-    setStartEnd ( -2, -2 ) ( 0, 0 ) <| M.fromBlocks
+    M.fromBlocks
         [ M.createBase   -2 -2 0
         , M.createBase    0  0 2
         , M.createStairs  0  1 2 M.NW
@@ -84,6 +93,9 @@ fourStairs =
         , M.createStairs -1  0 2 M.SW
         , M.createStairs -2  0 1 M.SW
         ]
+        |> setStartEnd ( -2, -2 ) ( 0, 0 )
+        |> normalizeMaze
+
 
 maxMaze : M.Maze
 maxMaze =
@@ -91,6 +103,8 @@ maxMaze =
         |> List.map M.Base
         |> M.fromBlocks
         |> setStartEnd ( 0, 0 ) ( 8, 8 )
+        |> normalizeMaze
+
 
 assymetric : M.Maze
 assymetric =
@@ -104,6 +118,7 @@ assymetric =
         , M.createBase 1  4 0
         ]
         |> setStartEnd ( 0, -1 ) ( 1, 4 )
+        |> normalizeMaze
 
 
 -- enter a new era of representing mazes

@@ -12,11 +12,11 @@ limitsTest =
     describe "Limit finder"
         [ test "Finds limits for roundabout" <|
             \_ -> Expect.equal
-                { minX = -3, maxX = 5, minY = -3, maxY = 5 }
+                { minX = 0, maxX = 8, minY = 0, maxY = 8 }
                 (mazeLimits SM.roundabout)
         , test "Finds limits for assymetric" <|
             \_ -> Expect.equal
-                { minX = 0, maxX = 1, minY = -1, maxY = 4 }
+                { minX = 0, maxX = 1, minY = 0, maxY = 5 }
                 (mazeLimits SM.assymetric)
         ]
 
