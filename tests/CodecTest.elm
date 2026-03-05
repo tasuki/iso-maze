@@ -12,11 +12,11 @@ limitsTest =
     describe "Limit finder"
         [ test "Finds limits for roundabout" <|
             \_ -> Expect.equal
-                { minX = -3, maxX = 5, minY = -3, maxY = 5 }
+                { minX = 0, maxX = 8, minY = 0, maxY = 8 }
                 (mazeLimits SM.roundabout)
         , test "Finds limits for assymetric" <|
             \_ -> Expect.equal
-                { minX = 0, maxX = 1, minY = -1, maxY = 4 }
+                { minX = 0, maxX = 1, minY = 0, maxY = 5 }
                 (mazeLimits SM.assymetric)
         ]
 
@@ -81,25 +81,11 @@ encodeTest =
 decodeTest =
     describe "Decode"
         [ test "Decodes assymetric" <|
-            \_ ->
-                let
-                    decoded = decode <| encode SM.assymetric
-                in
-                case decoded of
-                    Just m ->
-                        Expect.equal
-                            (toBlocks SM.assymetric |> List.length)
-                            (toBlocks m |> List.length)
-                    Nothing -> Expect.fail "Failed to decode"
+            \_ -> Expect.equal
+                (Just SM.assymetric)
+                (decode <| encode SM.assymetric)
         , test "Decodes roundabout" <|
-            \_ ->
-                let
-                    decoded = decode <| encode SM.roundabout
-                in
-                case decoded of
-                    Just m ->
-                        Expect.equal
-                            (toBlocks SM.roundabout |> List.length)
-                            (toBlocks m |> List.length)
-                    Nothing -> Expect.fail "Failed to decode"
+            \_ -> Expect.equal
+                (Just SM.roundabout)
+                (decode <| encode SM.roundabout)
         ]
