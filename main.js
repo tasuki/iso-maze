@@ -184,13 +184,19 @@ app.ports.renderThreeJS.subscribe(data => {
 
     if (data.staticUpdate) {
         const c = data.config;
+        const unitScale = 0.01;
         [staticLights, dynamicLights].forEach(ls => {
             ls.left.color.copy(parseHex(c.left.color));
             ls.left.intensity = c.left.intensity;
+            ls.left.position.set(c.left.position.x * unitScale, c.left.position.y * unitScale, c.left.position.z * unitScale);
+
             ls.right.color.copy(parseHex(c.right.color));
             ls.right.intensity = c.right.intensity;
+            ls.right.position.set(c.right.position.x * unitScale, c.right.position.y * unitScale, c.right.position.z * unitScale);
+
             ls.above.color.copy(parseHex(c.above.color));
             ls.above.intensity = c.above.intensity;
+            ls.above.position.set(c.above.position.x * unitScale, c.above.position.y * unitScale, c.above.position.z * unitScale);
         });
         staticScene.background.copy(parseHex(c.bg));
     }

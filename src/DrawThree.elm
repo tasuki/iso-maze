@@ -63,7 +63,22 @@ sceneData model =
     let
         config = computeCameraConfig model
         mazeConfig = model.maze.config
-        encodeLight l = E.object [ ( "color", E.string l.color ), ( "intensity", E.float l.intensity ) ]
+
+        limits = M.getLimits model.maze
+        maxZ = M.toBlocks model.maze
+            |> List.map (\b -> let ( _, _, z ) = M.blockPosition b in z)
+            |> List.maximum |> Maybe.withDefault 0 |> toFloat
+
+        leftPos = { x = toFloat limits.minX * 10 - 200, y = (toFloat (limits.minY + limits.maxY) / 2) * 10, z = 300 }
+        rightPos = { x = (toFloat (limits.minX + limits.maxX) / 2) * 10, y = toFloat limits.minY * 10 - 200, z = 300 }
+        abovePos = { x = toFloat limits.maxX * 10 + 200, y = toFloat limits.maxY * 10 + 200, z = maxZ * 10 + 600 }
+
+        encodeLight l pos =
+            E.object
+                [ ( "color", E.string l.color )
+                , ( "intensity", E.float l.intensity )
+                , ( "position", encodeVec3 pos )
+                ]
 
         common =
             [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
@@ -82,9 +97,9 @@ sceneData model =
         E.object
             ( ( "static", E.list encodeRenderable (staticRenderables model) ) ::
             ( "config", E.object
-                [ ( "left", encodeLight mazeConfig.left )
-                , ( "right", encodeLight mazeConfig.right )
-                , ( "above", encodeLight mazeConfig.above )
+                [ ( "left", encodeLight mazeConfig.left leftPos )
+                , ( "right", encodeLight mazeConfig.right rightPos )
+                , ( "above", encodeLight mazeConfig.above abovePos )
                 , ( "bg", E.string mazeConfig.bg )
                 ]
             ) :: common)
