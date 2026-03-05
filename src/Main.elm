@@ -9,19 +9,20 @@ import Browser.Navigation as Nav
 import Campaign
 import Codec
 import Controls
-import DrawThree as D
 import DocumentDecoders as DD
+import DrawThree as D
 import Duration exposing (Duration)
-import Set exposing (Set)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as Decode
+import Maybe.Extra
 import Maze as M
 import MazeEdit as ME
 import Pixels
 import Quantity
 import SampleMazes as SM
+import Set exposing (Set)
 import Task
 import Url exposing (Url)
 import Url.Parser as UP exposing ((</>))
@@ -493,7 +494,7 @@ loadMaze maze maybeName model =
             M.Moving m ->
                 let ( x, y, _ ) = m.from in ( x, y )
         ( newX, newY, _ ) = startPos
-        shouldFall = oldX /= newX || oldY /= newY
+        shouldFall = oldX /= newX || oldY /= newY || Maybe.Extra.isJust maybeName
         newAnimator =
             if shouldFall then Animate.initAnimator targets
             else Animate.initAnimatorAt targets
