@@ -12,6 +12,7 @@ const app = Elm.Main.init({
 
 let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer;
 let backgroundScene, backgroundCamera, backgroundQuad;
+let groundPlane;
 
 // Z is up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -50,25 +51,30 @@ const dynamicMeshCache = new Map();
 // Scenes & Lights
 function createLights() {
     return {
-        left: new THREE.PointLight(0xffcc99, 30),
-        right: new THREE.PointLight(0x66bbff, 15),
-        above: new THREE.PointLight(0xffffff, 40),
+        left: new THREE.PointLight(),
+        right: new THREE.PointLight(),
+        above: new THREE.PointLight(),
     };
 }
 
 function addLightsToScene(s, ls) {
-    ls.left.position.set(-2, 0, 3);
     s.add(ls.left);
-    ls.right.position.set(0, -2, 3);
     s.add(ls.right);
-    ls.above.position.set(2, 2, 6);
     s.add(ls.above);
 }
 
 staticScene = new THREE.Scene();
-staticScene.background = new THREE.Color(0x668899);
+const defaultBg = parseHex('689');
+staticScene.background = defaultBg;
 const staticLights = createLights();
 addLightsToScene(staticScene, staticLights);
+
+groundPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1000, 1000),
+    new THREE.MeshStandardMaterial({ color: defaultBg, roughness: 1, metalness: 0 })
+);
+groundPlane.position.z = -0.1;
+staticScene.add(groundPlane);
 
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
@@ -114,7 +120,7 @@ const n8aoPass = new N8AOPostPass(
 );
 n8aoPass.configuration.aoRadius = 0.5;
 n8aoPass.configuration.distanceFalloff = 1.5;
-n8aoPass.configuration.intensity = 7.0;
+n8aoPass.configuration.intensity = 6.0;
 n8aoPass.setQualityMode("High");
 
 staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
@@ -198,7 +204,9 @@ app.ports.renderThreeJS.subscribe(data => {
             ls.above.intensity = c.above.intensity;
             ls.above.position.set(c.above.position.x * unitScale, c.above.position.y * unitScale, c.above.position.z * unitScale);
         });
-        staticScene.background.copy(parseHex(c.bg));
+        const bgColor = parseHex(c.bg);
+        staticScene.background.copy(bgColor);
+        groundPlane.material.color.copy(bgColor);
     }
 
 

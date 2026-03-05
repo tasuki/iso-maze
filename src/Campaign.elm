@@ -31,7 +31,7 @@ mazeDefs =
 
     , { emoji = "🐛"
       , name = "bug"
-      , maze = "bg:560;left:df0,20;right:df0,5;"
+      , maze = "bg:560;left:df0,25;right:df0,5;"
         ++ "sz:4,4;st:0,0;end:3,0;mz:"
         ++ "o2o2x x "
         ++ "s2o2o2o2"
@@ -98,7 +98,7 @@ mazeDefs =
 
     , { emoji = "🐭"
       , name = "mouse"
-      , maze = "bg:a47;left:a47,20;right:749,20;above:fff,95;"
+      , maze = "bg:a47;left:a47,40;right:749,40;above:fff,90;"
         ++ "sz:10,10;st:0,0;end:9,4;mz:"
         ++ "x x x x o3o2o2o2o2o2"
         ++ "x x o2z3o3o3l3o3o2S3"
@@ -164,7 +164,7 @@ mazeDefs =
 
     , { emoji = "🦎"
       , name = "lizard"
-      , maze = "bg:886;left:884,35;right:853,15;above:dfd,90;"
+      , maze = "bg:cb9;left:884,35;right:853,15;above:dfd,90;"
         ++ "sz:11,10;st:1,1;end:8,6;mz:"
         ++ "x x x o1o2o2z3o3o3o3x "
         ++ "x x x o1s2o3z4l4o4o4o4"

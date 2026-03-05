@@ -60,10 +60,10 @@ type PlayerState
 
 defaultConfig : MazeConfig
 defaultConfig =
-    { left = { color = "fc9", intensity = 30 }
-    , right = { color = "6bf", intensity = 15 }
-    , above = { color = "fff", intensity = 40 }
-    , bg = "689"
+    { bg = "689"
+    , left = { color = "fc9", intensity = 40 }
+    , right = { color = "6bf", intensity = 20 }
+    , above = { color = "fff", intensity = 50 }
     }
 
 emptyMaze : Maze
