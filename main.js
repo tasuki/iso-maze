@@ -3,6 +3,50 @@ import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 
 import { Elm } from './src/Main.elm';
+
+class SnowEffect extends PP.Effect {
+    constructor() {
+        super('SnowEffect', `
+            uniform float time;
+            uniform float aspect;
+
+            float snow(vec2 uv, float scale) {
+                float t = time * 0.2;
+                uv.x += sin(t * 0.2 + uv.y * 1.0) * 0.1;
+                uv.y += t * (1.0 + scale * 0.05);
+                uv *= scale;
+                vec2 grid = fract(uv) - 0.5;
+                vec2 id = floor(uv);
+                float r = fract(sin(dot(id, vec2(12.9898, 78.233))) * 43758.5453);
+                if (r < 0.9) return 0.0;
+                float size = 0.01 + 0.03 * r;
+                float dist = length(grid);
+                return smoothstep(size, size - 0.01, dist) * (r - 0.9) * 10.0;
+            }
+
+            void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+                vec2 aspectUV = uv;
+                aspectUV.x *= aspect;
+                float s = 0.0;
+                s += snow(aspectUV, 5.0) * 0.2;
+                s += snow(aspectUV, 10.0) * 0.4;
+                s += snow(aspectUV, 15.0) * 0.6;
+                outputColor = vec4(mix(inputColor.rgb, vec3(0.95, 0.97, 1.0), s * 0.5), inputColor.a);
+            }
+        `, {
+            uniforms: new Map([
+                ['time', new THREE.Uniform(0.0)],
+                ['aspect', new THREE.Uniform(1.0)]
+            ])
+        });
+    }
+
+    update(renderer, inputBuffer, deltaTime) {
+        this.uniforms.get('time').value += deltaTime;
+        this.uniforms.get('aspect').value = inputBuffer.width / inputBuffer.height;
+    }
+}
+
 const app = Elm.Main.init({
     flags: {
         dpr: getDpr(),
@@ -138,6 +182,7 @@ dynamicComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfF
 dynamicComposer.addPass(new PP.RenderPass(backgroundScene, backgroundCamera));
 dynamicComposer.addPass(dynamicRenderPass);
 dynamicComposer.addPass(bloomEffectPass);
+dynamicComposer.addPass(new PP.EffectPass(camera, new SnowEffect()));
 dynamicComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
     preset: PP.SMAAPreset.LOW,
 })));
