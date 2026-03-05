@@ -54,7 +54,6 @@ type alias Model =
     , maze : M.Maze
     , playerState : M.PlayerState
     , animator : Animate.AnimatorState
-    , prevAnimatorMoving : Bool
     , focus : M.Position
     , dpr : Float
     , renderHistory : List { timestamp : Float, duration : Float }
@@ -131,7 +130,6 @@ init flags url navKey =
             , maze = defaultMaze
             , playerState = M.Idle ( 999, 999, 999 )
             , animator = Animate.initAnimator initialTargets
-            , prevAnimatorMoving = False
             , focus = ( 0, 0, 1 )
             , dpr = flags.dpr
             , renderHistory = []
@@ -162,6 +160,11 @@ update message model =
     let
         ( preModel, cmd ) = updateModel message model
         targets = Animate.getPlayerTargets preModel.playerState preModel.maze
+        wasMoving =
+            case model.playerState of
+                M.Idle _ -> Animate.isAnimatorMoving (Animate.getPlayerTargets model.playerState model.maze) model.animator
+                M.Moving _ -> True
+
         isMoving =
             case preModel.playerState of
                 M.Idle _ -> Animate.isAnimatorMoving targets preModel.animator
@@ -170,7 +173,7 @@ update message model =
         shouldRender =
             case message of
                 Resize _ _ -> True
-                Tick _ -> isMoving || model.prevAnimatorMoving
+                Tick _ -> isMoving || wasMoving
                 Moved _ -> preModel.mode == ME.Editing && preModel.orbiting
                 Finished _ -> model.orbiting
                 KeyDown key ->
@@ -250,10 +253,6 @@ updateModel message model =
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
-                newIsMoving =
-                    case newPlayerState of
-                        M.Idle _ -> Animate.isAnimatorMoving targets newAnimator
-                        M.Moving _ -> True
 
                 currentTime = Duration.inMilliseconds newElapsedTime
                 newTickHistory =
@@ -265,7 +264,6 @@ updateModel message model =
                 | elapsedTime = newElapsedTime
                 , playerState = newPlayerState
                 , animator = newAnimator
-                , prevAnimatorMoving = newIsMoving
                 , tickHistory = newTickHistory
                 , finishedLevels = newFinishedLevels
                 , activeOverlay =
@@ -504,7 +502,6 @@ loadMaze maze maybeName model =
         | maze = maze
         , playerState = M.Idle startPos
         , animator = newAnimator
-        , prevAnimatorMoving = Animate.isAnimatorMoving targets newAnimator
         , staticUpdate = True
         , currentLevel = maybeName |> Maybe.andThen Campaign.getLevel
         , activeOverlay = Nothing
