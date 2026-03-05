@@ -19,12 +19,12 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 // Caches
 const materials = {
-    base: new THREE.MeshLambertMaterial({ color: 0xffffff }),
-    stairs: new THREE.MeshLambertMaterial({ color: 0xffccaa }),
-    bridge: new THREE.MeshLambertMaterial({ color: 0xcc6666 }),
-    player: new THREE.MeshLambertMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1 }),
-    goal: new THREE.MeshLambertMaterial({ color: 0x555555 }),
-    focus: new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4 }),
+    base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
+    stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
+    bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
+    player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.5 }),
+    goal: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
+    focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
 
