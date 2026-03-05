@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as PP from 'postprocessing';
-import { N8AOPostPass } from 'n8ao';
 
 import { Elm } from './src/Main.elm';
 
@@ -54,8 +53,7 @@ const app = Elm.Main.init({
     }
 });
 
-let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer;
-let backgroundScene, backgroundCamera, backgroundQuad;
+let staticScene, dynamicScene, camera, renderer, container, mainComposer, snowComposer, textureEffect;
 
 // Z is up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -118,16 +116,6 @@ dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
 addLightsToScene(dynamicScene, dynamicLights);
 
-// Background scene
-backgroundScene = new THREE.Scene();
-backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 2, 20);
-backgroundCamera.position.z = 5;
-backgroundQuad = new THREE.Mesh(
-    new THREE.PlaneGeometry(2, 2),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false })
-);
-backgroundScene.add(backgroundQuad);
-
 // Camera
 let lastViewSize = 1.4;
 let lastFocalPoint = new THREE.Vector3(0, 0, 0.55);
@@ -141,7 +129,7 @@ function updateCamera() {
     camera.updateProjectionMatrix();
 }
 container = document.getElementById('three-container');
-camera = new THREE.OrthographicCamera(0, 0, 0, 0, 2, 20);
+camera = new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
 camera.up.set(0, 0, 1);
 
 // Renderer
@@ -152,49 +140,36 @@ renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.autoClear = false;
 container.appendChild(renderer.domElement);
 
-// Static pass
-const n8aoPass = new N8AOPostPass(
-    staticScene, camera, container.clientWidth, container.clientHeight
-);
-n8aoPass.configuration.aoRadius = 0.5;
-n8aoPass.configuration.distanceFalloff = 1.5;
-n8aoPass.configuration.intensity = 7.0;
-n8aoPass.setQualityMode("High");
-
-staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
-staticComposer.autoRenderToScreen = false;
-staticComposer.addPass(new PP.RenderPass(staticScene, camera));
-staticComposer.addPass(n8aoPass);
-staticComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
-    preset: PP.SMAAPreset.HIGH,
-})));
-
-// Dynamic pass
+mainComposer = new PP.EffectComposer(renderer, {
+    frameBufferType: THREE.HalfFloatType
+});
+mainComposer.addPass(new PP.RenderPass(staticScene, camera));
 const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
 dynamicRenderPass.clear = false;
-const bloomEffectPass = new PP.EffectPass(camera, new PP.BloomEffect({
+mainComposer.addPass(dynamicRenderPass);
+mainComposer.addPass(new PP.EffectPass(camera, new PP.BloomEffect({
     intensity: 5,
     luminanceThreshold: 1,
     mipmapBlur: true,
-}));
-
-dynamicComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
-dynamicComposer.addPass(new PP.RenderPass(backgroundScene, backgroundCamera));
-dynamicComposer.addPass(dynamicRenderPass);
-dynamicComposer.addPass(bloomEffectPass);
-dynamicComposer.addPass(new PP.EffectPass(camera, new SnowEffect()));
-dynamicComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
-    preset: PP.SMAAPreset.LOW,
 })));
+mainComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
+    preset: PP.SMAAPreset.HIGH,
+})));
+
+snowComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
+textureEffect = new PP.TextureEffect({ texture: mainComposer.outputBuffer.texture, blendFunction: PP.BlendFunction.SET });
+snowComposer.addPass(new PP.EffectPass(camera, textureEffect, new SnowEffect()));
 
 // Updates and Listeners
 function updateSize() {
     const w = container.clientWidth;
     const h = container.clientHeight;
-    renderer.setPixelRatio(getDpr());
+    const dpr = getDpr();
+    renderer.setPixelRatio(dpr);
     renderer.setSize(w, h);
-    dynamicComposer.setSize(w, h);
-    staticComposer.setSize(w, h);
+    mainComposer.setSize(w, h);
+    snowComposer.setSize(w, h);
+    textureEffect.texture = mainComposer.outputBuffer.texture;
 }
 updateSize();
 
@@ -210,11 +185,10 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-let rafId = null;
 let latestData = null;
 let lastRenderTimeReport = 0;
-let needsStaticRender = true;
-let pendingStatic = null;
+let needsDynamicRender = false;
+let lastT = performance.now();
 
 app.ports.saveFinishedLevels.subscribe(levels => {
     localStorage.setItem('finishedLevels', JSON.stringify(levels));
@@ -223,10 +197,7 @@ app.ports.saveFinishedLevels.subscribe(levels => {
 app.ports.renderThreeJS.subscribe(data => {
     const unitScale = 0.01;
     latestData = data;
-    if (data.staticUpdate && data.static) {
-        needsStaticRender = true;
-        pendingStatic = data.static;
-    }
+    needsDynamicRender = true;
 
     if (data.staticUpdate) {
         const c = data.config;
@@ -245,35 +216,33 @@ app.ports.renderThreeJS.subscribe(data => {
         });
         staticScene.background.copy(parseHex(c.bg));
     }
-
-
-    if (!rafId) {
-        rafId = requestAnimationFrame(() => {
-            const t0 = performance.now();
-            updateScene(latestData, unitScale);
-
-            if (needsStaticRender) {
-                staticComposer.render();
-                // weird parity of passes, watch out for inputBuffer vs outputBuffer
-                // llms say set needsSwap, but no that doesn't help
-                backgroundQuad.material.map = staticComposer.inputBuffer.texture;
-                backgroundQuad.material.needsUpdate = true;
-                needsStaticRender = false;
-                pendingStatic = null;
-            }
-
-            renderer.setRenderTarget(null);
-            dynamicComposer.render();
-
-            const t1 = performance.now();
-            if (t1 - lastRenderTimeReport > 1000) {
-                app.ports.updateRenderTime.send(t1 - t0);
-                lastRenderTimeReport = t1;
-            }
-            rafId = null;
-        });
-    }
 });
+
+function renderLoop() {
+    const t0 = performance.now();
+    const dt = (t0 - lastT) / 1000;
+    lastT = t0;
+    const unitScale = 0.01;
+
+    if (latestData) {
+        if (needsDynamicRender) {
+            updateScene(latestData, unitScale);
+            mainComposer.render(dt);
+            needsDynamicRender = false;
+        }
+        renderer.setRenderTarget(null);
+        snowComposer.render(dt);
+    }
+
+    const t1 = performance.now();
+    if (t1 - lastRenderTimeReport > 1000) {
+        app.ports.updateRenderTime.send(t1 - t0);
+        lastRenderTimeReport = t1;
+    }
+
+    requestAnimationFrame(renderLoop);
+}
+requestAnimationFrame(renderLoop);
 
 function getRenderableKey(r, prefix) {
     if (r.type === 'box') {
@@ -321,10 +290,9 @@ function parseHex(hex) {
 }
 
 function updateScene(data, unitScale) {
-    const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
-    if (staticToUse) {
+    if (data.staticUpdate && data.static) {
         const currentStaticKeys = new Set();
-        staticToUse.forEach((r) => {
+        data.static.forEach((r) => {
             const key = getRenderableKey(r, 'static');
             currentStaticKeys.add(key);
 

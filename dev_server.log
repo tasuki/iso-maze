@@ -1,0 +1,10 @@
+
+> iso-maze@0.0.1 dev
+> vite
+
+Port 8423 is in use, trying another one...
+
+  VITE v7.3.1  ready in 332 ms
+
+  ➜  Local:   http://localhost:8424/
+  ➜  Network: use --host to expose
