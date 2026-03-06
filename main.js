@@ -6,7 +6,8 @@ import { Elm } from './src/Main.elm';
 const app = Elm.Main.init({
     flags: {
         dpr: getDpr(),
-        finishedLevels: JSON.parse(localStorage.getItem('finishedLevels') || '[]')
+        finishedLevels: JSON.parse(localStorage.getItem('finishedLevels') || '[]'),
+        performance: localStorage.getItem('performance') || 'normal'
     }
 });
 
@@ -179,6 +180,10 @@ let pendingStatic = null;
 
 app.ports.saveFinishedLevels.subscribe(levels => {
     localStorage.setItem('finishedLevels', JSON.stringify(levels));
+});
+
+app.ports.savePerformance.subscribe(perf => {
+    localStorage.setItem('performance', perf);
 });
 
 app.ports.renderThreeJS.subscribe(data => {

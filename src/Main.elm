@@ -37,6 +37,25 @@ type Overlay
     | Campaign
     | LevelComplete String
 
+type Performance
+    = Potato
+    | Normal
+    | Rocketship
+
+performanceToString : Performance -> String
+performanceToString p =
+    case p of
+        Potato -> "potato"
+        Normal -> "normal"
+        Rocketship -> "rocketship"
+
+performanceFromString : String -> Performance
+performanceFromString s =
+    case s of
+        "potato" -> Potato
+        "rocketship" -> Rocketship
+        _ -> Normal
+
 type alias Model =
     { navKey : Nav.Key
     , finishedLevels : Set String
@@ -61,6 +80,7 @@ type alias Model =
     , tickHistory : List { timestamp : Float, duration : Float }
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
+    , performance : Performance
     }
 
 type Msg
@@ -85,6 +105,7 @@ type Msg
     | PlaceStart
     | PlaceEnd
     | SetDebug Bool
+    | SetPerformance Performance
     | ResetProgress
     | ShowOverlay Overlay
     | CloseOverlay
@@ -94,6 +115,7 @@ type Msg
 type alias Flags =
     { dpr : Float
     , finishedLevels : List String
+    , performance : String
     }
 
 main : Program Flags Model Msg
@@ -137,6 +159,7 @@ init flags url navKey =
             , tickHistory = []
             , staticUpdate = True
             , activeOverlay = Nothing
+            , performance = performanceFromString flags.performance
             }
 
         ( routedModel, routeCmd ) = changeRouteTo url model
@@ -200,6 +223,7 @@ update message model =
                     , widthPx = preModel.widthPx
                     , heightPx = preModel.heightPx
                     , staticUpdate = preModel.staticUpdate
+                    , performance = performanceToString preModel.performance
                     }
         in
         ( { preModel | staticUpdate = False }
@@ -388,6 +412,9 @@ updateModel message model =
 
         SetDebug debug ->
             ( { model | debugInfo = debug }, Cmd.none )
+
+        SetPerformance perf ->
+            ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
 
         ResetProgress ->
             ( { model | finishedLevels = Set.empty }, saveFinishedLevels [] )
@@ -586,6 +613,7 @@ subscriptions _ =
 port updateDpr : (Float -> msg) -> Sub msg
 port updateRenderTime : (Float -> msg) -> Sub msg
 port saveFinishedLevels : List String -> Cmd msg
+port savePerformance : String -> Cmd msg
 
 
 -- View
@@ -622,6 +650,23 @@ viewOverlay model overlay =
                             , HE.onClick (SetDebug True)
                             ]
                             [ H.text "🧪✔️" ]
+                        ]
+                    , H.div [ HA.class "modal-row" ]
+                        [ H.div
+                            [ HA.class ("icon" ++ if model.performance == Potato then " active" else "")
+                            , HE.onClick (SetPerformance Potato)
+                            ]
+                            [ H.text "🥔" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if model.performance == Normal then " active" else "")
+                            , HE.onClick (SetPerformance Normal)
+                            ]
+                            [ H.text "💻" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if model.performance == Rocketship then " active" else "")
+                            , HE.onClick (SetPerformance Rocketship)
+                            ]
+                            [ H.text "🚀" ]
                         ]
                     ]
 

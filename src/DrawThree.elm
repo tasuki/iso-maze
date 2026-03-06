@@ -31,6 +31,7 @@ type alias Model =
     , widthPx : Int
     , heightPx : Int
     , staticUpdate : Bool
+    , performance : String
     }
 
 
@@ -82,6 +83,7 @@ sceneData model =
 
         common =
             [ ( "mode", E.string (if model.mode == ME.Running then "running" else "editing") )
+            , ( "performance", E.string model.performance )
             , ( "camera"
               , E.object
                     [ ( "viewSize", E.float config.viewSize )
