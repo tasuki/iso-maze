@@ -82,7 +82,7 @@ addLightsToScene(dynamicScene, dynamicLights);
 
 // Background scene
 backgroundScene = new THREE.Scene();
-backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 2, 20);
+backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 20);
 backgroundCamera.position.z = 5;
 backgroundQuad = new THREE.Mesh(
     new THREE.PlaneGeometry(2, 2),
@@ -103,7 +103,7 @@ function updateCamera() {
     camera.updateProjectionMatrix();
 }
 container = document.getElementById('three-container');
-camera = new THREE.OrthographicCamera(0, 0, 0, 0, 2, 20);
+camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 20);
 camera.up.set(0, 0, 1);
 
 // Renderer
