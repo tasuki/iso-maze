@@ -195,6 +195,7 @@ update message model =
                 M.Moving _ -> True
 
         shouldRender =
+            preModel.staticUpdate ||
             case message of
                 Resize _ _ -> True
                 Tick _ -> isMoving || wasMoving

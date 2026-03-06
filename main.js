@@ -189,6 +189,18 @@ app.ports.savePerformance.subscribe(perf => {
 app.ports.renderThreeJS.subscribe(data => {
     const unitScale = 0.01;
     latestData = data;
+    if (data.performance === 'potato') {
+        if (groundPlane.parent === staticScene) {
+            staticScene.remove(groundPlane);
+            needsStaticRender = true;
+        }
+    } else {
+        if (groundPlane.parent !== staticScene) {
+            staticScene.add(groundPlane);
+            needsStaticRender = true;
+        }
+    }
+
     if (data.staticUpdate && data.static) {
         needsStaticRender = true;
         pendingStatic = data.static;
