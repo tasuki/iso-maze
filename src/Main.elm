@@ -37,6 +37,25 @@ type Overlay
     | Campaign
     | LevelComplete String
 
+type Performance
+    = Potato
+    | Normal
+    | Rocket
+
+performanceToString : Performance -> String
+performanceToString p =
+    case p of
+        Potato -> "potato"
+        Normal -> "normal"
+        Rocket -> "rocket"
+
+performanceFromString : String -> Performance
+performanceFromString s =
+    case s of
+        "potato" -> Potato
+        "rocket" -> Rocket
+        _ -> Normal
+
 type alias Model =
     { navKey : Nav.Key
     , finishedLevels : Set String
@@ -61,6 +80,7 @@ type alias Model =
     , tickHistory : List { timestamp : Float, duration : Float }
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
+    , performance : Performance
     }
 
 type Msg
@@ -85,6 +105,7 @@ type Msg
     | PlaceStart
     | PlaceEnd
     | SetDebug Bool
+    | SetPerformance Performance
     | ResetProgress
     | ShowOverlay Overlay
     | CloseOverlay
@@ -94,6 +115,7 @@ type Msg
 type alias Flags =
     { dpr : Float
     , finishedLevels : List String
+    , performance : String
     }
 
 main : Program Flags Model Msg
@@ -137,6 +159,7 @@ init flags url navKey =
             , tickHistory = []
             , staticUpdate = True
             , activeOverlay = Nothing
+            , performance = performanceFromString flags.performance
             }
 
         ( routedModel, routeCmd ) = changeRouteTo url model
@@ -172,6 +195,7 @@ update message model =
                 M.Moving _ -> True
 
         shouldRender =
+            preModel.staticUpdate ||
             case message of
                 Resize _ _ -> True
                 Tick _ -> isMoving || wasMoving
@@ -200,6 +224,7 @@ update message model =
                     , widthPx = preModel.widthPx
                     , heightPx = preModel.heightPx
                     , staticUpdate = preModel.staticUpdate
+                    , performance = performanceToString preModel.performance
                     }
         in
         ( { preModel | staticUpdate = False }
@@ -330,9 +355,7 @@ updateModel message model =
             )
 
         FocusShift vector ->
-            let
-                newFocus = M.shiftPosition model.focus vector
-            in
+            let newFocus = M.shiftPosition model.focus vector in
             ( { model | focus = newFocus, staticUpdate = True }, Cmd.none )
 
         ToggleMode ->
@@ -345,12 +368,7 @@ updateModel message model =
                     then pushUrl model.navKey model.maze
                     else Cmd.none
             in
-            ( { model
-                | mode = newMode
-                , staticUpdate = True
-              }
-            , cmd
-            )
+            ( { model | mode = newMode, staticUpdate = True }, cmd )
 
         ToggleBlock -> updateMaze ME.toggleBlock { model | currentLevel = Nothing }
         ToggleStairs -> updateMaze ME.toggleStairs { model | currentLevel = Nothing }
@@ -388,6 +406,9 @@ updateModel message model =
 
         SetDebug debug ->
             ( { model | debugInfo = debug }, Cmd.none )
+
+        SetPerformance perf ->
+            ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
 
         ResetProgress ->
             ( { model | finishedLevels = Set.empty }, saveFinishedLevels [] )
@@ -586,6 +607,7 @@ subscriptions _ =
 port updateDpr : (Float -> msg) -> Sub msg
 port updateRenderTime : (Float -> msg) -> Sub msg
 port saveFinishedLevels : List String -> Cmd msg
+port savePerformance : String -> Cmd msg
 
 
 -- View
@@ -610,6 +632,23 @@ viewOverlay model overlay =
                 Settings ->
                     [ H.div [ HA.class "modal-row" ]
                         [ H.div [ HA.class "icon", HE.onClick ResetProgress ] [ H.text "⚠️⏮️⚠️" ]
+                        ]
+                    , H.div [ HA.class "modal-row" ]
+                        [ H.div
+                            [ HA.class ("icon" ++ if model.performance == Potato then " active" else "")
+                            , HE.onClick (SetPerformance Potato)
+                            ]
+                            [ H.text "🥔" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if model.performance == Normal then " active" else "")
+                            , HE.onClick (SetPerformance Normal)
+                            ]
+                            [ H.text "💻" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if model.performance == Rocket then " active" else "")
+                            , HE.onClick (SetPerformance Rocket)
+                            ]
+                            [ H.text "🚀" ]
                         ]
                     , H.div [ HA.class "modal-row" ]
                         [ H.div

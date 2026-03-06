@@ -6,7 +6,8 @@ import { Elm } from './src/Main.elm';
 const app = Elm.Main.init({
     flags: {
         dpr: getDpr(),
-        finishedLevels: JSON.parse(localStorage.getItem('finishedLevels') || '[]')
+        finishedLevels: JSON.parse(localStorage.getItem('finishedLevels') || '[]'),
+        performance: localStorage.getItem('performance') || 'normal',
     }
 });
 
@@ -74,7 +75,6 @@ groundPlane = new THREE.Mesh(
     new THREE.MeshLambertMaterial({ color: defaultBg })
 );
 groundPlane.position.z = -0.1;
-staticScene.add(groundPlane);
 
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
@@ -181,9 +181,25 @@ app.ports.saveFinishedLevels.subscribe(levels => {
     localStorage.setItem('finishedLevels', JSON.stringify(levels));
 });
 
+app.ports.savePerformance.subscribe(perf => {
+    localStorage.setItem('performance', perf);
+});
+
 app.ports.renderThreeJS.subscribe(data => {
     const unitScale = 0.01;
     latestData = data;
+    if (data.performance === 'potato') {
+        if (groundPlane.parent === staticScene) {
+            staticScene.remove(groundPlane);
+            needsStaticRender = true;
+        }
+    } else {
+        if (groundPlane.parent !== staticScene) {
+            staticScene.add(groundPlane);
+            needsStaticRender = true;
+        }
+    }
+
     if (data.staticUpdate && data.static) {
         needsStaticRender = true;
         pendingStatic = data.static;
