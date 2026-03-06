@@ -14,4 +14,4 @@ On Debian 13 Trixie:
 sudo apt install npm
 ```
 
-To develop, run `make develop`.
+To develop, run `make develop`. For exposing to the world: `npm run dev -- --host`.
