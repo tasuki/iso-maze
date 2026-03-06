@@ -70,8 +70,8 @@ const staticLights = createLights();
 addLightsToScene(staticScene, staticLights);
 
 groundPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000),
-    new THREE.MeshStandardMaterial({ color: defaultBg, roughness: 1, metalness: 0 })
+    new THREE.PlaneGeometry(30, 30),
+    new THREE.MeshLambertMaterial({ color: defaultBg })
 );
 groundPlane.position.z = -0.1;
 staticScene.add(groundPlane);
