@@ -621,9 +621,6 @@ menuLink action iconText =
 viewOverlay : Model -> Overlay -> H.Html Msg
 viewOverlay model overlay =
     let
-        stopProp msg =
-            HE.stopPropagationOn "click" (Decode.succeed ( msg, False ))
-
         content =
             case overlay of
                 Help ->
@@ -720,8 +717,8 @@ view model =
                     :: alwaysWatch
             else alwaysWatch
         ( menuEmoji, title ) = case model.currentLevel of
-            Just l -> ( l.emoji, l.emoji ++ " – ⛄🔎🎩" )
-            Nothing -> ( "🚀", "⛄🔎🎩" )
+            Just l -> ( l.emoji, l.emoji ++ " " ++ l.name ++ " – maze" )
+            Nothing -> ( "🚀", "🚀 – maze" )
     in
     { title = title
     , body =
