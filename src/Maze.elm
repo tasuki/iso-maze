@@ -346,7 +346,10 @@ normalize maze =
         )
 
 shiftPosition : Position -> Vector -> Position
-shiftPosition ( x, y, z ) ( xd, yd, zd ) = ( x + xd, y + yd, z + zd )
+shiftPosition ( x, y, z ) ( xd, yd, zd ) =
+    if z + zd >= 0
+        then ( x + xd, y + yd, z + zd )
+        else ( x + xd, y + yd, z )
 
 shiftPos2d : Pos2d -> Direction -> Pos2d
 shiftPos2d ( x, y ) dir =
