@@ -1,6 +1,5 @@
 module CodecTest exposing (..)
 
-import Array
 import Codec exposing (..)
 import Expect
 import Maze exposing (..)
@@ -13,15 +12,12 @@ limitsTest =
         [ test "Finds limits for roundabout" <|
             \_ -> Expect.equal
                 { minX = 0, maxX = 8, minY = 0, maxY = 8 }
-                (mazeLimits SM.roundabout)
+                (getLimits SM.roundabout)
         , test "Finds limits for assymetric" <|
             \_ -> Expect.equal
                 { minX = 0, maxX = 1, minY = 0, maxY = 5 }
-                (mazeLimits SM.assymetric)
+                (getLimits SM.assymetric)
         ]
-
-mazeLimits : Maze -> Limits
-mazeLimits = getLimits
 
 encodeTest =
     describe "Encode"
