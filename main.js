@@ -19,6 +19,75 @@ let groundPlane;
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 // Caches
+function createNoiseTexture(size = 512) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#999';
+    ctx.fillRect(0, 0, size, size);
+    for (let i = 0; i < 4000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const radius = Math.random() * 3 + 1;
+        const shade = Math.floor(Math.random() * 150) + 50;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.2)`;
+        ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
+        const offsets = [[-size, 0], [size, 0], [0, -size], [0, size]];
+        offsets.forEach(([ox, oy]) => {
+            ctx.beginPath(); ctx.arc(x + ox, y + oy, radius, 0, Math.PI * 2); ctx.fill();
+        });
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    return texture;
+}
+
+const noiseTexture = createNoiseTexture();
+
+function applyTriplanar(material, texture, scale = 10.0) {
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.tNoise = { value: texture };
+        shader.uniforms.uNoiseScale = { value: scale };
+        shader.vertexShader = shader.vertexShader.replace('#include <common>',
+            `#include <common>
+            varying vec3 vWorldPosition;
+            varying vec3 vWorldNormal;`
+        );
+        shader.vertexShader = shader.vertexShader.replace('#include <worldpos_vertex>',
+            `#include <worldpos_vertex>
+            #ifdef USE_INSTANCING
+                vWorldPosition = (instanceMatrix * vec4(position, 1.0)).xyz;
+                vWorldPosition = (modelMatrix * vec4(vWorldPosition, 1.0)).xyz;
+            #else
+                vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+            #endif
+            vec3 worldNormal = normal;
+            #ifdef USE_INSTANCING
+                worldNormal = (instanceMatrix * vec4(worldNormal, 0.0)).xyz;
+            #endif
+            vWorldNormal = normalize((modelMatrix * vec4(worldNormal, 0.0)).xyz);`
+        );
+        shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+            `#include <common>
+            varying vec3 vWorldPosition;
+            varying vec3 vWorldNormal;
+            uniform sampler2D tNoise;
+            uniform float uNoiseScale;`
+        );
+        shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>',
+            `#include <color_fragment>
+            vec3 blending = abs(vWorldNormal);
+            blending /= (blending.x + blending.y + blending.z);
+            vec3 xTex = texture2D(tNoise, vWorldPosition.yz * uNoiseScale).rgb;
+            vec3 yTex = texture2D(tNoise, vWorldPosition.xz * uNoiseScale).rgb;
+            vec3 zTex = texture2D(tNoise, vWorldPosition.xy * uNoiseScale).rgb;
+            vec3 texColor = xTex * blending.x + yTex * blending.y + zTex * blending.z;
+            diffuseColor.rgb *= (0.4 + 0.9 * texColor);`
+        );
+    };
+}
+
 const materials = {
     base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
     stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
@@ -28,6 +97,7 @@ const materials = {
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
+[materials.base, materials.stairs, materials.bridge].forEach(m => applyTriplanar(m, noiseTexture));
 
 const geometryCache = new Map();
 function getUnitBox() {
@@ -311,9 +381,7 @@ app.ports.renderThreeJS.subscribe(data => {
                     calls: renderer.info.render.calls,
                     triangles: renderer.info.render.triangles
                 };
-                // weird parity of passes, watch out for inputBuffer vs outputBuffer
-                // llms say set needsSwap, but no that doesn't help
-                backgroundQuad.material.map = staticComposer.inputBuffer.texture;
+                backgroundQuad.material.map = staticComposer.outputBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
                 pendingStatic = null;
