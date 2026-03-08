@@ -30,24 +30,91 @@ const materials = {
 };
 
 const geometryCache = new Map();
-function getBoxGeometry(sx, sy, sz) {
-    const key = `box_${sx}_${sy}_${sz}`;
-    if (!geometryCache.has(key)) {
-        geometryCache.set(key, new THREE.BoxGeometry(sx, sy, sz));
+function getUnitBox() {
+    if (!geometryCache.has('unit_box')) {
+        geometryCache.set('unit_box', new THREE.BoxGeometry(1, 1, 1));
     }
-    return geometryCache.get(key);
+    return geometryCache.get('unit_box');
 }
 
-function getSphereGeometry(r) {
-    const key = `sphere_${r}`;
-    if (!geometryCache.has(key)) {
-        geometryCache.set(key, new THREE.SphereGeometry(r, 16, 16));
+function getUnitSphere() {
+    if (!geometryCache.has('unit_sphere')) {
+        geometryCache.set('unit_sphere', new THREE.SphereGeometry(1, 16, 16));
     }
-    return geometryCache.get(key);
+    return geometryCache.get('unit_sphere');
 }
 
-const staticMeshCache = new Map();
-const dynamicMeshCache = new Map();
+const MAX_INSTANCES = 5000;
+
+class BatchManager {
+    constructor(scene, materials, baseRenderOrder = 0) {
+        this.scene = scene;
+        this.materials = materials;
+        this.baseRenderOrder = baseRenderOrder;
+        this.batches = new Map(); // key: type_material
+        this.tempMatrix = new THREE.Matrix4();
+        this.tempPosition = new THREE.Vector3();
+        this.tempQuaternion = new THREE.Quaternion();
+        this.tempScale = new THREE.Vector3();
+        this.upVector = new THREE.Vector3(0, 0, 1);
+    }
+
+    getBatch(type, materialName) {
+        const key = `${type}_${materialName}`;
+        if (!this.batches.has(key)) {
+            const material = this.materials[materialName];
+            const geometry = type === 'box' ? getUnitBox() : getUnitSphere();
+            const mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
+            mesh.count = 0;
+            mesh.renderOrder = this.baseRenderOrder;
+            mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            this.scene.add(mesh);
+            this.batches.set(key, mesh);
+        }
+        return this.batches.get(key);
+    }
+
+    reset() {
+        for (const mesh of this.batches.values()) {
+            mesh.count = 0;
+        }
+    }
+
+    add(r, unitScale) {
+        const batch = this.getBatch(r.type, r.material);
+        if (batch.count >= MAX_INSTANCES) return;
+
+        this.tempPosition.set(r.x * unitScale, r.y * unitScale, r.z * unitScale);
+
+        if (r.type === 'box') {
+            const rot = (r.rotationZ || 0) * Math.PI / 180;
+            this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
+            this.tempScale.set(r.sizeX * unitScale, r.sizeY * unitScale, r.sizeZ * unitScale);
+        } else {
+            this.tempQuaternion.set(0, 0, 0, 1);
+            this.tempScale.set(r.radius * unitScale, r.radius * unitScale, r.radius * unitScale);
+        }
+
+        this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
+        batch.setMatrixAt(batch.count, this.tempMatrix);
+        batch.count++;
+    }
+
+    update() {
+        for (const mesh of this.batches.values()) {
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.computeBoundingSphere();
+        }
+    }
+
+    getTotalCount() {
+        let total = 0;
+        for (const mesh of this.batches.values()) {
+            total += mesh.count;
+        }
+        return total;
+    }
+}
 
 // Scenes & Lights
 function createLights() {
@@ -79,6 +146,10 @@ groundPlane.position.z = -0.1;
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
 addLightsToScene(dynamicScene, dynamicLights);
+
+const staticBatchManager = new BatchManager(staticScene, materials);
+const occlusionBatchManager = new BatchManager(dynamicScene, { occlusion: materials.occlusion }, -10000);
+const dynamicBatchManager = new BatchManager(dynamicScene, materials);
 
 // Background scene
 backgroundScene = new THREE.Scene();
@@ -258,15 +329,10 @@ app.ports.renderThreeJS.subscribe(data => {
 
             const t1 = performance.now();
             if (t1 - lastRenderTimeReport > 1000 || lastRenderTimeReport === 0) {
-                let staticMeshes = 0;
-                staticScene.traverse(obj => { if (obj.isMesh) staticMeshes++; });
-                let dynamicMeshes = 0;
-                dynamicScene.traverse(obj => { if (obj.isMesh) dynamicMeshes++; });
-
                 const stats = {
                     duration: t1 - t0,
-                    staticMeshes: staticMeshes,
-                    dynamicMeshes: dynamicMeshes,
+                    staticMeshes: staticBatchManager.getTotalCount(),
+                    dynamicMeshes: dynamicBatchManager.getTotalCount(),
                     staticDrawCalls: lastStaticStats.calls,
                     staticTriangles: lastStaticStats.triangles,
                     dynamicDrawCalls: dynamicStats.calls,
@@ -282,45 +348,6 @@ app.ports.renderThreeJS.subscribe(data => {
     }
 });
 
-function getRenderableKey(r, prefix) {
-    if (r.type === 'box') {
-        return `${prefix}_box_${r.x}_${r.y}_${r.z}_${r.sizeX}_${r.sizeY}_${r.sizeZ}_${r.material}_${r.rotationZ || 0}`;
-    } else {
-        return `${prefix}_sphere_${r.x}_${r.y}_${r.z}_${r.radius}_${r.material}`;
-    }
-}
-
-function createMesh(r, unitScale, useOcclusion = false) {
-    let geo;
-    if (r.type === 'box') {
-        geo = getBoxGeometry(r.sizeX * unitScale, r.sizeY * unitScale, r.sizeZ * unitScale);
-    } else {
-        geo = getSphereGeometry(r.radius * unitScale);
-    }
-    const mat = useOcclusion ? materials.occlusion : materials[r.material];
-    const mesh = new THREE.Mesh(geo, mat);
-    updateMesh(mesh, r, unitScale);
-    return mesh;
-}
-
-function updateMesh(mesh, r, unitScale) {
-    let geo;
-    if (r.type === 'box') {
-        geo = getBoxGeometry(r.sizeX * unitScale, r.sizeY * unitScale, r.sizeZ * unitScale);
-        mesh.rotation.z = (r.rotationZ || 0) * Math.PI / 180;
-    } else {
-        geo = getSphereGeometry(r.radius * unitScale);
-    }
-    if (mesh.geometry !== geo) mesh.geometry = geo;
-    mesh.position.set(r.x * unitScale, r.y * unitScale, r.z * unitScale);
-
-    // correct render order, render occlusion first
-    mesh.renderOrder = r.z - r.x - r.y;
-    if (mesh.material === materials.occlusion) {
-        mesh.renderOrder -= 10000;
-    }
-}
-
 function parseHex(hex) {
     return new THREE.Color(
         '#' + hex.split('').map(char => char + char).join('')
@@ -330,56 +357,31 @@ function parseHex(hex) {
 function updateScene(data, unitScale) {
     const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
     if (staticToUse) {
-        const currentStaticKeys = new Set();
-        staticToUse.forEach((r) => {
-            const key = getRenderableKey(r, 'static');
-            currentStaticKeys.add(key);
+        staticBatchManager.reset();
+        occlusionBatchManager.reset();
 
-            if (!staticMeshCache.has(key)) {
-                const mesh = createMesh(r, unitScale);
-                staticScene.add(mesh);
-                staticMeshCache.set(key, mesh);
-
-                const occMesh = createMesh(r, unitScale, true);
-                dynamicScene.add(occMesh);
-                dynamicMeshCache.set(key, occMesh);
-            }
+        // Sorting helps with render order even within batches if using transparency
+        const sortedStatic = [...staticToUse].sort((a, b) => {
+            return (a.z - a.x - a.y) - (b.z - b.x - b.y);
         });
 
-        for (const [key, mesh] of staticMeshCache.entries()) {
-            if (!currentStaticKeys.has(key)) {
-                staticScene.remove(mesh);
-                staticMeshCache.delete(key);
-                const occMesh = dynamicMeshCache.get(key);
-                if (occMesh) {
-                    dynamicScene.remove(occMesh);
-                    dynamicMeshCache.delete(key);
-                }
-            }
-        }
+        sortedStatic.forEach(r => {
+            staticBatchManager.add(r, unitScale);
+            occlusionBatchManager.add({...r, material: 'occlusion'}, unitScale);
+        });
+
+        staticBatchManager.update();
+        occlusionBatchManager.update();
     }
 
-    const currentDynamicKeys = new Set();
-    data.dynamic.forEach((r, i) => {
-        const key = `dyn_${r.type}_${r.material}_${i}`;
-        currentDynamicKeys.add(key);
-
-        let mesh = dynamicMeshCache.get(key);
-        if (!mesh) {
-            mesh = createMesh(r, unitScale);
-            dynamicScene.add(mesh);
-            dynamicMeshCache.set(key, mesh);
-        } else {
-            updateMesh(mesh, r, unitScale);
-        }
+    dynamicBatchManager.reset();
+    const sortedDynamic = [...data.dynamic].sort((a, b) => {
+        return (a.z - a.x - a.y) - (b.z - b.x - b.y);
     });
-
-    for (const [key, mesh] of dynamicMeshCache.entries()) {
-        if (key.startsWith('dyn_') && !currentDynamicKeys.has(key)) {
-            dynamicScene.remove(mesh);
-            dynamicMeshCache.delete(key);
-        }
-    }
+    sortedDynamic.forEach(r => {
+        dynamicBatchManager.add(r, unitScale);
+    });
+    dynamicBatchManager.update();
 
     lastFocalPoint.set(data.camera.focalPoint.x, data.camera.focalPoint.y, data.camera.focalPoint.z);
     camera.position.set(data.camera.position.x, data.camera.position.y, data.camera.position.z);
