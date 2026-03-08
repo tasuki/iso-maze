@@ -82,7 +82,7 @@ function getStairGeometry(dir, unitScale) {
 
 const staticMeshCache = new Map();
 const dynamicMeshCache = new Map();
-const instancedMeshes = new Map(); // key: stairs_DIR, value: { static, dynamic, count }
+const instancedMeshes = new Map();
 
 // Scenes & Lights
 function createLights() {
@@ -359,7 +359,7 @@ function updateScene(data, unitScale) {
         const currentStaticKeys = new Set();
         const stairsByDir = { SE: [], SW: [], NE: [], NW: [] };
         const bridges = [];
-        const bases = new Map(); // key: material_sizeZ
+        const bases = new Map();
 
         staticToUse.forEach((r) => {
             if (r.type === 'stairs') {
@@ -401,7 +401,6 @@ function updateScene(data, unitScale) {
             }
         }
 
-        // Handle instanced items
         const dummy = new THREE.Object3D();
         const updateBundle = (key, list, getGeo, mat) => {
             let bundle = instancedMeshes.get(key);
@@ -436,20 +435,13 @@ function updateScene(data, unitScale) {
         Object.entries(stairsByDir).forEach(([dir, list]) => {
             updateBundle(`stairs_${dir}`, list, () => getStairGeometry(dir, unitScale), materials.stairs);
         });
-
         updateBundle('bridges', bridges, () => getBoxGeometry(10 * unitScale, 10 * unitScale, 1 * unitScale), materials.bridge);
-
         for (const [key, list] of bases.entries()) {
             const [matName, sizeZ] = key.split('_');
             updateBundle(`base_${key}`, list, () => getBoxGeometry(10 * unitScale, 10 * unitScale, parseFloat(sizeZ) * unitScale), materials[matName]);
         }
 
-        // Clean up unused instanced meshes
-        const activeKeys = new Set([
-            'bridges',
-            ...Object.keys(stairsByDir).map(dir => `stairs_${dir}`),
-            ...Array.from(bases.keys()).map(k => `base_${k}`)
-        ]);
+        const activeKeys = new Set(['bridges', ...Object.keys(stairsByDir).map(dir => `stairs_${dir}`), ...Array.from(bases.keys()).map(k => `base_${k}`)]);
         for (const [key, bundle] of instancedMeshes.entries()) {
             if (!activeKeys.has(key)) {
                 staticScene.remove(bundle.static);

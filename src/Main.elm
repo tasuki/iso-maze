@@ -84,8 +84,7 @@ type alias Model =
     , animator : Animate.AnimatorState
     , focus : M.Position
     , dpr : Float
-    , renderHistory : List { timestamp : Float, duration : Float }
-    , lastRenderStats : Maybe RenderStats
+    , renderHistory : List { timestamp : Float, stats : RenderStats }
     , tickHistory : List { timestamp : Float, duration : Float }
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
@@ -165,7 +164,6 @@ init flags url navKey =
             , focus = ( 0, 0, 1 )
             , dpr = flags.dpr
             , renderHistory = []
-            , lastRenderStats = Nothing
             , tickHistory = []
             , staticUpdate = True
             , activeOverlay = Nothing
@@ -438,7 +436,7 @@ updateModel message model =
         RenderTimeUpdated stats ->
             let
                 currentTime = Duration.inMilliseconds model.elapsedTime
-                newEntry = { timestamp = currentTime, duration = stats.duration }
+                newEntry = { timestamp = currentTime, stats = stats }
                 withinWindow =
                     newEntry :: model.renderHistory
                         |> List.filter (\r -> currentTime - r.timestamp < 1000)
@@ -448,7 +446,7 @@ updateModel message model =
                     else
                         withinWindow
             in
-            ( { model | renderHistory = finalHistory, lastRenderStats = Just stats }, Cmd.none )
+            ( { model | renderHistory = finalHistory }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -744,7 +742,19 @@ view model =
             Nothing -> H.text ""
         , if model.debugInfo then
             H.div [ HA.id "debug-info", HA.class "overlay" ]
-                [ H.text (debugOverlayText model) ]
+                [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory))
+                    ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory)
+                    ++ "ms\nRT: " ++ formatMs (avgRenderDuration model.renderHistory)
+                    ++ "ms\nDPR: " ++ String.fromFloat model.dpr
+                    ++ (case List.head model.renderHistory of
+                            Just h ->
+                                "\nCalls: " ++ String.fromInt h.stats.drawCalls
+                                ++ "\nTris: " ++ String.fromInt h.stats.triangles
+                                ++ "\nGeos: " ++ String.fromInt h.stats.geometries
+                                ++ "\nTexs: " ++ String.fromInt h.stats.textures
+                            Nothing -> "")
+                    )
+                ]
           else
             H.text ""
         ]
@@ -760,6 +770,12 @@ avgDuration history =
         [] -> 0
         _ -> List.sum (List.map .duration history) / toFloat (List.length history)
 
+avgRenderDuration : List { timestamp : Float, stats : RenderStats } -> Float
+avgRenderDuration history =
+    case history of
+        [] -> 0
+        _ -> List.sum (List.map (.duration << .stats) history) / toFloat (List.length history)
+
 formatMs : Float -> String
 formatMs val =
     let
@@ -768,25 +784,6 @@ formatMs val =
     in
     if String.contains "." s then s
     else s ++ ".0"
-
-debugOverlayText : Model -> String
-debugOverlayText model =
-    let
-        fps = "FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory))
-        ft = "FT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms"
-        rt = "RT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms"
-        dpr = "DPR: " ++ String.fromFloat model.dpr
-        stats =
-            case model.lastRenderStats of
-                Just s ->
-                    [ "Calls: " ++ String.fromInt s.drawCalls
-                    , "Tris: " ++ String.fromInt s.triangles
-                    , "Geos: " ++ String.fromInt s.geometries
-                    , "Texs: " ++ String.fromInt s.textures
-                    ]
-                Nothing -> []
-    in
-    String.join "\n" ([ fps, ft, rt, dpr ] ++ stats)
 
 viewJoystick : Model -> H.Html Msg
 viewJoystick model =
