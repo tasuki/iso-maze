@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 import { Elm } from './src/Main.elm';
 const app = Elm.Main.init({
@@ -35,8 +34,7 @@ const geometryCache = new Map();
 function getBoxGeometry(sx, sy, sz) {
     const key = `box_${sx}_${sy}_${sz}`;
     if (!geometryCache.has(key)) {
-        const radius = Math.min(sx, sy, sz) * 0.1;
-        geometryCache.set(key, new RoundedBoxGeometry(sx, sy, sz, 4, radius));
+        geometryCache.set(key, new THREE.BoxGeometry(sx, sy, sz));
     }
     return geometryCache.get(key);
 }
@@ -50,7 +48,7 @@ function getSphereGeometry(r) {
 }
 
 function getStairGeometry(dir, unitScale) {
-    const key = `stairs_${dir}`;
+    const key = `stairs_${dir}_${unitScale}`;
     if (geometryCache.has(key)) return geometryCache.get(key);
 
     const steps = [];
@@ -71,8 +69,7 @@ function getStairGeometry(dir, unitScale) {
     for (let i = 0; i <= 9; i++) {
         const [cx, cy, cz] = centerFun(i);
         const [sw, sd, sh] = dimsFun(i);
-        const radius = Math.min(sw * unitScale, sd * unitScale, sh * unitScale) * 0.1;
-        const stepGeo = new RoundedBoxGeometry(sw * unitScale, sd * unitScale, sh * unitScale, 4, radius);
+        const stepGeo = new THREE.BoxGeometry(sw * unitScale, sd * unitScale, sh * unitScale);
         stepGeo.translate(cx * unitScale, cy * unitScale, cz * unitScale);
         steps.push(stepGeo);
     }
@@ -150,6 +147,7 @@ function getDpr() {
 }
 renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.autoClear = false;
+renderer.info.autoReset = false;
 container.appendChild(renderer.domElement);
 
 // Static pass
@@ -212,6 +210,7 @@ window.addEventListener('keydown', (e) => {
 let rafId = null;
 let latestData = null;
 let lastRenderTimeReport = 0;
+let lastStaticStats = null;
 let needsStaticRender = true;
 let pendingStatic = null;
 
@@ -270,21 +269,32 @@ app.ports.renderThreeJS.subscribe(data => {
             updateScene(latestData, unitScale);
 
             if (needsStaticRender) {
+                renderer.info.reset();
                 staticComposer.render();
-                // weird parity of passes, watch out for inputBuffer vs outputBuffer
-                // llms say set needsSwap, but no that doesn't help
+                lastStaticStats = {
+                    calls: renderer.info.render.calls,
+                    triangles: renderer.info.render.triangles,
+                };
                 backgroundQuad.material.map = staticComposer.inputBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
                 pendingStatic = null;
             }
 
+            renderer.info.reset();
             renderer.setRenderTarget(null);
             dynamicComposer.render();
 
             const t1 = performance.now();
             if (t1 - lastRenderTimeReport > 1000) {
-                app.ports.updateRenderTime.send(t1 - t0);
+                const staticStats = lastStaticStats || { calls: 0, triangles: 0 };
+                app.ports.updateRenderTime.send({
+                    duration: t1 - t0,
+                    drawCalls: renderer.info.render.calls + staticStats.calls,
+                    triangles: renderer.info.render.triangles + staticStats.triangles,
+                    geometries: renderer.info.memory.geometries,
+                    textures: renderer.info.memory.textures,
+                });
                 lastRenderTimeReport = t1;
             }
             rafId = null;
