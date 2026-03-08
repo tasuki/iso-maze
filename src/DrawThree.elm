@@ -54,9 +54,17 @@ type alias Sphere =
     , material : String
     }
 
+type alias StairSteps =
+    { x : Float
+    , y : Float
+    , z : Float
+    , dir : M.Direction
+    }
+
 type Renderable
     = BoxRenderable Box
     | SphereRenderable Sphere
+    | StairStepsRenderable StairSteps
 
 
 sceneData : Model -> E.Value
@@ -110,14 +118,14 @@ sceneData model =
 
 staticRenderables : Model -> List Renderable
 staticRenderables model =
-    List.concatMap (drawBlock >> List.map BoxRenderable) (M.toBlocks model.maze)
+    List.concatMap drawBlock (M.toBlocks model.maze)
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
         , List.map SphereRenderable (drawFocus model.mode model.focus)
-        , List.map BoxRenderable (drawEnd model.maze model.playerState model.playerSpheres model.animatorTimer model.animatorInitialFall)
+        , drawEnd model.maze model.playerState model.playerSpheres model.animatorTimer model.animatorInitialFall
         ]
 
 encodeRenderable : Renderable -> E.Value
@@ -146,6 +154,23 @@ encodeRenderable r =
                 , ( "material", E.string s.material )
                 ]
 
+        StairStepsRenderable s ->
+            E.object
+                [ ( "type", E.string "stairs" )
+                , ( "x", E.float s.x )
+                , ( "y", E.float s.y )
+                , ( "z", E.float s.z )
+                , ( "dir", E.string (dirToString s.dir) )
+                ]
+
+dirToString : M.Direction -> String
+dirToString dir =
+    case dir of
+        M.SE -> "SE"
+        M.SW -> "SW"
+        M.NE -> "NE"
+        M.NW -> "NW"
+
 
 encodeVec3 : Vec3 -> E.Value
 encodeVec3 v =
@@ -170,66 +195,33 @@ drawBase material x y z =
     , rotationZ = 0
     }
 
-drawBlock : M.Block -> List Box
+drawBlock : M.Block -> List Renderable
 drawBlock block =
     case block of
         M.Base ( x, y, z ) ->
-            [ drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
 
         M.Bridge ( x, y, z ) ->
-            [ { x = toFloat x * 10
-              , y = toFloat y * 10
-              , z = toFloat z * 10 + 0.5
-              , sizeX = 10
-              , sizeY = 10
-              , sizeZ = 1
-              , material = "bridge"
-              , rotationZ = 0
-              }
-            , drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
+            [ BoxRenderable
+                { x = toFloat x * 10
+                , y = toFloat y * 10
+                , z = toFloat z * 10 + 0.5
+                , sizeX = 10
+                , sizeY = 10
+                , sizeZ = 1
+                , material = "bridge"
+                , rotationZ = 0
+                }
+            , BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
             ]
 
         M.Stairs ( x, y, z ) dir ->
-            let
-                fx = toFloat x
-                fy = toFloat y
-                fz = toFloat z
-
-                stepBox ( cx, cy, cz ) ( sw, sd, sh ) =
-                    { x = fx * 10 + cx
-                    , y = fy * 10 + cy
-                    , z = fz * 10 + cz
-                    , sizeX = sw
-                    , sizeY = sd
-                    , sizeZ = sh
-                    , material = "stairs"
-                    , rotationZ = 0
-                    }
-
-                ( centerFun, dimsFun ) = case dir of
-                    M.SE ->
-                        ( \i -> ( 0, 4.5 - toFloat i, -5.0 - 0.5 * toFloat i )
-                        , \i -> ( 10, 1, 10 - toFloat i )
-                        )
-                    M.SW ->
-                        ( \i -> ( 4.5 - toFloat i, 0, -5.0 - 0.5 * toFloat i )
-                        , \i -> ( 1, 10, 10 - toFloat i )
-                        )
-                    M.NE ->
-                        ( \i -> ( 4.5 - toFloat i, 0, -9.5 + 0.5 * toFloat i )
-                        , \i -> ( 1, 10, 1 + toFloat i )
-                        )
-                    M.NW ->
-                        ( \i -> ( 0, 4.5 - toFloat i, -9.5 + 0.5 * toFloat i )
-                        , \i -> ( 10, 1, 1 + toFloat i )
-                        )
-
-                oneBox i = stepBox (centerFun i) (dimsFun i)
-            in
-            List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
+            [ StairStepsRenderable { x = toFloat x * 10, y = toFloat y * 10, z = toFloat z * 10, dir = dir }
+            , BoxRenderable <| drawBase "stairs" (toFloat x) (toFloat y) (toFloat z - 1)
+            ]
 
 
-drawEnd : M.Maze -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> Float -> Bool -> List Box
+drawEnd : M.Maze -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> Float -> Bool -> List Renderable
 drawEnd maze playerState ( _, _, head ) timer initialFall =
     let
         hatTransform = Animate.computeHatTransform maze playerState head timer initialFall
@@ -248,7 +240,7 @@ drawEnd maze playerState ( _, _, head ) timer initialFall =
             , rotationZ = rotation
             }
     in
-    [ hatPart 0, hatPart 30, hatPart 60 ]
+    List.map (hatPart >> BoxRenderable) [ 0, 30, 60 ]
 
 
 drawPlayer : ( Vec3, Vec3, Vec3 ) -> List Sphere

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import { Elm } from './src/Main.elm';
 const app = Elm.Main.init({
@@ -46,8 +47,42 @@ function getSphereGeometry(r) {
     return geometryCache.get(key);
 }
 
+function getStairGeometry(dir, unitScale) {
+    const key = `stairs_${dir}`;
+    if (geometryCache.has(key)) return geometryCache.get(key);
+
+    const steps = [];
+    const centerFun = {
+        SE: (i) => [0, 4.5 - i, -5.0 - 0.5 * i],
+        SW: (i) => [4.5 - i, 0, -5.0 - 0.5 * i],
+        NE: (i) => [4.5 - i, 0, -9.5 + 0.5 * i],
+        NW: (i) => [0, 4.5 - i, -9.5 + 0.5 * i],
+    }[dir];
+
+    const dimsFun = {
+        SE: (i) => [10, 1, 10 - i],
+        SW: (i) => [1, 10, 10 - i],
+        NE: (i) => [1, 10, 1 + i],
+        NW: (i) => [10, 1, 1 + i],
+    }[dir];
+
+    for (let i = 0; i <= 9; i++) {
+        const [cx, cy, cz] = centerFun(i);
+        const [sw, sd, sh] = dimsFun(i);
+        const stepGeo = new THREE.BoxGeometry(sw * unitScale, sd * unitScale, sh * unitScale);
+        stepGeo.translate(cx * unitScale, cy * unitScale, cz * unitScale);
+        steps.push(stepGeo);
+    }
+
+    const merged = BufferGeometryUtils.mergeGeometries(steps);
+    steps.forEach(g => g.dispose());
+    geometryCache.set(key, merged);
+    return merged;
+}
+
 const staticMeshCache = new Map();
 const dynamicMeshCache = new Map();
+const instancedMeshes = new Map(); // key: stairs_DIR, value: { static, dynamic, count }
 
 // Scenes & Lights
 function createLights() {
@@ -285,8 +320,10 @@ app.ports.renderThreeJS.subscribe(data => {
 function getRenderableKey(r, prefix) {
     if (r.type === 'box') {
         return `${prefix}_box_${r.x}_${r.y}_${r.z}_${r.sizeX}_${r.sizeY}_${r.sizeZ}_${r.material}_${r.rotationZ || 0}`;
-    } else {
+    } else if (r.type === 'sphere') {
         return `${prefix}_sphere_${r.x}_${r.y}_${r.z}_${r.radius}_${r.material}`;
+    } else {
+        return `${prefix}_stairs_${r.x}_${r.y}_${r.z}_${r.dir}`;
     }
 }
 
@@ -331,7 +368,14 @@ function updateScene(data, unitScale) {
     const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
     if (staticToUse) {
         const currentStaticKeys = new Set();
+        const stairsByDir = { SE: [], SW: [], NE: [], NW: [] };
+
         staticToUse.forEach((r) => {
+            if (r.type === 'stairs') {
+                stairsByDir[r.dir].push(r);
+                return;
+            }
+
             const key = getRenderableKey(r, 'static');
             currentStaticKeys.add(key);
 
@@ -357,6 +401,41 @@ function updateScene(data, unitScale) {
                 }
             }
         }
+
+        // Handle instanced stairs
+        const dummy = new THREE.Object3D();
+        Object.entries(stairsByDir).forEach(([dir, list]) => {
+            const key = `stairs_${dir}`;
+            let bundle = instancedMeshes.get(key);
+
+            if (!bundle || bundle.capacity < list.length) {
+                if (bundle) {
+                    staticScene.remove(bundle.static);
+                    dynamicScene.remove(bundle.dynamic);
+                }
+                const geo = getStairGeometry(dir, unitScale);
+                const capacity = Math.max(list.length, 10);
+                bundle = {
+                    static: new THREE.InstancedMesh(geo, materials.stairs, capacity),
+                    dynamic: new THREE.InstancedMesh(geo, materials.occlusion, capacity),
+                    capacity: capacity
+                };
+                staticScene.add(bundle.static);
+                dynamicScene.add(bundle.dynamic);
+                instancedMeshes.set(key, bundle);
+            }
+
+            list.forEach((r, i) => {
+                dummy.position.set(r.x * unitScale, r.y * unitScale, r.z * unitScale);
+                dummy.updateMatrix();
+                bundle.static.setMatrixAt(i, dummy.matrix);
+                bundle.dynamic.setMatrixAt(i, dummy.matrix);
+            });
+            bundle.static.count = list.length;
+            bundle.dynamic.count = list.length;
+            bundle.static.instanceMatrix.needsUpdate = true;
+            bundle.dynamic.instanceMatrix.needsUpdate = true;
+        });
     }
 
     const currentDynamicKeys = new Set();
