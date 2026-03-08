@@ -23,16 +23,20 @@ function createNoiseTexture(size = 512) {
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#999';
+    // Mid gray base
+    ctx.fillStyle = '#888';
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 4000; i++) {
+    // Add some noise
+    for (let i = 0; i < 2000; i++) {
         const x = Math.random() * size;
         const y = Math.random() * size;
-        const radius = Math.random() * 3 + 1;
-        const shade = Math.floor(Math.random() * 150) + 50;
-        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.2)`;
+        const radius = Math.random() * 4 + 1;
+        // High contrast dots: very dark or very light
+        const isDark = Math.random() > 0.5;
+        const shade = isDark ? Math.floor(Math.random() * 50) : Math.floor(Math.random() * 50) + 205;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.4)`;
         ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
-        const offsets = [[-size, 0], [size, 0], [0, -size], [0, size]];
+        const offsets = [[-size, 0], [size, 0], [0, -size], [0, size], [-size, -size], [size, size], [-size, size], [size, -size]];
         offsets.forEach(([ox, oy]) => {
             ctx.beginPath(); ctx.arc(x + ox, y + oy, radius, 0, Math.PI * 2); ctx.fill();
         });
@@ -40,12 +44,13 @@ function createNoiseTexture(size = 512) {
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     return texture;
 }
 
 const noiseTexture = createNoiseTexture();
 
-function applyTriplanar(material, texture, scale = 10.0) {
+function applyTriplanar(material, texture, scale = 15.0) {
     material.onBeforeCompile = (shader) => {
         shader.uniforms.tNoise = { value: texture };
         shader.uniforms.uNoiseScale = { value: scale };
@@ -83,7 +88,8 @@ function applyTriplanar(material, texture, scale = 10.0) {
             vec3 yTex = texture2D(tNoise, vWorldPosition.xz * uNoiseScale).rgb;
             vec3 zTex = texture2D(tNoise, vWorldPosition.xy * uNoiseScale).rgb;
             vec3 texColor = xTex * blending.x + yTex * blending.y + zTex * blending.z;
-            diffuseColor.rgb *= (0.4 + 0.9 * texColor);`
+            // Overlay-style blending: (tex - 0.5) * 2 makes it -1 to 1, then we scale and add
+            diffuseColor.rgb += (texColor - 0.5) * 0.4;`
         );
     };
 }
