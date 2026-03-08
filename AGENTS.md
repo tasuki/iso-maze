@@ -1,4 +1,5 @@
 - Read the `Makefile` for how to run this.
+- Try to keep the logic in Elm, use `main.js` only for rendering.
 - Do NOT conform to the Elm code style, instead:
     - Primarily, DO NOT mess with the formatting I already have: it's intentional.
     - Try to match my formatting for any new code you write. Specifically:
@@ -8,4 +9,4 @@
         - Similar for pattern matching: if the right side is short, keep it on one line and no empty lines
     - Again, if there's vertical white space somewhere, there's a reason for it: do not remove it.
     - If something is formatted a certain way, there's a reason for it: keep the formatting!
-- Git commits: DO NOT prefix with `feat` or `fix`: Linus doesn't either!
+- Git commits: DO NOT prefix with `feat` or `fix`: Linus doesn't either! Capitalize the first letter.
