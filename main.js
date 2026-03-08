@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 import { Elm } from './src/Main.elm';
 const app = Elm.Main.init({
@@ -34,7 +35,8 @@ const geometryCache = new Map();
 function getBoxGeometry(sx, sy, sz) {
     const key = `box_${sx}_${sy}_${sz}`;
     if (!geometryCache.has(key)) {
-        geometryCache.set(key, new THREE.BoxGeometry(sx, sy, sz));
+        const radius = Math.min(sx, sy, sz) * 0.1;
+        geometryCache.set(key, new RoundedBoxGeometry(sx, sy, sz, 4, radius));
     }
     return geometryCache.get(key);
 }
@@ -69,7 +71,8 @@ function getStairGeometry(dir, unitScale) {
     for (let i = 0; i <= 9; i++) {
         const [cx, cy, cz] = centerFun(i);
         const [sw, sd, sh] = dimsFun(i);
-        const stepGeo = new THREE.BoxGeometry(sw * unitScale, sd * unitScale, sh * unitScale);
+        const radius = Math.min(sw * unitScale, sd * unitScale, sh * unitScale) * 0.1;
+        const stepGeo = new RoundedBoxGeometry(sw * unitScale, sd * unitScale, sh * unitScale, 4, radius);
         stepGeo.translate(cx * unitScale, cy * unitScale, cz * unitScale);
         steps.push(stepGeo);
     }
@@ -147,7 +150,6 @@ function getDpr() {
 }
 renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.autoClear = false;
-renderer.info.autoReset = false;
 container.appendChild(renderer.domElement);
 
 // Static pass
@@ -212,7 +214,6 @@ let latestData = null;
 let lastRenderTimeReport = 0;
 let needsStaticRender = true;
 let pendingStatic = null;
-let lastStaticStats = { calls: 0, triangles: 0 };
 
 app.ports.saveFinishedLevels.subscribe(levels => {
     localStorage.setItem('finishedLevels', JSON.stringify(levels));
@@ -269,12 +270,7 @@ app.ports.renderThreeJS.subscribe(data => {
             updateScene(latestData, unitScale);
 
             if (needsStaticRender) {
-                renderer.info.reset();
                 staticComposer.render();
-                lastStaticStats = {
-                    calls: renderer.info.render.calls,
-                    triangles: renderer.info.render.triangles
-                };
                 // weird parity of passes, watch out for inputBuffer vs outputBuffer
                 // llms say set needsSwap, but no that doesn't help
                 backgroundQuad.material.map = staticComposer.inputBuffer.texture;
@@ -283,33 +279,12 @@ app.ports.renderThreeJS.subscribe(data => {
                 pendingStatic = null;
             }
 
-            renderer.info.reset();
             renderer.setRenderTarget(null);
             dynamicComposer.render();
-            const dynamicStats = {
-                calls: renderer.info.render.calls,
-                triangles: renderer.info.render.triangles
-            };
 
             const t1 = performance.now();
-            if (t1 - lastRenderTimeReport > 1000 || lastRenderTimeReport === 0) {
-                let staticMeshes = 0;
-                staticScene.traverse(obj => { if (obj.isMesh) staticMeshes++; });
-                let dynamicMeshes = 0;
-                dynamicScene.traverse(obj => { if (obj.isMesh) dynamicMeshes++; });
-
-                const stats = {
-                    duration: t1 - t0,
-                    staticMeshes: staticMeshes,
-                    dynamicMeshes: dynamicMeshes,
-                    staticDrawCalls: lastStaticStats.calls,
-                    staticTriangles: lastStaticStats.triangles,
-                    dynamicDrawCalls: dynamicStats.calls,
-                    dynamicTriangles: dynamicStats.triangles,
-                    geometries: renderer.info.memory.geometries,
-                    textures: renderer.info.memory.textures
-                };
-                app.ports.updateRenderTime.send(stats);
+            if (t1 - lastRenderTimeReport > 1000) {
+                app.ports.updateRenderTime.send(t1 - t0);
                 lastRenderTimeReport = t1;
             }
             rafId = null;
@@ -322,8 +297,12 @@ function getRenderableKey(r, prefix) {
         return `${prefix}_box_${r.x}_${r.y}_${r.z}_${r.sizeX}_${r.sizeY}_${r.sizeZ}_${r.material}_${r.rotationZ || 0}`;
     } else if (r.type === 'sphere') {
         return `${prefix}_sphere_${r.x}_${r.y}_${r.z}_${r.radius}_${r.material}`;
-    } else {
+    } else if (r.type === 'stairs') {
         return `${prefix}_stairs_${r.x}_${r.y}_${r.z}_${r.dir}`;
+    } else if (r.type === 'base') {
+        return `${prefix}_base_${r.x}_${r.y}_${r.z}_${r.sizeZ}_${r.material}`;
+    } else if (r.type === 'bridge') {
+        return `${prefix}_bridge_${r.x}_${r.y}_${r.z}`;
     }
 }
 
@@ -369,10 +348,20 @@ function updateScene(data, unitScale) {
     if (staticToUse) {
         const currentStaticKeys = new Set();
         const stairsByDir = { SE: [], SW: [], NE: [], NW: [] };
+        const bridges = [];
+        const bases = new Map(); // key: material_sizeZ
 
         staticToUse.forEach((r) => {
             if (r.type === 'stairs') {
                 stairsByDir[r.dir].push(r);
+                return;
+            } else if (r.type === 'bridge') {
+                bridges.push(r);
+                return;
+            } else if (r.type === 'base') {
+                const key = `${r.material}_${r.sizeZ}`;
+                if (!bases.has(key)) bases.set(key, []);
+                bases.get(key).push(r);
                 return;
             }
 
@@ -402,21 +391,19 @@ function updateScene(data, unitScale) {
             }
         }
 
-        // Handle instanced stairs
+        // Handle instanced items
         const dummy = new THREE.Object3D();
-        Object.entries(stairsByDir).forEach(([dir, list]) => {
-            const key = `stairs_${dir}`;
+        const updateBundle = (key, list, getGeo, mat) => {
             let bundle = instancedMeshes.get(key);
-
             if (!bundle || bundle.capacity < list.length) {
                 if (bundle) {
                     staticScene.remove(bundle.static);
                     dynamicScene.remove(bundle.dynamic);
                 }
-                const geo = getStairGeometry(dir, unitScale);
+                const geo = getGeo();
                 const capacity = Math.max(list.length, 10);
                 bundle = {
-                    static: new THREE.InstancedMesh(geo, materials.stairs, capacity),
+                    static: new THREE.InstancedMesh(geo, mat, capacity),
                     dynamic: new THREE.InstancedMesh(geo, materials.occlusion, capacity),
                     capacity: capacity
                 };
@@ -424,7 +411,6 @@ function updateScene(data, unitScale) {
                 dynamicScene.add(bundle.dynamic);
                 instancedMeshes.set(key, bundle);
             }
-
             list.forEach((r, i) => {
                 dummy.position.set(r.x * unitScale, r.y * unitScale, r.z * unitScale);
                 dummy.updateMatrix();
@@ -435,7 +421,32 @@ function updateScene(data, unitScale) {
             bundle.dynamic.count = list.length;
             bundle.static.instanceMatrix.needsUpdate = true;
             bundle.dynamic.instanceMatrix.needsUpdate = true;
+        };
+
+        Object.entries(stairsByDir).forEach(([dir, list]) => {
+            updateBundle(`stairs_${dir}`, list, () => getStairGeometry(dir, unitScale), materials.stairs);
         });
+
+        updateBundle('bridges', bridges, () => getBoxGeometry(10 * unitScale, 10 * unitScale, 1 * unitScale), materials.bridge);
+
+        for (const [key, list] of bases.entries()) {
+            const [matName, sizeZ] = key.split('_');
+            updateBundle(`base_${key}`, list, () => getBoxGeometry(10 * unitScale, 10 * unitScale, parseFloat(sizeZ) * unitScale), materials[matName]);
+        }
+
+        // Clean up unused instanced meshes
+        const activeKeys = new Set([
+            'bridges',
+            ...Object.keys(stairsByDir).map(dir => `stairs_${dir}`),
+            ...Array.from(bases.keys()).map(k => `base_${k}`)
+        ]);
+        for (const [key, bundle] of instancedMeshes.entries()) {
+            if (!activeKeys.has(key)) {
+                staticScene.remove(bundle.static);
+                dynamicScene.remove(bundle.dynamic);
+                instancedMeshes.delete(key);
+            }
+        }
     }
 
     const currentDynamicKeys = new Set();

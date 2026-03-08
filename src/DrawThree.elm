@@ -61,10 +61,26 @@ type alias StairSteps =
     , dir : M.Direction
     }
 
+type alias Base =
+    { x : Float
+    , y : Float
+    , z : Float
+    , sizeZ : Float
+    , material : String
+    }
+
+type alias Bridge =
+    { x : Float
+    , y : Float
+    , z : Float
+    }
+
 type Renderable
     = BoxRenderable Box
     | SphereRenderable Sphere
     | StairStepsRenderable StairSteps
+    | BaseRenderable Base
+    | BridgeRenderable Bridge
 
 
 sceneData : Model -> E.Value
@@ -163,6 +179,24 @@ encodeRenderable r =
                 , ( "dir", E.string (dirToString s.dir) )
                 ]
 
+        BaseRenderable b ->
+            E.object
+                [ ( "type", E.string "base" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                , ( "sizeZ", E.float b.sizeZ )
+                , ( "material", E.string b.material )
+                ]
+
+        BridgeRenderable b ->
+            E.object
+                [ ( "type", E.string "bridge" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                ]
+
 dirToString : M.Direction -> String
 dirToString dir =
     case dir of
@@ -183,41 +217,33 @@ encodeVec3 v =
 
 -- Drawing (Internal helpers)
 
-drawBase : String -> Float -> Float -> Float -> Box
+drawBase : String -> Float -> Float -> Float -> Base
 drawBase material x y z =
     { x = x * 10
     , y = y * 10
     , z = z * 5 - 5
-    , sizeX = 10
-    , sizeY = 10
     , sizeZ = z * 10 + 10
     , material = material
-    , rotationZ = 0
     }
 
 drawBlock : M.Block -> List Renderable
 drawBlock block =
     case block of
         M.Base ( x, y, z ) ->
-            [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            [ BaseRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
 
         M.Bridge ( x, y, z ) ->
-            [ BoxRenderable
+            [ BridgeRenderable
                 { x = toFloat x * 10
                 , y = toFloat y * 10
                 , z = toFloat z * 10 + 0.5
-                , sizeX = 10
-                , sizeY = 10
-                , sizeZ = 1
-                , material = "bridge"
-                , rotationZ = 0
                 }
-            , BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
+            , BaseRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
             ]
 
         M.Stairs ( x, y, z ) dir ->
             [ StairStepsRenderable { x = toFloat x * 10, y = toFloat y * 10, z = toFloat z * 10, dir = dir }
-            , BoxRenderable <| drawBase "stairs" (toFloat x) (toFloat y) (toFloat z - 1)
+            , BaseRenderable <| drawBase "stairs" (toFloat x) (toFloat y) (toFloat z - 1)
             ]
 
 
