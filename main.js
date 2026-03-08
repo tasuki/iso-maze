@@ -112,6 +112,7 @@ function getDpr() {
 }
 renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.autoClear = false;
+renderer.info.autoReset = false;
 container.appendChild(renderer.domElement);
 
 // Static pass
@@ -176,6 +177,7 @@ let latestData = null;
 let lastRenderTimeReport = 0;
 let needsStaticRender = true;
 let pendingStatic = null;
+let lastStaticStats = { calls: 0, triangles: 0 };
 
 app.ports.saveFinishedLevels.subscribe(levels => {
     localStorage.setItem('finishedLevels', JSON.stringify(levels));
@@ -232,7 +234,12 @@ app.ports.renderThreeJS.subscribe(data => {
             updateScene(latestData, unitScale);
 
             if (needsStaticRender) {
+                renderer.info.reset();
                 staticComposer.render();
+                lastStaticStats = {
+                    calls: renderer.info.render.calls,
+                    triangles: renderer.info.render.triangles
+                };
                 // weird parity of passes, watch out for inputBuffer vs outputBuffer
                 // llms say set needsSwap, but no that doesn't help
                 backgroundQuad.material.map = staticComposer.inputBuffer.texture;
@@ -241,12 +248,33 @@ app.ports.renderThreeJS.subscribe(data => {
                 pendingStatic = null;
             }
 
+            renderer.info.reset();
             renderer.setRenderTarget(null);
             dynamicComposer.render();
+            const dynamicStats = {
+                calls: renderer.info.render.calls,
+                triangles: renderer.info.render.triangles
+            };
 
             const t1 = performance.now();
-            if (t1 - lastRenderTimeReport > 1000) {
-                app.ports.updateRenderTime.send(t1 - t0);
+            if (t1 - lastRenderTimeReport > 1000 || lastRenderTimeReport === 0) {
+                let staticMeshes = 0;
+                staticScene.traverse(obj => { if (obj.isMesh) staticMeshes++; });
+                let dynamicMeshes = 0;
+                dynamicScene.traverse(obj => { if (obj.isMesh) dynamicMeshes++; });
+
+                const stats = {
+                    duration: t1 - t0,
+                    staticMeshes: staticMeshes,
+                    dynamicMeshes: dynamicMeshes,
+                    staticDrawCalls: lastStaticStats.calls,
+                    staticTriangles: lastStaticStats.triangles,
+                    dynamicDrawCalls: dynamicStats.calls,
+                    dynamicTriangles: dynamicStats.triangles,
+                    geometries: renderer.info.memory.geometries,
+                    textures: renderer.info.memory.textures
+                };
+                app.ports.updateRenderTime.send(stats);
                 lastRenderTimeReport = t1;
             }
             rafId = null;
