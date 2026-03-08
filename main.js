@@ -27,14 +27,14 @@ function createNoiseTexture(size = 512) {
     ctx.fillStyle = '#888';
     ctx.fillRect(0, 0, size, size);
     // Add some noise
-    for (let i = 0; i < 2000; i++) {
+    for (let i = 0; i < 500; i++) {
         const x = Math.random() * size;
         const y = Math.random() * size;
-        const radius = Math.random() * 4 + 1;
+        const radius = Math.random() * 12 + 4;
         // High contrast dots: very dark or very light
         const isDark = Math.random() > 0.5;
-        const shade = isDark ? Math.floor(Math.random() * 50) : Math.floor(Math.random() * 50) + 205;
-        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.4)`;
+        const shade = isDark ? Math.floor(Math.random() * 30) : Math.floor(Math.random() * 30) + 225;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.8)`;
         ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
         const offsets = [[-size, 0], [size, 0], [0, -size], [0, size], [-size, -size], [size, size], [-size, size], [size, -size]];
         offsets.forEach(([ox, oy]) => {
@@ -50,7 +50,7 @@ function createNoiseTexture(size = 512) {
 
 const noiseTexture = createNoiseTexture();
 
-function applyTriplanar(material, texture, scale = 15.0) {
+function applyTriplanar(material, texture, scale = 1.5) {
     material.onBeforeCompile = (shader) => {
         shader.uniforms.tNoise = { value: texture };
         shader.uniforms.uNoiseScale = { value: scale };
@@ -89,7 +89,7 @@ function applyTriplanar(material, texture, scale = 15.0) {
             vec3 zTex = texture2D(tNoise, vWorldPosition.xy * uNoiseScale).rgb;
             vec3 texColor = xTex * blending.x + yTex * blending.y + zTex * blending.z;
             // Overlay-style blending: (tex - 0.5) * 2 makes it -1 to 1, then we scale and add
-            diffuseColor.rgb += (texColor - 0.5) * 0.4;`
+            diffuseColor.rgb += (texColor - 0.5) * 1.0;`
         );
     };
 }
