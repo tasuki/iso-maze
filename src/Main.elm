@@ -56,6 +56,18 @@ performanceFromString s =
         "rocket" -> Rocket
         _ -> Normal
 
+type alias RenderUpdate =
+    { duration : Float
+    , staticMeshes : Int
+    , dynamicMeshes : Int
+    , staticDrawCalls : Int
+    , staticTriangles : Int
+    , dynamicDrawCalls : Int
+    , dynamicTriangles : Int
+    , geometries : Int
+    , textures : Int
+    }
+
 type alias Model =
     { navKey : Nav.Key
     , finishedLevels : Set String
@@ -78,6 +90,7 @@ type alias Model =
     , dpr : Float
     , renderHistory : List { timestamp : Float, duration : Float }
     , tickHistory : List { timestamp : Float, duration : Float }
+    , lastRenderStats : Maybe RenderUpdate
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
     , performance : Performance
@@ -110,7 +123,7 @@ type Msg
     | ShowOverlay Overlay
     | CloseOverlay
     | DprUpdated Float
-    | RenderTimeUpdated Float
+    | RenderTimeUpdated RenderUpdate
 
 type alias Flags =
     { dpr : Float
@@ -157,6 +170,7 @@ init flags url navKey =
             , dpr = flags.dpr
             , renderHistory = []
             , tickHistory = []
+            , lastRenderStats = Nothing
             , staticUpdate = True
             , activeOverlay = Nothing
             , performance = performanceFromString flags.performance
@@ -425,10 +439,10 @@ updateModel message model =
         DprUpdated dpr ->
             ( { model | dpr = dpr }, Cmd.none )
 
-        RenderTimeUpdated duration ->
+        RenderTimeUpdated renderUpdate ->
             let
                 currentTime = Duration.inMilliseconds model.elapsedTime
-                newEntry = { timestamp = currentTime, duration = duration }
+                newEntry = { timestamp = currentTime, duration = renderUpdate.duration }
                 withinWindow =
                     newEntry :: model.renderHistory
                         |> List.filter (\r -> currentTime - r.timestamp < 1000)
@@ -438,7 +452,7 @@ updateModel message model =
                     else
                         withinWindow
             in
-            ( { model | renderHistory = finalHistory }, Cmd.none )
+            ( { model | renderHistory = finalHistory, lastRenderStats = Just renderUpdate }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -605,7 +619,7 @@ subscriptions _ =
 
 
 port updateDpr : (Float -> msg) -> Sub msg
-port updateRenderTime : (Float -> msg) -> Sub msg
+port updateRenderTime : (RenderUpdate -> msg) -> Sub msg
 port saveFinishedLevels : List String -> Cmd msg
 port savePerformance : String -> Cmd msg
 
@@ -734,7 +748,21 @@ view model =
             Nothing -> H.text ""
         , if model.debugInfo then
             H.div [ HA.id "debug-info", HA.class "overlay" ]
-                [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
+                [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
+                , case model.lastRenderStats of
+                    Just stats ->
+                        H.div [ HA.style "font-size" "10px" ]
+                            [ H.br [] []
+                            , H.text ("Static Meshes: " ++ String.fromInt stats.staticMeshes)
+                            , H.text ("\nDynamic Meshes: " ++ String.fromInt stats.dynamicMeshes)
+                            , H.text ("\nStatic DC: " ++ String.fromInt stats.staticDrawCalls ++ " (" ++ String.fromInt stats.staticTriangles ++ " tris)")
+                            , H.text ("\nDynamic DC: " ++ String.fromInt stats.dynamicDrawCalls ++ " (" ++ String.fromInt stats.dynamicTriangles ++ " tris)")
+                            , H.text ("\nGeometries: " ++ String.fromInt stats.geometries)
+                            , H.text ("\nTextures: " ++ String.fromInt stats.textures)
+                            ]
+                    Nothing ->
+                        H.text ""
+                ]
           else
             H.text ""
         ]
