@@ -19,15 +19,112 @@ let groundPlane;
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 // Caches
+function createNoiseTexture(size = 512) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const p = new Uint8Array(512);
+    for (let i = 0; i < 256; i++) p[i] = i;
+    for (let i = 255; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [p[i], p[j]] = [p[j], p[i]];
+    }
+    for (let i = 0; i < 256; i++) p[256 + i] = p[i];
+    const lerp = (t, a, b) => a + t * (b - a);
+    const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+    const valueNoise = (x, y) => {
+        let xi = Math.floor(x), yi = Math.floor(y);
+        const xf = x - xi, yf = y - yi;
+        xi = xi & 255; yi = yi & 255;
+        const u = fade(xf), v = fade(yf);
+        const aa = p[p[xi] + yi], ab = p[p[xi] + yi + 1];
+        const ba = p[p[xi + 1] + yi], bb = p[p[xi + 1] + yi + 1];
+        return lerp(v, lerp(u, aa / 255, ba / 255), lerp(u, ab / 255, bb / 255));
+    };
+    const fbm = (x, y) => {
+        let v = 0, a = 0.5, f = 1.0;
+        for (let i = 0; i < 4; i++) {
+            v += a * valueNoise(x * f, y * f);
+            f *= 2.0; a *= 0.5;
+        }
+        return v;
+    };
+    const imageData = ctx.createImageData(size, size);
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const xn = x * (256 / size), yn = y * (256 / size);
+            const qx = fbm(xn, yn), qy = fbm(xn + 5.2, yn + 1.3);
+            const rx = fbm(xn + 4.0 * qx + 1.7, yn + 4.0 * qy + 9.2);
+            const ry = fbm(xn + 4.0 * qx + 8.3, yn + 4.0 * qy + 2.8);
+            const val = fbm(xn + 4.0 * rx, yn + 4.0 * ry);
+            const c = Math.max(0, Math.min(255, val * 255));
+            const idx = (y * size + x) * 4;
+            imageData.data[idx] = c; imageData.data[idx + 1] = c;
+            imageData.data[idx + 2] = c; imageData.data[idx + 3] = 255;
+        }
+    }
+    ctx.putImageData(imageData, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    return texture;
+}
+
+const noiseTexture = createNoiseTexture();
+
+// Scale for the procedural noise
+const TEXTURE_SCALE = 0.4;
+
+function applyTriplanar(material, texture, scale = 1.2) {
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.tNoise = { value: texture };
+        shader.uniforms.uNoiseScale = { value: scale };
+        shader.vertexShader = shader.vertexShader.replace('#include <common>',
+            `#include <common>
+            varying vec3 vWorldPosition;
+            varying vec3 vWorldNormal;`
+        );
+        shader.vertexShader = shader.vertexShader.replace('#include <worldpos_vertex>',
+            `#include <worldpos_vertex>
+            vWorldPosition = ( modelMatrix * (
+                #ifdef USE_INSTANCING
+                    instanceMatrix *
+                #endif
+                vec4( transformed, 1.0 ) ) ).xyz;
+            vWorldNormal = normalize( ( modelMatrix * vec4( transformedNormal, 0.0 ) ).xyz );`
+        );
+        shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+            `#include <common>
+            varying vec3 vWorldPosition;
+            varying vec3 vWorldNormal;
+            uniform sampler2D tNoise;
+            uniform float uNoiseScale;`
+        );
+        shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>',
+            `#include <color_fragment>
+            vec3 blending = abs(vWorldNormal);
+            blending /= (blending.x + blending.y + blending.z);
+            vec3 xTex = texture2D(tNoise, vWorldPosition.yz * uNoiseScale).rgb;
+            vec3 yTex = texture2D(tNoise, vWorldPosition.xz * uNoiseScale).rgb;
+            vec3 zTex = texture2D(tNoise, vWorldPosition.xy * uNoiseScale).rgb;
+            vec3 texColor = xTex * blending.x + yTex * blending.y + zTex * blending.z;
+            diffuseColor.rgb *= (0.8 + texColor * 0.4);`
+        );
+    };
+}
+
 const materials = {
-    base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
-    stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
-    bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
+    base: new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.3, metalness: 0.1 }),
+    stairs: new THREE.MeshStandardMaterial({ color: 0xddaa88, roughness: 0.3, metalness: 0.1 }),
+    bridge: new THREE.MeshStandardMaterial({ color: 0xaa5555, roughness: 0.3, metalness: 0.1 }),
     player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.5 }),
     goal: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
+[materials.base, materials.stairs, materials.bridge].forEach(m => applyTriplanar(m, noiseTexture, TEXTURE_SCALE));
 
 const geometryCache = new Map();
 function getUnitBox() {
@@ -311,9 +408,7 @@ app.ports.renderThreeJS.subscribe(data => {
                     calls: renderer.info.render.calls,
                     triangles: renderer.info.render.triangles
                 };
-                // weird parity of passes, watch out for inputBuffer vs outputBuffer
-                // llms say set needsSwap, but no that doesn't help
-                backgroundQuad.material.map = staticComposer.inputBuffer.texture;
+                backgroundQuad.material.map = staticComposer.outputBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
                 pendingStatic = null;
@@ -349,9 +444,12 @@ app.ports.renderThreeJS.subscribe(data => {
 });
 
 function parseHex(hex) {
-    return new THREE.Color(
-        '#' + hex.split('').map(char => char + char).join('')
-    );
+    if (hex.length === 3) {
+        return new THREE.Color(
+            '#' + hex.split('').map(char => char + char).join('')
+        );
+    }
+    return new THREE.Color('#' + hex);
 }
 
 function updateScene(data, unitScale) {
