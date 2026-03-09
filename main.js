@@ -21,6 +21,17 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 // Caches
 const materials = {
     base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
+    base_textured: (() => {
+        const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 });
+        mat.onBeforeCompile = (shader) => {
+            shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldNormal;\nvarying vec3 vLocalPosition;');
+            shader.vertexShader = shader.vertexShader.replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\nvec3 tempNormal = objectNormal;\n#ifdef USE_INSTANCING\ntempNormal = (instanceMatrix * vec4(tempNormal, 0.0)).xyz;\n#endif\nvWorldNormal = normalize((modelMatrix * vec4(tempNormal, 0.0)).xyz);`);
+            shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvLocalPosition = position;');
+            shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWorldNormal;\nvarying vec3 vLocalPosition;');
+            shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>\nif (vWorldNormal.z > 0.5) {\nfloat angle = atan(vLocalPosition.y, vLocalPosition.x);\nfloat sector = floor((angle / 3.14159265 + 1.0) * 4.0);\nbool isDark = mod(sector, 2.0) < 1.0;\ndiffuseColor.rgb *= isDark ? 0.94 : 1.06;\n}`);
+        };
+        return mat;
+    })(),
     stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
     bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
     player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.5 }),
@@ -148,7 +159,7 @@ const dynamicLights = createLights();
 addLightsToScene(dynamicScene, dynamicLights);
 
 const staticBatchManager = new BatchManager(staticScene, materials);
-const occlusionBatchManager = new BatchManager(dynamicScene, { occlusion: materials.occlusion }, -10000);
+const occlusionBatchManager = new BatchManager(dynamicScene, { occlusion: materials.occlusion, base_textured: materials.occlusion }, -10000);
 const dynamicBatchManager = new BatchManager(dynamicScene, materials);
 
 // Background scene
