@@ -53,6 +53,43 @@ function createDotTexture() {
 
 const materials = {
     base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
+    base_textured: (() => {
+        const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 });
+        mat.onBeforeCompile = (shader) => {
+            shader.vertexShader = shader.vertexShader.replace('#include <common>', `
+                #include <common>
+                varying vec3 vWorldNormal;
+                varying vec3 vLocalPosition;
+            `);
+            shader.vertexShader = shader.vertexShader.replace('#include <beginnormal_vertex>', `
+                #include <beginnormal_vertex>
+                vec3 tempNormal = objectNormal;
+                #ifdef USE_INSTANCING
+                tempNormal = (instanceMatrix * vec4(tempNormal, 0.0)).xyz;
+                #endif
+                vWorldNormal = normalize((modelMatrix * vec4(tempNormal, 0.0)).xyz);
+            `);
+            shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
+                #include <begin_vertex>
+                vLocalPosition = position;
+            `);
+            shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
+                #include <common>
+                varying vec3 vWorldNormal;
+                varying vec3 vLocalPosition;
+            `);
+            shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
+                #include <color_fragment>
+                if (vWorldNormal.z > 0.5) {
+                    float angle = atan(vLocalPosition.y, vLocalPosition.x);
+                    float sector = floor((angle / 3.1415 + 1.0) * 4.0);
+                    bool isDark = mod(sector, 2.0) < 1.0;
+                    diffuseColor.rgb *= isDark ? 0.94 : 1.06;
+                }
+            `);
+        };
+        return mat;
+    })(),
     stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
     bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
     greenery: new THREE.MeshStandardMaterial({ color: 0x669900, roughness: 0.6, metalness: 0.9 }),
@@ -211,7 +248,7 @@ const dynamicLights = createLights();
 addLightsToScene(dynamicScene, dynamicLights);
 
 const staticBatchManager = new BatchManager(staticScene, materials);
-const occlusionBatchManager = new BatchManager(dynamicScene, { occlusion: materials.occlusion }, -10000);
+const occlusionBatchManager = new BatchManager(dynamicScene, { occlusion: materials.occlusion, base_textured: materials.occlusion }, -10000);
 const dynamicBatchManager = new BatchManager(dynamicScene, materials);
 
 // Background scene

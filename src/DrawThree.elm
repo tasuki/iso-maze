@@ -269,7 +269,7 @@ drawBlock : M.Block -> List Renderable
 drawBlock block =
     case block of
         M.Base ( x, y, z ) ->
-            [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            [ BoxRenderable <| drawBase "base_textured" (toFloat x) (toFloat y) (toFloat z) ]
 
         M.Bridge ( x, y, z ) ->
             [ BoxRenderable
