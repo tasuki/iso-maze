@@ -15,6 +15,7 @@ import Duration exposing (Duration)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Analyzer
 import Json.Decode as Decode
 import Maybe.Extra
 import Maze as M
@@ -91,6 +92,7 @@ type alias Model =
     , renderHistory : List { timestamp : Float, duration : Float }
     , tickHistory : List { timestamp : Float, duration : Float }
     , lastRenderStats : Maybe RenderUpdate
+    , showAnalyzer : Bool
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
     , performance : Performance
@@ -118,6 +120,7 @@ type Msg
     | PlaceStart
     | PlaceEnd
     | SetDebug Bool
+    | ToggleAnalyzer
     | SetPerformance Performance
     | ResetProgress
     | ShowOverlay Overlay
@@ -163,6 +166,7 @@ init flags url navKey =
             , elevation = Angle.degrees D.initialElevation
             , azimuth = Angle.degrees D.initialAzimuth
             , mode = ME.Running
+            , showAnalyzer = False
             , maze = defaultMaze
             , playerState = M.Idle ( 999, 999, 999 )
             , animator = Animate.initAnimator initialTargets
@@ -407,6 +411,7 @@ updateModel message model =
                         (_, "e") -> updateModel ToggleMode newModel
                         (_, "c") -> updateModel CameraReset newModel
                         (_, "`") -> updateModel (SetDebug (not model.debugInfo)) newModel
+                        (ME.Editing, "x") -> updateModel ToggleAnalyzer newModel
                         (ME.Editing, _) ->
                             let
                                 msg = keydown model.mode key
@@ -420,6 +425,9 @@ updateModel message model =
 
         SetDebug debug ->
             ( { model | debugInfo = debug }, Cmd.none )
+
+        ToggleAnalyzer ->
+            ( { model | showAnalyzer = not model.showAnalyzer }, Cmd.none )
 
         SetPerformance perf ->
             ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
@@ -747,22 +755,25 @@ view model =
             Just overlay -> viewOverlay model overlay
             Nothing -> H.text ""
         , if model.debugInfo then
-            H.div [ HA.id "debug-info", HA.class "overlay" ]
-                [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
-                , case model.lastRenderStats of
-                    Just stats ->
-                        H.div [ HA.style "font-size" "10px" ]
-                            [ H.br [] []
-                            , H.text ("Static Meshes: " ++ String.fromInt stats.staticMeshes)
-                            , H.text ("\nDynamic Meshes: " ++ String.fromInt stats.dynamicMeshes)
-                            , H.text ("\nStatic DC: " ++ String.fromInt stats.staticDrawCalls ++ " (" ++ String.fromInt stats.staticTriangles ++ " tris)")
-                            , H.text ("\nDynamic DC: " ++ String.fromInt stats.dynamicDrawCalls ++ " (" ++ String.fromInt stats.dynamicTriangles ++ " tris)")
-                            , H.text ("\nGeometries: " ++ String.fromInt stats.geometries)
-                            , H.text ("\nTextures: " ++ String.fromInt stats.textures)
-                            ]
-                    Nothing ->
-                        H.text ""
-                ]
+            if model.mode == ME.Editing && model.showAnalyzer then
+                viewAnalyzer (Analyzer.analyze model.maze)
+            else
+                H.div [ HA.id "debug-info", HA.class "overlay" ]
+                    [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
+                    , case model.lastRenderStats of
+                        Just stats ->
+                            H.div [ HA.style "font-size" "10px" ]
+                                [ H.br [] []
+                                , H.text ("Static Meshes: " ++ String.fromInt stats.staticMeshes)
+                                , H.text ("\nDynamic Meshes: " ++ String.fromInt stats.dynamicMeshes)
+                                , H.text ("\nStatic DC: " ++ String.fromInt stats.staticDrawCalls ++ " (" ++ String.fromInt stats.staticTriangles ++ " tris)")
+                                , H.text ("\nDynamic DC: " ++ String.fromInt stats.dynamicDrawCalls ++ " (" ++ String.fromInt stats.dynamicTriangles ++ " tris)")
+                                , H.text ("\nGeometries: " ++ String.fromInt stats.geometries)
+                                , H.text ("\nTextures: " ++ String.fromInt stats.textures)
+                                ]
+                        Nothing ->
+                            H.text ""
+                    ]
           else
             H.text ""
         ]
@@ -786,6 +797,37 @@ formatMs val =
     in
     if String.contains "." s then s
     else s ++ ".0"
+
+viewAnalyzer : Analyzer.Analysis -> H.Html Msg
+viewAnalyzer a =
+    H.div [ HA.id "debug-info", HA.class "overlay" ]
+        [ H.text ("--- ANALYSIS ---")
+        , H.br [] []
+        , H.text ("Reachable: " ++ (if a.reachable then "✔️" else "❌"))
+        , H.br [] []
+        , H.text ("Total Cells: " ++ String.fromInt a.totalCells)
+        , H.br [] []
+        , H.text ("Unreachable: " ++ String.fromInt a.unreachableCells)
+        , H.br [] []
+        , H.text ("Shortest Path: " ++ (a.shortestPathLength |> Maybe.map String.fromInt |> Maybe.withDefault "N/A"))
+        , H.br [] []
+        , H.text ("Sol. Density: " ++ formatFloat a.solutionDensity)
+        , H.br [] []
+        , H.text ("River Factor: " ++ formatFloat a.riverFactor)
+        , H.br [] []
+        , H.text ("Loop Count: " ++ String.fromInt a.loopCount)
+        ]
+
+
+formatFloat : Float -> String
+formatFloat val =
+    let
+        rounded = toFloat (round (val * 100)) / 100
+        s = String.fromFloat rounded
+    in
+    if String.contains "." s then s
+    else s ++ ".0"
+
 
 viewJoystick : Model -> H.Html Msg
 viewJoystick model =
