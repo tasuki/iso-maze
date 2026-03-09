@@ -15,6 +15,7 @@ import Duration exposing (Duration)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Analyzer
 import Json.Decode as Decode
 import Maybe.Extra
 import Maze as M
@@ -36,6 +37,11 @@ type Overlay
     | Settings
     | Campaign
     | LevelComplete String
+
+type DebugLevel
+    = DebugOff
+    | DebugTechnical
+    | DebugAnalysis
 
 type Performance
     = Potato
@@ -78,7 +84,7 @@ type alias Model =
     , pointerStart : Maybe DD.DocumentCoords
     , pointerLast : Maybe DD.DocumentCoords
     , keysDown : Set String
-    , debugInfo : Bool
+    , debugLevel : DebugLevel
     , orbiting : Bool
     , elevation : Angle
     , azimuth : Angle
@@ -117,7 +123,8 @@ type Msg
     | ToggleBridge
     | PlaceStart
     | PlaceEnd
-    | SetDebug Bool
+    | SetDebugLevel DebugLevel
+    | CycleDebug
     | SetPerformance Performance
     | ResetProgress
     | ShowOverlay Overlay
@@ -158,7 +165,7 @@ init flags url navKey =
             , pointerStart = Nothing
             , pointerLast = Nothing
             , keysDown = Set.empty
-            , debugInfo = False
+            , debugLevel = DebugOff
             , orbiting = False
             , elevation = Angle.degrees D.initialElevation
             , azimuth = Angle.degrees D.initialAzimuth
@@ -406,7 +413,7 @@ updateModel message model =
                     case (model.mode, key) of
                         (_, "e") -> updateModel ToggleMode newModel
                         (_, "c") -> updateModel CameraReset newModel
-                        (_, "`") -> updateModel (SetDebug (not model.debugInfo)) newModel
+                        (_, "`") -> updateModel CycleDebug newModel
                         (ME.Editing, _) ->
                             let
                                 msg = keydown model.mode key
@@ -418,8 +425,18 @@ updateModel message model =
         KeyUp key ->
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
-        SetDebug debug ->
-            ( { model | debugInfo = debug }, Cmd.none )
+        SetDebugLevel level ->
+            ( { model | debugLevel = level }, Cmd.none )
+
+        CycleDebug ->
+            let
+                newLevel =
+                    case model.debugLevel of
+                        DebugOff -> DebugTechnical
+                        DebugTechnical -> DebugAnalysis
+                        DebugAnalysis -> DebugOff
+            in
+            ( { model | debugLevel = newLevel }, Cmd.none )
 
         SetPerformance perf ->
             ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
@@ -663,13 +680,13 @@ viewOverlay model overlay =
                         ]
                     , H.div [ HA.class "modal-row" ]
                         [ H.div
-                            [ HA.class ("icon" ++ if not model.debugInfo then " active" else "")
-                            , HE.onClick (SetDebug False)
+                            [ HA.class ("icon" ++ if model.debugLevel == DebugOff then " active" else "")
+                            , HE.onClick (SetDebugLevel DebugOff)
                             ]
                             [ H.text "🧪❌" ]
                         , H.div
-                            [ HA.class ("icon" ++ if model.debugInfo then " active" else "")
-                            , HE.onClick (SetDebug True)
+                            [ HA.class ("icon" ++ if model.debugLevel /= DebugOff then " active" else "")
+                            , HE.onClick (SetDebugLevel DebugTechnical)
                             ]
                             [ H.text "🧪✔️" ]
                         ]
@@ -746,25 +763,31 @@ view model =
         , case model.activeOverlay of
             Just overlay -> viewOverlay model overlay
             Nothing -> H.text ""
-        , if model.debugInfo then
-            H.div [ HA.id "debug-info", HA.class "overlay" ]
-                [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
-                , case model.lastRenderStats of
-                    Just stats ->
-                        H.div [ HA.style "font-size" "10px" ]
-                            [ H.br [] []
-                            , H.text ("Static Meshes: " ++ String.fromInt stats.staticMeshes)
-                            , H.text ("\nDynamic Meshes: " ++ String.fromInt stats.dynamicMeshes)
-                            , H.text ("\nStatic DC: " ++ String.fromInt stats.staticDrawCalls ++ " (" ++ String.fromInt stats.staticTriangles ++ " tris)")
-                            , H.text ("\nDynamic DC: " ++ String.fromInt stats.dynamicDrawCalls ++ " (" ++ String.fromInt stats.dynamicTriangles ++ " tris)")
-                            , H.text ("\nGeometries: " ++ String.fromInt stats.geometries)
-                            , H.text ("\nTextures: " ++ String.fromInt stats.textures)
-                            ]
-                    Nothing ->
-                        H.text ""
-                ]
-          else
-            H.text ""
+        , case model.debugLevel of
+            DebugOff ->
+                H.text ""
+
+            DebugTechnical ->
+                H.div [ HA.id "debug-info", HA.class "overlay" ]
+                    [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
+                    , case model.lastRenderStats of
+                        Just stats ->
+                            H.div [ HA.style "font-size" "10px" ]
+                                [ H.br [] []
+                                , H.text ("Static Meshes: " ++ String.fromInt stats.staticMeshes)
+                                , H.text ("\nDynamic Meshes: " ++ String.fromInt stats.dynamicMeshes)
+                                , H.text ("\nStatic DC: " ++ String.fromInt stats.staticDrawCalls ++ " (" ++ String.fromInt stats.staticTriangles ++ " tris)")
+                                , H.text ("\nDynamic DC: " ++ String.fromInt stats.dynamicDrawCalls ++ " (" ++ String.fromInt stats.dynamicTriangles ++ " tris)")
+                                , H.text ("\nGeometries: " ++ String.fromInt stats.geometries)
+                                , H.text ("\nTextures: " ++ String.fromInt stats.textures)
+                                ]
+
+                        Nothing ->
+                            H.text ""
+                    ]
+
+            DebugAnalysis ->
+                viewAnalyzer (Analyzer.analyze model.maze)
         ]
     }
 
@@ -786,6 +809,37 @@ formatMs val =
     in
     if String.contains "." s then s
     else s ++ ".0"
+
+viewAnalyzer : Analyzer.Analysis -> H.Html Msg
+viewAnalyzer a =
+    H.div [ HA.id "debug-info", HA.class "overlay" ]
+        [ H.text ("--- ANALYSIS ---")
+        , H.br [] []
+        , H.text ("Reachable: " ++ (if a.reachable then "✔️" else "❌"))
+        , H.br [] []
+        , H.text ("Total Cells: " ++ String.fromInt a.totalCells)
+        , H.br [] []
+        , H.text ("Unreachable: " ++ String.fromInt a.unreachableCells)
+        , H.br [] []
+        , H.text ("Shortest Path: " ++ (a.shortestPathLength |> Maybe.map String.fromInt |> Maybe.withDefault "N/A"))
+        , H.br [] []
+        , H.text ("Sol. Density: " ++ formatFloat a.solutionDensity)
+        , H.br [] []
+        , H.text ("River Factor: " ++ formatFloat a.riverFactor)
+        , H.br [] []
+        , H.text ("Loop Count: " ++ String.fromInt a.loopCount)
+        ]
+
+
+formatFloat : Float -> String
+formatFloat val =
+    let
+        rounded = toFloat (round (val * 100)) / 100
+        s = String.fromFloat rounded
+    in
+    if String.contains "." s then s
+    else s ++ ".0"
+
 
 viewJoystick : Model -> H.Html Msg
 viewJoystick model =
