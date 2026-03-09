@@ -23,26 +23,117 @@ function createNoiseTexture(size = 512) {
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d');
-    // Mid gray base
-    ctx.fillStyle = '#888';
+
+    // Base neutral gray
+    ctx.fillStyle = '#999';
     ctx.fillRect(0, 0, size, size);
-    // Add some noise
-    for (let i = 0; i < 500; i++) {
+
+    // 1. Soft clouds for background variation
+    for (let i = 0; i < 40; i++) {
         const x = Math.random() * size;
         const y = Math.random() * size;
-        const radius = Math.random() * 12 + 4;
-        // High contrast dots: very dark or very light
-        const isDark = Math.random() > 0.5;
-        const shade = isDark ? Math.floor(Math.random() * 30) : Math.floor(Math.random() * 30) + 225;
-        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.8)`;
-        ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
-        const offsets = [[-size, 0], [size, 0], [0, -size], [0, size], [-size, -size], [size, size], [-size, size], [size, -size]];
-        offsets.forEach(([ox, oy]) => {
-            ctx.beginPath(); ctx.arc(x + ox, y + oy, radius, 0, Math.PI * 2); ctx.fill();
-        });
+        const radius = size * (0.2 + Math.random() * 0.4);
+        const brightness = Math.random() > 0.5 ? 255 : 0;
+        const alpha = Math.random() * 0.12;
+        const grd = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        grd.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, ${alpha})`);
+        grd.addColorStop(1, 'rgba(153, 153, 153, 0)');
+        ctx.fillStyle = grd;
+
+        for (let ox = -size; ox <= size; ox += size) {
+            for (let oy = -size; oy <= size; oy += size) {
+                ctx.beginPath();
+                ctx.arc(x + ox, y + oy, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
     }
+
+    const drawWrappedLine = (x1, y1, x2, y2) => {
+        for (let ox = -size; ox <= size; ox += size) {
+            for (let oy = -size; oy <= size; oy += size) {
+                ctx.beginPath();
+                ctx.moveTo(x1 + ox, y1 + oy);
+                ctx.lineTo(x2 + ox, y2 + oy);
+                ctx.stroke();
+            }
+        }
+    };
+
+    function drawVein(vx, vy, vangle, vlen, vwidth, vcolor, depth = 0) {
+        if (depth > 2 || vlen < 10) return;
+
+        ctx.strokeStyle = vcolor;
+        ctx.lineWidth = vwidth;
+        ctx.lineCap = 'round';
+
+        ctx.shadowBlur = vwidth * 1.5;
+        ctx.shadowColor = vcolor;
+
+        let cx = vx;
+        let cy = vy;
+        let ca = vangle;
+
+        const segments = Math.floor(vlen / 12);
+        for (let j = 0; j < segments; j++) {
+            const step = 10 + Math.random() * 10;
+            const nx = cx + Math.cos(ca) * step;
+            const ny = cy + Math.sin(ca) * step;
+
+            drawWrappedLine(cx, cy, nx, ny);
+
+            cx = nx;
+            cy = ny;
+            ca += (Math.random() - 0.5) * 0.5;
+
+            // Wrap coordinates to stay within bounds
+            cx = (cx + size) % size;
+            cy = (cy + size) % size;
+
+            if (Math.random() > 0.85) {
+                drawVein(cx, cy, ca + (Math.random() - 0.5) * 1.5, vlen * 0.6, vwidth * 0.7, vcolor, depth + 1);
+            }
+        }
+        ctx.shadowBlur = 0;
+    }
+
+    // 2. Main structural veins (fewer but more distinct)
+    for (let i = 0; i < 10; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const angle = Math.random() * Math.PI * 2;
+        const alpha = 0.2 + Math.random() * 0.4;
+        drawVein(x, y, angle, 200 + Math.random() * 300, 1.5 + Math.random() * 2.5, `rgba(40, 40, 50, ${alpha})`);
+    }
+
+    // 3. Fine hairline cracks
+    for (let i = 0; i < 20; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const angle = Math.random() * Math.PI * 2;
+        drawVein(x, y, angle, 40 + Math.random() * 80, 0.4 + Math.random() * 0.4, `rgba(20, 20, 25, ${0.1 + Math.random() * 0.2})`);
+    }
+
+    // 4. Light highlights
+    for (let i = 0; i < 8; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const angle = Math.random() * Math.PI * 2;
+        drawVein(x, y, angle, 150 + Math.random() * 200, 2.0 + Math.random() * 1.0, `rgba(255, 255, 255, ${0.1 + Math.random() * 0.2})`);
+    }
+
+    // 5. Fine grain/noise
+    for (let i = 0; i < 2000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const alpha = Math.random() * 0.05;
+        ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+        ctx.fillRect(x, y, 1, 1);
+    }
+
     const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
     return texture;
@@ -50,7 +141,10 @@ function createNoiseTexture(size = 512) {
 
 const noiseTexture = createNoiseTexture();
 
-function applyTriplanar(material, texture, scale = 1.5) {
+// Performance optimization: higher scale for finer detail
+const TEXTURE_SCALE = 3.0;
+
+function applyTriplanar(material, texture, scale = 1.2) {
     material.onBeforeCompile = (shader) => {
         shader.uniforms.tNoise = { value: texture };
         shader.uniforms.uNoiseScale = { value: scale };
@@ -61,17 +155,12 @@ function applyTriplanar(material, texture, scale = 1.5) {
         );
         shader.vertexShader = shader.vertexShader.replace('#include <worldpos_vertex>',
             `#include <worldpos_vertex>
-            #ifdef USE_INSTANCING
-                vWorldPosition = (instanceMatrix * vec4(position, 1.0)).xyz;
-                vWorldPosition = (modelMatrix * vec4(vWorldPosition, 1.0)).xyz;
-            #else
-                vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-            #endif
-            vec3 worldNormal = normal;
-            #ifdef USE_INSTANCING
-                worldNormal = (instanceMatrix * vec4(worldNormal, 0.0)).xyz;
-            #endif
-            vWorldNormal = normalize((modelMatrix * vec4(worldNormal, 0.0)).xyz);`
+            vWorldPosition = ( modelMatrix * (
+                #ifdef USE_INSTANCING
+                    instanceMatrix *
+                #endif
+                vec4( transformed, 1.0 ) ) ).xyz;
+            vWorldNormal = normalize( ( modelMatrix * vec4( transformedNormal, 0.0 ) ).xyz );`
         );
         shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
             `#include <common>
@@ -88,22 +177,22 @@ function applyTriplanar(material, texture, scale = 1.5) {
             vec3 yTex = texture2D(tNoise, vWorldPosition.xz * uNoiseScale).rgb;
             vec3 zTex = texture2D(tNoise, vWorldPosition.xy * uNoiseScale).rgb;
             vec3 texColor = xTex * blending.x + yTex * blending.y + zTex * blending.z;
-            // Overlay-style blending: (tex - 0.5) * 2 makes it -1 to 1, then we scale and add
-            diffuseColor.rgb += (texColor - 0.5) * 1.0;`
+            // Blend using a slightly softer multiplier for marble
+            diffuseColor.rgb *= (0.7 + texColor * 0.5);`
         );
     };
 }
 
 const materials = {
-    base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
-    stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
-    bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
+    base: new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.3, metalness: 0.1 }),
+    stairs: new THREE.MeshStandardMaterial({ color: 0xddaa88, roughness: 0.3, metalness: 0.1 }),
+    bridge: new THREE.MeshStandardMaterial({ color: 0xaa5555, roughness: 0.3, metalness: 0.1 }),
     player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.5 }),
     goal: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
-[materials.base, materials.stairs, materials.bridge].forEach(m => applyTriplanar(m, noiseTexture));
+[materials.base, materials.stairs, materials.bridge].forEach(m => applyTriplanar(m, noiseTexture, TEXTURE_SCALE));
 
 const geometryCache = new Map();
 function getUnitBox() {
@@ -423,9 +512,12 @@ app.ports.renderThreeJS.subscribe(data => {
 });
 
 function parseHex(hex) {
-    return new THREE.Color(
-        '#' + hex.split('').map(char => char + char).join('')
-    );
+    if (hex.length === 3) {
+        return new THREE.Color(
+            '#' + hex.split('').map(char => char + char).join('')
+        );
+    }
+    return new THREE.Color('#' + hex);
 }
 
 function updateScene(data, unitScale) {
