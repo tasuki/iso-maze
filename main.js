@@ -23,114 +23,47 @@ function createNoiseTexture(size = 512) {
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d');
-
-    // Base neutral gray
-    ctx.fillStyle = '#999';
-    ctx.fillRect(0, 0, size, size);
-
-    // 1. Soft clouds for background variation
-    for (let i = 0; i < 40; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const radius = size * (0.2 + Math.random() * 0.4);
-        const brightness = Math.random() > 0.5 ? 255 : 0;
-        const alpha = Math.random() * 0.12;
-        const grd = ctx.createRadialGradient(x, y, 0, x, y, radius);
-        grd.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, ${alpha})`);
-        grd.addColorStop(1, 'rgba(153, 153, 153, 0)');
-        ctx.fillStyle = grd;
-
-        for (let ox = -size; ox <= size; ox += size) {
-            for (let oy = -size; oy <= size; oy += size) {
-                ctx.beginPath();
-                ctx.arc(x + ox, y + oy, radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
+    const p = new Uint8Array(512);
+    for (let i = 0; i < 256; i++) p[i] = i;
+    for (let i = 255; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [p[i], p[j]] = [p[j], p[i]];
     }
-
-    const drawWrappedLine = (x1, y1, x2, y2) => {
-        for (let ox = -size; ox <= size; ox += size) {
-            for (let oy = -size; oy <= size; oy += size) {
-                ctx.beginPath();
-                ctx.moveTo(x1 + ox, y1 + oy);
-                ctx.lineTo(x2 + ox, y2 + oy);
-                ctx.stroke();
-            }
-        }
+    for (let i = 0; i < 256; i++) p[256 + i] = p[i];
+    const lerp = (t, a, b) => a + t * (b - a);
+    const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+    const valueNoise = (x, y) => {
+        let xi = Math.floor(x), yi = Math.floor(y);
+        const xf = x - xi, yf = y - yi;
+        xi = xi & 255; yi = yi & 255;
+        const u = fade(xf), v = fade(yf);
+        const aa = p[p[xi] + yi], ab = p[p[xi] + yi + 1];
+        const ba = p[p[xi + 1] + yi], bb = p[p[xi + 1] + yi + 1];
+        return lerp(v, lerp(u, aa / 255, ba / 255), lerp(u, ab / 255, bb / 255));
     };
-
-    function drawVein(vx, vy, vangle, vlen, vwidth, vcolor, depth = 0) {
-        if (depth > 2 || vlen < 10) return;
-
-        ctx.strokeStyle = vcolor;
-        ctx.lineWidth = vwidth;
-        ctx.lineCap = 'round';
-
-        ctx.shadowBlur = vwidth * 1.5;
-        ctx.shadowColor = vcolor;
-
-        let cx = vx;
-        let cy = vy;
-        let ca = vangle;
-
-        const segments = Math.floor(vlen / 12);
-        for (let j = 0; j < segments; j++) {
-            const step = 10 + Math.random() * 10;
-            const nx = cx + Math.cos(ca) * step;
-            const ny = cy + Math.sin(ca) * step;
-
-            drawWrappedLine(cx, cy, nx, ny);
-
-            cx = nx;
-            cy = ny;
-            ca += (Math.random() - 0.5) * 0.5;
-
-            // Wrap coordinates to stay within bounds
-            cx = (cx + size) % size;
-            cy = (cy + size) % size;
-
-            if (Math.random() > 0.85) {
-                drawVein(cx, cy, ca + (Math.random() - 0.5) * 1.5, vlen * 0.6, vwidth * 0.7, vcolor, depth + 1);
-            }
+    const fbm = (x, y) => {
+        let v = 0, a = 0.5, f = 1.0;
+        for (let i = 0; i < 4; i++) {
+            v += a * valueNoise(x * f, y * f);
+            f *= 2.0; a *= 0.5;
         }
-        ctx.shadowBlur = 0;
+        return v;
+    };
+    const imageData = ctx.createImageData(size, size);
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const xn = x * (256 / size), yn = y * (256 / size);
+            const qx = fbm(xn, yn), qy = fbm(xn + 5.2, yn + 1.3);
+            const rx = fbm(xn + 4.0 * qx + 1.7, yn + 4.0 * qy + 9.2);
+            const ry = fbm(xn + 4.0 * qx + 8.3, yn + 4.0 * qy + 2.8);
+            const val = fbm(xn + 4.0 * rx, yn + 4.0 * ry);
+            const c = Math.max(0, Math.min(255, val * 255));
+            const idx = (y * size + x) * 4;
+            imageData.data[idx] = c; imageData.data[idx + 1] = c;
+            imageData.data[idx + 2] = c; imageData.data[idx + 3] = 255;
+        }
     }
-
-    // 2. Main structural veins (fewer but more distinct)
-    for (let i = 0; i < 10; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const angle = Math.random() * Math.PI * 2;
-        const alpha = 0.2 + Math.random() * 0.4;
-        drawVein(x, y, angle, 200 + Math.random() * 300, 1.5 + Math.random() * 2.5, `rgba(40, 40, 50, ${alpha})`);
-    }
-
-    // 3. Fine hairline cracks
-    for (let i = 0; i < 20; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const angle = Math.random() * Math.PI * 2;
-        drawVein(x, y, angle, 40 + Math.random() * 80, 0.4 + Math.random() * 0.4, `rgba(20, 20, 25, ${0.1 + Math.random() * 0.2})`);
-    }
-
-    // 4. Light highlights
-    for (let i = 0; i < 8; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const angle = Math.random() * Math.PI * 2;
-        drawVein(x, y, angle, 150 + Math.random() * 200, 2.0 + Math.random() * 1.0, `rgba(255, 255, 255, ${0.1 + Math.random() * 0.2})`);
-    }
-
-    // 5. Fine grain/noise
-    for (let i = 0; i < 2000; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const alpha = Math.random() * 0.05;
-        ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
-        ctx.fillRect(x, y, 1, 1);
-    }
-
+    ctx.putImageData(imageData, 0, 0);
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -141,8 +74,8 @@ function createNoiseTexture(size = 512) {
 
 const noiseTexture = createNoiseTexture();
 
-// Performance optimization: higher scale for finer detail
-const TEXTURE_SCALE = 3.0;
+// Scale for the procedural noise
+const TEXTURE_SCALE = 0.4;
 
 function applyTriplanar(material, texture, scale = 1.2) {
     material.onBeforeCompile = (shader) => {
@@ -177,8 +110,7 @@ function applyTriplanar(material, texture, scale = 1.2) {
             vec3 yTex = texture2D(tNoise, vWorldPosition.xz * uNoiseScale).rgb;
             vec3 zTex = texture2D(tNoise, vWorldPosition.xy * uNoiseScale).rgb;
             vec3 texColor = xTex * blending.x + yTex * blending.y + zTex * blending.z;
-            // Blend using a slightly softer multiplier for marble
-            diffuseColor.rgb *= (0.7 + texColor * 0.5);`
+            diffuseColor.rgb *= (0.8 + texColor * 0.4);`
         );
     };
 }
