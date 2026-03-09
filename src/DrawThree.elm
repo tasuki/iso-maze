@@ -174,7 +174,7 @@ drawBlock : M.Block -> List Box
 drawBlock block =
     case block of
         M.Base ( x, y, z ) ->
-            [ drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            [ drawBase "base_textured" (toFloat x) (toFloat y) (toFloat z) ]
 
         M.Bridge ( x, y, z ) ->
             [ { x = toFloat x * 10
