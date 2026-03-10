@@ -26,6 +26,7 @@ encode maze =
                 Just (M.Base ( _, _, z )) -> M.BaseBlock z
                 Just (M.Bridge ( _, _, z )) -> M.BridgeBlock z
                 Just (M.Stairs ( _, _, z ) dir) -> M.StairsBlock z dir
+                Just (M.Greenery ( _, _, z )) -> M.GreeneryBlock z
                 Nothing -> M.EmptyBlock
 
         parts = []
@@ -51,6 +52,7 @@ encodeMazeBlock block =
         M.StairsBlock z M.SW -> "z" ++ charFromIndex z
         M.StairsBlock z M.NE -> "Z" ++ charFromIndex z
         M.StairsBlock z M.NW -> "S" ++ charFromIndex z
+        M.GreeneryBlock z -> "g" ++ charFromIndex z
 
 removeSpaces : String -> String
 removeSpaces = String.filter (\c -> c /= ' ')
@@ -101,6 +103,7 @@ decode str =
                         M.BaseBlock z -> Just (M.Base ( x, y, z ))
                         M.BridgeBlock z -> Just (M.Bridge ( x, y, z ))
                         M.StairsBlock z dir -> Just (M.Stairs ( x, y, z ) dir)
+                        M.GreeneryBlock z -> Just (M.Greenery ( x, y, z ))
 
                 mazeBlocks = List.indexedMap toBlock_ blocks |> List.filterMap identity
                 finalMaze = M.fromBlocks mazeBlocks
@@ -137,6 +140,7 @@ decodeBlock typeChar heightChar =
                 'Z' -> Just (M.StairsBlock z M.NE)
                 'S' -> Just (M.StairsBlock z M.NW)
                 'l' -> Just (M.BridgeBlock z)
+                'g' -> Just (M.GreeneryBlock z)
                 _ -> Nothing
         )
 

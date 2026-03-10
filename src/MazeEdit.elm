@@ -33,6 +33,10 @@ toggleBridge : M.Position -> M.Maze -> M.Maze
 toggleBridge ( x, y, z ) maze =
     M.set (M.Bridge ( x, y, z )) maze
 
+toggleGreenery : M.Position -> M.Maze -> M.Maze
+toggleGreenery ( x, y, z ) maze =
+    M.set (M.Greenery ( x, y, z )) maze
+
 placeStart : M.Position -> M.Maze -> M.Maze
 placeStart ( x, y, z ) maze =
     { maze | start = ( x, y ) }

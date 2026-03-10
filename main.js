@@ -26,6 +26,7 @@ const materials = {
     player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.5 }),
     goal: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
+    greenery: new THREE.MeshStandardMaterial({ color: 0x228b22, roughness: 0.8, metalness: 0.1 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
 

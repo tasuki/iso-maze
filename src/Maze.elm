@@ -34,11 +34,13 @@ type MazeBlock
     | BaseBlock Int
     | BridgeBlock Int
     | StairsBlock Int Direction
+    | GreeneryBlock Int
 
 type Block
     = Base Position
     | Bridge Position
     | Stairs Position Direction
+    | Greenery Position
 
 type alias Pos2d = ( Int, Int )
 type alias Position = ( Int, Int, Int )
@@ -131,6 +133,7 @@ blockToMazeBlock block =
         Base ( _, _, z ) -> BaseBlock z
         Bridge ( _, _, z ) -> BridgeBlock z
         Stairs ( _, _, z ) dir -> StairsBlock z dir
+        Greenery ( _, _, z ) -> GreeneryBlock z
 
 setAt : Position -> MazeBlock -> Maze -> Maze
 setAt ( x, y, _ ) mazeBlock maze =
@@ -192,6 +195,7 @@ toBlock ( x, y ) mazeBlock = case mazeBlock of
     BaseBlock z -> Just <| Base (x, y, z)
     BridgeBlock z -> Just <| Bridge (x, y, z)
     StairsBlock z dir -> Just <| Stairs (x, y, z) dir
+    GreeneryBlock z -> Just <| Greenery (x, y, z)
 
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
@@ -235,6 +239,9 @@ exitHeight dir playerHeight block =
             else
                 Nothing
 
+        Greenery _ ->
+            Nothing
+
 moveInHeight : Int -> Block -> Int
 moveInHeight enterHeight block =
     case block of
@@ -254,7 +261,13 @@ move ( x, y, z ) dir maze =
         newBlock = get newPos2d maze
 
         newHeight : Maybe Int
-        newHeight = Maybe.map2 moveInHeight oldExitHeight newBlock
+        newHeight =
+            case newBlock of
+                Just (Greenery _) ->
+                    Nothing
+
+                _ ->
+                    Maybe.map2 moveInHeight oldExitHeight newBlock
 
         newExitHeight : Maybe Int
         newExitHeight =
@@ -280,6 +293,7 @@ blockPosition block = case block of
     Base pos -> pos
     Bridge pos -> pos
     Stairs pos _ -> pos
+    Greenery pos -> pos
 
 
 -- Position
