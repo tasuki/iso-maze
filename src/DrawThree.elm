@@ -162,10 +162,10 @@ drawBase : String -> Float -> Float -> Float -> Box
 drawBase material x y z =
     { x = x * 10
     , y = y * 10
-    , z = z * 5 - 5
+    , z = z * 5 - 20
     , sizeX = 10
     , sizeY = 10
-    , sizeZ = z * 10 + 10
+    , sizeZ = z * 10 + 40
     , material = material
     , rotationZ = 0
     }
@@ -327,16 +327,17 @@ computeCameraConfig model =
                 fx = toFloat bx * 10
                 fy = toFloat by * 10
                 fz = toFloat bz * 10
+                headSpace = 5
+                floor = -20
             in
-            -- Floor is at -10, head space up to fz + 10
-            [ ( fx - 5, fy - 5, -10 )
-            , ( fx + 5, fy - 5, -10 )
-            , ( fx - 5, fy + 5, -10 )
-            , ( fx + 5, fy + 5, -10 )
-            , ( fx - 5, fy - 5, fz + 10 )
-            , ( fx + 5, fy - 5, fz + 10 )
-            , ( fx - 5, fy + 5, fz + 10 )
-            , ( fx + 5, fy + 5, fz + 10 )
+            [ ( fx - 5, fy - 5, floor )
+            , ( fx + 5, fy - 5, floor )
+            , ( fx - 5, fy + 5, floor )
+            , ( fx + 5, fy + 5, floor )
+            , ( fx - 5, fy - 5, fz + headSpace )
+            , ( fx + 5, fy - 5, fz + headSpace )
+            , ( fx - 5, fy + 5, fz + headSpace )
+            , ( fx + 5, fy + 5, fz + headSpace )
             ]
 
         points = case List.concatMap blockToPoints <| M.toBlocks model.maze of
