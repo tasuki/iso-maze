@@ -36,7 +36,7 @@ suite =
             [ test "Reachable" <| \_ -> (analyze simplePath).reachable |> Expect.equal True
             , test "Total Cells" <| \_ -> (analyze simplePath).totalCells |> Expect.equal 3
             , test "Shortest Path" <| \_ -> (analyze simplePath).shortestPathLength |> Expect.equal (Just 2)
-            , test "Unreachable" <| \_ -> (analyze simplePath).unreachableCells |> Expect.equal 0
+            , test "Unreachable" <| \_ -> (analyze simplePath).unreachable |> Expect.equal 0
             , test "Loop Count" <| \_ -> (analyze simplePath).loopCount |> Expect.equal 0
             , test "River Factor" <| \_ -> (analyze simplePath).riverFactor |> Expect.within (Expect.Absolute 0.01) (3 / 2) -- 3 cells / (2 dead ends + 0 junctions)
             ]
@@ -48,13 +48,13 @@ suite =
         , describe "Isolated Maze"
             [ test "Not Reachable" <| \_ -> (analyze isolatedMaze).reachable |> Expect.equal False
             , test "Total Cells" <| \_ -> (analyze isolatedMaze).totalCells |> Expect.equal 2
-            , test "Unreachable" <| \_ -> (analyze isolatedMaze).unreachableCells |> Expect.equal 1
+            , test "Unreachable" <| \_ -> (analyze isolatedMaze).unreachable |> Expect.equal 1
             , test "Shortest Path" <| \_ -> (analyze isolatedMaze).shortestPathLength |> Expect.equal Nothing
             ]
         , describe "Bridge Maze"
             [ test "Reachable" <| \_ -> (analyze bridgeMaze).reachable |> Expect.equal True
             , test "Total Cells" <| \_ -> (analyze bridgeMaze).totalCells |> Expect.equal 4
-            , test "Unreachable" <| \_ -> (analyze isolatedMaze).unreachableCells |> Expect.equal 1
+            , test "Unreachable" <| \_ -> (analyze bridgeMaze).unreachable |> Expect.equal 1
             , test "Path through bridge" <| \_ -> (analyze bridgeMaze).shortestPathLength |> Expect.equal (Just 2)
             ]
         ]

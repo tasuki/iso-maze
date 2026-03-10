@@ -162,10 +162,10 @@ drawBase : String -> Float -> Float -> Float -> Box
 drawBase material x y z =
     { x = x * 10
     , y = y * 10
-    , z = z * 5 - 5
+    , z = z * 5 - 10
     , sizeX = 10
     , sizeY = 10
-    , sizeZ = z * 10 + 10
+    , sizeZ = z * 10 + 20
     , material = material
     , rotationZ = 0
     }
@@ -328,11 +328,11 @@ computeCameraConfig model =
                 fy = toFloat by * 10
                 fz = toFloat bz * 10
             in
-            -- Floor is at -10, head space up to fz + 10
-            [ ( fx - 5, fy - 5, -10 )
-            , ( fx + 5, fy - 5, -10 )
-            , ( fx - 5, fy + 5, -10 )
-            , ( fx + 5, fy + 5, -10 )
+            -- Floor is at -20, head space up to fz + 10
+            [ ( fx - 5, fy - 5, -20 )
+            , ( fx + 5, fy - 5, -20 )
+            , ( fx - 5, fy + 5, -20 )
+            , ( fx + 5, fy + 5, -20 )
             , ( fx - 5, fy - 5, fz + 10 )
             , ( fx + 5, fy - 5, fz + 10 )
             , ( fx - 5, fy + 5, fz + 10 )
