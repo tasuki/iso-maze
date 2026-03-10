@@ -822,7 +822,9 @@ viewAnalyzer a =
         , H.br [] []
         , H.text ("Total Cells: " ++ String.fromInt a.totalCells)
         , H.br [] []
-        , H.text ("Unreachable: " ++ String.fromInt a.unreachableCells)
+        , H.text ("Greenery: " ++ String.fromInt a.greenery)
+        , H.br [] []
+        , H.text ("Unreachable: " ++ String.fromInt a.unreachable)
         , H.br [] []
         , H.text ("Shortest Path: " ++ (a.shortestPathLength |> Maybe.map String.fromInt |> Maybe.withDefault "N/A"))
         , H.br [] []

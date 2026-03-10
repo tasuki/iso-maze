@@ -8,7 +8,8 @@ import Set exposing (Set)
 type alias Analysis =
     { reachable : Bool
     , totalCells : Int
-    , unreachableCells : Int
+    , greenery : Int
+    , unreachable : Int
     , shortestPathLength : Maybe Int
     , solutionDensity : Float
     , riverFactor : Float
@@ -16,40 +17,35 @@ type alias Analysis =
     }
 
 
+getAllCells : List M.Block -> List M.Position
+getAllCells =
+    List.concatMap (\block ->
+        case block of
+            M.Base pos -> [ pos ]
+            M.Stairs pos _ -> [ pos ]
+            M.Bridge ( x, y, z ) -> [ ( x, y, z ), ( x, y, z - 1 ) ]
+            M.Greenery pos -> [ pos ]
+    )
+
 analyze : M.Maze -> Analysis
 analyze maze =
     let
-        allCellsList =
-            M.toBlocks maze
-                |> List.concatMap
-                    (\block ->
-                        case block of
-                            M.Base pos ->
-                                [ pos ]
-
-                            M.Stairs pos _ ->
-                                [ pos ]
-
-                            M.Bridge ( x, y, z ) ->
-                                [ ( x, y, z ), ( x, y, z - 1 ) ]
-
-                            M.Greenery pos ->
-                                [ pos ]
-                    )
-                |> Set.fromList
-                |> Set.toList
-
+        blocks = M.toBlocks maze
+        isGreenery b = case b of
+            M.Greenery _ -> True
+            _ -> False
+        greenery = List.filter isGreenery blocks |> List.length
+        allCellsList = getAllCells blocks
         v = List.length allCellsList
 
         neighborsMap =
             allCellsList
-                |> List.map
-                    (\pos ->
-                        ( pos
-                        , [ M.SE, M.SW, M.NE, M.NW ]
-                            |> List.filterMap (\dir -> M.move pos dir maze)
-                        )
+                |> List.map (\pos ->
+                    ( pos
+                    , [ M.SE, M.SW, M.NE, M.NW ]
+                        |> List.filterMap (\dir -> M.move pos dir maze)
                     )
+                )
                 |> Dict.fromList
 
         getNeighbors pos = Dict.get pos neighborsMap |> Maybe.withDefault []
@@ -91,7 +87,8 @@ analyze maze =
     in
     { reachable = isReachable
     , totalCells = v
-    , unreachableCells = v - Set.size reachableSet
+    , greenery = greenery
+    , unreachable = v - Set.size reachableSet - greenery
     , shortestPathLength = shortestPathLength
     , solutionDensity =
         case shortestPathLength of
