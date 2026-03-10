@@ -38,6 +38,11 @@ type Overlay
     | Campaign
     | LevelComplete String
 
+type DebugLevel
+    = DebugOff
+    | DebugTechnical
+    | DebugAnalysis
+
 type Performance
     = Potato
     | Normal
@@ -79,7 +84,7 @@ type alias Model =
     , pointerStart : Maybe DD.DocumentCoords
     , pointerLast : Maybe DD.DocumentCoords
     , keysDown : Set String
-    , debugInfo : Bool
+    , debugLevel : DebugLevel
     , orbiting : Bool
     , elevation : Angle
     , azimuth : Angle
@@ -92,7 +97,6 @@ type alias Model =
     , renderHistory : List { timestamp : Float, duration : Float }
     , tickHistory : List { timestamp : Float, duration : Float }
     , lastRenderStats : Maybe RenderUpdate
-    , showAnalyzer : Bool
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
     , performance : Performance
@@ -119,8 +123,8 @@ type Msg
     | ToggleBridge
     | PlaceStart
     | PlaceEnd
-    | SetDebug Bool
-    | ToggleAnalyzer
+    | SetDebugLevel DebugLevel
+    | CycleDebug
     | SetPerformance Performance
     | ResetProgress
     | ShowOverlay Overlay
@@ -161,12 +165,11 @@ init flags url navKey =
             , pointerStart = Nothing
             , pointerLast = Nothing
             , keysDown = Set.empty
-            , debugInfo = False
+            , debugLevel = DebugOff
             , orbiting = False
             , elevation = Angle.degrees D.initialElevation
             , azimuth = Angle.degrees D.initialAzimuth
             , mode = ME.Running
-            , showAnalyzer = False
             , maze = defaultMaze
             , playerState = M.Idle ( 999, 999, 999 )
             , animator = Animate.initAnimator initialTargets
@@ -410,8 +413,7 @@ updateModel message model =
                     case (model.mode, key) of
                         (_, "e") -> updateModel ToggleMode newModel
                         (_, "c") -> updateModel CameraReset newModel
-                        (_, "`") -> updateModel (SetDebug (not model.debugInfo)) newModel
-                        (ME.Editing, "x") -> updateModel ToggleAnalyzer newModel
+                        (_, "`") -> updateModel CycleDebug newModel
                         (ME.Editing, _) ->
                             let
                                 msg = keydown model.mode key
@@ -423,11 +425,18 @@ updateModel message model =
         KeyUp key ->
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
-        SetDebug debug ->
-            ( { model | debugInfo = debug }, Cmd.none )
+        SetDebugLevel level ->
+            ( { model | debugLevel = level }, Cmd.none )
 
-        ToggleAnalyzer ->
-            ( { model | showAnalyzer = not model.showAnalyzer }, Cmd.none )
+        CycleDebug ->
+            let
+                newLevel =
+                    case model.debugLevel of
+                        DebugOff -> DebugTechnical
+                        DebugTechnical -> DebugAnalysis
+                        DebugAnalysis -> DebugOff
+            in
+            ( { model | debugLevel = newLevel }, Cmd.none )
 
         SetPerformance perf ->
             ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
@@ -671,13 +680,13 @@ viewOverlay model overlay =
                         ]
                     , H.div [ HA.class "modal-row" ]
                         [ H.div
-                            [ HA.class ("icon" ++ if not model.debugInfo then " active" else "")
-                            , HE.onClick (SetDebug False)
+                            [ HA.class ("icon" ++ if model.debugLevel == DebugOff then " active" else "")
+                            , HE.onClick (SetDebugLevel DebugOff)
                             ]
                             [ H.text "🧪❌" ]
                         , H.div
-                            [ HA.class ("icon" ++ if model.debugInfo then " active" else "")
-                            , HE.onClick (SetDebug True)
+                            [ HA.class ("icon" ++ if model.debugLevel /= DebugOff then " active" else "")
+                            , HE.onClick (SetDebugLevel DebugTechnical)
                             ]
                             [ H.text "🧪✔️" ]
                         ]
@@ -754,10 +763,11 @@ view model =
         , case model.activeOverlay of
             Just overlay -> viewOverlay model overlay
             Nothing -> H.text ""
-        , if model.debugInfo then
-            if model.mode == ME.Editing && model.showAnalyzer then
-                viewAnalyzer (Analyzer.analyze model.maze)
-            else
+        , case model.debugLevel of
+            DebugOff ->
+                H.text ""
+
+            DebugTechnical ->
                 H.div [ HA.id "debug-info", HA.class "overlay" ]
                     [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
                     , case model.lastRenderStats of
@@ -771,11 +781,13 @@ view model =
                                 , H.text ("\nGeometries: " ++ String.fromInt stats.geometries)
                                 , H.text ("\nTextures: " ++ String.fromInt stats.textures)
                                 ]
+
                         Nothing ->
                             H.text ""
                     ]
-          else
-            H.text ""
+
+            DebugAnalysis ->
+                viewAnalyzer (Analyzer.analyze model.maze)
         ]
     }
 
