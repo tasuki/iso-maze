@@ -23,6 +23,7 @@ const materials = {
     base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
     stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
     bridge: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
+    greenery: new THREE.MeshStandardMaterial({ color: 0x669900, roughness: 0.6, metalness: 0.9 }),
     player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.5 }),
     goal: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),

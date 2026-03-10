@@ -110,7 +110,7 @@ sceneData model =
 
 staticRenderables : Model -> List Renderable
 staticRenderables model =
-    List.concatMap (drawBlock >> List.map BoxRenderable) (M.toBlocks model.maze)
+    List.concatMap drawBlock (M.toBlocks model.maze)
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
@@ -170,24 +170,28 @@ drawBase material x y z =
     , rotationZ = 0
     }
 
-drawBlock : M.Block -> List Box
+drawBlock : M.Block -> List Renderable
 drawBlock block =
     case block of
         M.Base ( x, y, z ) ->
-            [ drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
 
         M.Bridge ( x, y, z ) ->
-            [ { x = toFloat x * 10
-              , y = toFloat y * 10
-              , z = toFloat z * 10 + 0.5
-              , sizeX = 10
-              , sizeY = 10
-              , sizeZ = 1
-              , material = "bridge"
-              , rotationZ = 0
-              }
-            , drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
+            [ BoxRenderable
+                { x = toFloat x * 10
+                , y = toFloat y * 10
+                , z = toFloat z * 10 + 0.5
+                , sizeX = 10
+                , sizeY = 10
+                , sizeZ = 1
+                , material = "bridge"
+                , rotationZ = 0
+                }
+            , BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
             ]
+
+        M.Greenery ( x, y, z ) ->
+            BoxRenderable (drawBase "base" (toFloat x) (toFloat y) (toFloat z)) :: drawGreenery x y z
 
         M.Stairs ( x, y, z ) dir ->
             let
@@ -224,9 +228,31 @@ drawBlock block =
                         , \i -> ( 10, 1, 1 + toFloat i )
                         )
 
-                oneBox i = stepBox (centerFun i) (dimsFun i)
+                oneBox i = BoxRenderable (stepBox (centerFun i) (dimsFun i))
             in
-            List.map oneBox (List.range 0 9) ++ [ drawBase "stairs" fx fy (fz - 1) ]
+            List.map oneBox (List.range 0 9) ++ [ BoxRenderable <| drawBase "stairs" fx fy (fz - 1) ]
+
+
+drawGreenery : Int -> Int -> Int -> List Renderable
+drawGreenery x y z =
+    let
+        fx = toFloat x * 10
+        fy = toFloat y * 10
+        fz = toFloat z * 10
+
+        s r ( dx, dy, dz ) =
+            SphereRenderable
+                { x = fx + dx
+                , y = fy + dy
+                , z = fz + dz
+                , radius = r
+                , material = "greenery"
+                }
+    in
+    [ s 3.5 ( 0, 2.3, 2.8 )
+    , s 3.0 ( 3.0, -2.0, 2.4 )
+    , s 2.7 ( -1.5, -2.0, 1.8 )
+    ]
 
 
 drawEnd : M.Maze -> M.PlayerState -> ( Vec3, Vec3, Vec3 ) -> Float -> Bool -> List Box

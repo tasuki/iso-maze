@@ -31,7 +31,13 @@ toggleStairs ( x, y, z ) maze =
 
 toggleBridge : M.Position -> M.Maze -> M.Maze
 toggleBridge ( x, y, z ) maze =
-    M.set (M.Bridge ( x, y, z )) maze
+    if z >= 1 then M.set (M.Bridge ( x, y, z )) maze
+    else maze
+
+toggleGreenery : M.Position -> M.Maze -> M.Maze
+toggleGreenery ( x, y, z ) maze =
+    if z >= 1 then M.set (M.Greenery ( x, y, z - 1 )) maze
+    else maze
 
 placeStart : M.Position -> M.Maze -> M.Maze
 placeStart ( x, y, z ) maze =

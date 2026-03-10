@@ -34,11 +34,13 @@ type MazeBlock
     | BaseBlock Int
     | BridgeBlock Int
     | StairsBlock Int Direction
+    | GreeneryBlock Int
 
 type Block
     = Base Position
     | Bridge Position
     | Stairs Position Direction
+    | Greenery Position
 
 type alias Pos2d = ( Int, Int )
 type alias Position = ( Int, Int, Int )
@@ -131,6 +133,7 @@ blockToMazeBlock block =
         Base ( _, _, z ) -> BaseBlock z
         Bridge ( _, _, z ) -> BridgeBlock z
         Stairs ( _, _, z ) dir -> StairsBlock z dir
+        Greenery ( _, _, z ) -> GreeneryBlock z
 
 setAt : Position -> MazeBlock -> Maze -> Maze
 setAt ( x, y, _ ) mazeBlock maze =
@@ -192,6 +195,7 @@ toBlock ( x, y ) mazeBlock = case mazeBlock of
     BaseBlock z -> Just <| Base (x, y, z)
     BridgeBlock z -> Just <| Bridge (x, y, z)
     StairsBlock z dir -> Just <| Stairs (x, y, z) dir
+    GreeneryBlock z -> Just <| Greenery (x, y, z)
 
 get : Pos2d -> Maze -> Maybe Block
 get ( x, y ) maze =
@@ -209,10 +213,6 @@ startPosition m = getPosition m.start m |> Maybe.withDefault ( Tuple.first m.sta
 
 endPosition : Maze -> Position
 endPosition m = getPosition m.end m |> Maybe.withDefault ( Tuple.first m.end, Tuple.second m.end, 0 )
-
-isAtEnd : Position -> Maze -> Bool
-isAtEnd pos maze =
-    pos == endPosition maze
 
 exitHeight : Direction -> Int -> Block -> Maybe Int
 exitHeight dir playerHeight block =
@@ -234,6 +234,8 @@ exitHeight dir playerHeight block =
                 Just <| playerHeight
             else
                 Nothing
+        Greenery _ ->
+            Nothing
 
 moveInHeight : Int -> Block -> Int
 moveInHeight enterHeight block =
@@ -280,6 +282,7 @@ blockPosition block = case block of
     Base pos -> pos
     Bridge pos -> pos
     Stairs pos _ -> pos
+    Greenery pos -> pos
 
 
 -- Position

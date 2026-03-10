@@ -32,6 +32,9 @@ analyze maze =
 
                             M.Bridge ( x, y, z ) ->
                                 [ ( x, y, z ), ( x, y, z - 1 ) ]
+
+                            M.Greenery pos ->
+                                [ pos ]
                     )
                 |> Set.fromList
                 |> Set.toList

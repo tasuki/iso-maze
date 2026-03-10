@@ -98,4 +98,15 @@ moveTest =
             \_ -> Expect.equal
                 Nothing
                 (move ( 2, 3, 1 ) NE simpleEightMaze)
+
+        -- Greenery
+        , test "Can't move onto greenery" <|
+            \_ ->
+                let
+                    mazeWithGreenery = "sz:3,1;st:0,0;end:2,0;mz:o0g0o0"
+                        |> Codec.decode |> Maybe.withDefault emptyMaze
+                in
+                Expect.equal
+                    Nothing
+                    (move ( 0, 0, 0 ) NE mazeWithGreenery)
         ]
