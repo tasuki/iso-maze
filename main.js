@@ -18,6 +18,28 @@ let groundPlane;
 // Z is up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
+const fogUniforms = {
+    uFogColor: { value: new THREE.Color(0x668899) },
+    uFogNear: { value: 0.0 },
+    uFogFar: { value: -0.2 }
+};
+
+function applyFog(material) {
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.uFogColor = fogUniforms.uFogColor;
+        shader.uniforms.uFogNear = fogUniforms.uFogNear;
+        shader.uniforms.uFogFar = fogUniforms.uFogFar;
+        shader.vertexShader = shader.vertexShader.replace('#include <common>',
+            '#include <common>\nvarying float vWorldZ;');
+        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
+            '#include <begin_vertex>\n#ifdef USE_INSTANCING\nvWorldZ = (modelMatrix * instanceMatrix * vec4(position, 1.0)).z;\n#else\nvWorldZ = (modelMatrix * vec4(position, 1.0)).z;\n#endif');
+        shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+            '#include <common>\nvarying float vWorldZ;\nuniform vec3 uFogColor;\nuniform float uFogNear;\nuniform float uFogFar;');
+        shader.fragmentShader = shader.fragmentShader.replace('#include <dithering_fragment>',
+            '#include <dithering_fragment>\nfloat fogFactor = clamp((vWorldZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);\ngl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);');
+    };
+}
+
 // Caches
 const materials = {
     base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
@@ -29,6 +51,9 @@ const materials = {
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
+Object.keys(materials).forEach(name => {
+    if (name !== 'occlusion') applyFog(materials[name]);
+});
 
 const geometryCache = new Map();
 function getUnitBox() {
@@ -297,6 +322,7 @@ app.ports.renderThreeJS.subscribe(data => {
         const bgColor = parseHex(c.bg);
         staticScene.background.copy(bgColor);
         groundPlane.material.color.copy(bgColor);
+        fogUniforms.uFogColor.value.copy(bgColor);
     }
 
 
