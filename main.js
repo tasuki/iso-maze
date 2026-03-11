@@ -18,28 +18,53 @@ let groundPlane;
 // Z is up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
-const fogUniforms = {
-    uFogColor: { value: new THREE.Color(0x668899) },
-    uFogNear: { value: 0.0 },
-    uFogFar: { value: -0.2 },
-    uFogEnabled: { value: 0.0 }
-};
+class HeightFogEffect extends PP.Effect {
+    constructor() {
+        super('HeightFogEffect', `
+            uniform vec3 uFogColor;
+            uniform float uFogNear;
+            uniform float uFogFar;
+            uniform float uFogEnabled;
+            uniform mat4 invProj;
+            uniform mat4 invView;
 
-function applyFog(material) {
-    material.onBeforeCompile = (shader) => {
-        shader.uniforms.uFogColor = fogUniforms.uFogColor;
-        shader.uniforms.uFogNear = fogUniforms.uFogNear;
-        shader.uniforms.uFogFar = fogUniforms.uFogFar;
-        shader.uniforms.uFogEnabled = fogUniforms.uFogEnabled;
-        shader.vertexShader = shader.vertexShader.replace('#include <common>',
-            '#include <common>\nvarying float vWorldZ;');
-        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
-            '#include <begin_vertex>\n#ifdef USE_INSTANCING\nvWorldZ = (modelMatrix * instanceMatrix * vec4(position, 1.0)).z;\n#else\nvWorldZ = (modelMatrix * vec4(position, 1.0)).z;\n#endif');
-        shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
-            '#include <common>\nvarying float vWorldZ;\nuniform vec3 uFogColor;\nuniform float uFogNear;\nuniform float uFogFar;\nuniform float uFogEnabled;');
-        shader.fragmentShader = shader.fragmentShader.replace('#include <dithering_fragment>',
-            '#include <dithering_fragment>\nif (uFogEnabled > 0.5) {\nfloat fogFactor = clamp((vWorldZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);\ngl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);\n}');
-    };
+            void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
+                if (uFogEnabled < 0.5) {
+                    outputColor = inputColor;
+                    return;
+                }
+
+                vec4 ndc = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+                vec4 posView = invProj * ndc;
+                posView /= posView.w;
+                vec4 posWorld = invView * posView;
+
+                float fogFactor = clamp((posWorld.z - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
+                if (depth >= 1.0) fogFactor = 1.0;
+
+                vec3 finalColor = mix(inputColor.rgb, uFogColor, fogFactor);
+                if (posWorld.z < 0.0) {
+                    finalColor = max(finalColor, uFogColor);
+                }
+
+                outputColor = vec4(finalColor, inputColor.a);
+            }
+        `, {
+            uniforms: new Map([
+                ['uFogColor', new THREE.Uniform(new THREE.Color(0x668899))],
+                ['uFogNear', new THREE.Uniform(0.0)],
+                ['uFogFar', new THREE.Uniform(-0.2)],
+                ['uFogEnabled', new THREE.Uniform(1.0)],
+                ['invProj', new THREE.Uniform(new THREE.Matrix4())],
+                ['invView', new THREE.Uniform(new THREE.Matrix4())]
+            ])
+        });
+    }
+
+    update(renderer, inputBuffer, deltaTime) {
+        this.uniforms.get('invProj').value.copy(camera.projectionMatrixInverse);
+        this.uniforms.get('invView').value.copy(camera.matrixWorld);
+    }
 }
 
 // Caches
@@ -53,9 +78,6 @@ const materials = {
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
-Object.keys(materials).forEach(name => {
-    if (name !== 'occlusion') applyFog(materials[name]);
-});
 
 const geometryCache = new Map();
 function getUnitBox() {
@@ -214,6 +236,10 @@ renderer.autoClear = false;
 renderer.info.autoReset = false;
 container.appendChild(renderer.domElement);
 
+// Effects
+const staticFogEffect = new HeightFogEffect();
+const dynamicFogEffect = new HeightFogEffect();
+
 // Static pass
 const n8aoPass = new N8AOPostPass(
     staticScene, camera, container.clientWidth, container.clientHeight
@@ -227,24 +253,23 @@ staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFl
 staticComposer.autoRenderToScreen = false;
 staticComposer.addPass(new PP.RenderPass(staticScene, camera));
 staticComposer.addPass(n8aoPass);
-staticComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
+staticComposer.addPass(new PP.EffectPass(camera, staticFogEffect, new PP.SMAAEffect({
     preset: PP.SMAAPreset.HIGH,
 })));
 
 // Dynamic pass
 const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
 dynamicRenderPass.clear = false;
-const bloomEffectPass = new PP.EffectPass(camera, new PP.BloomEffect({
+const bloomEffect = new PP.BloomEffect({
     intensity: 5,
     luminanceThreshold: 1,
     mipmapBlur: true,
-}));
+});
 
 dynamicComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 dynamicComposer.addPass(new PP.RenderPass(backgroundScene, backgroundCamera));
 dynamicComposer.addPass(dynamicRenderPass);
-dynamicComposer.addPass(bloomEffectPass);
-dynamicComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
+dynamicComposer.addPass(new PP.EffectPass(camera, bloomEffect, dynamicFogEffect, new PP.SMAAEffect({
     preset: PP.SMAAPreset.LOW,
 })));
 
@@ -290,16 +315,19 @@ app.ports.renderThreeJS.subscribe(data => {
     const unitScale = 0.01;
     latestData = data;
     if (data.performance === 'potato') {
-        if (groundPlane.parent === staticScene || fogUniforms.uFogEnabled.value !== 1.0 || n8aoPass.enabled) {
+        if (groundPlane.parent === staticScene || staticFogEffect.uniforms.get('uFogEnabled').value !== 1.0 || n8aoPass.enabled) {
             staticScene.remove(groundPlane);
-            fogUniforms.uFogEnabled.value = 1.0;
+            staticFogEffect.uniforms.get('uFogEnabled').value = 1.0;
+            dynamicFogEffect.uniforms.get('uFogEnabled').value = 1.0;
             n8aoPass.enabled = false;
             needsStaticRender = true;
         }
     } else {
-        if (groundPlane.parent !== staticScene || fogUniforms.uFogEnabled.value !== 0.0 || !n8aoPass.enabled) {
+        if (groundPlane.parent !== staticScene || staticFogEffect.uniforms.get('uFogEnabled').value !== 1.0 || !n8aoPass.enabled) {
             staticScene.add(groundPlane);
-            fogUniforms.uFogEnabled.value = 0.0;
+            // Keep fog enabled even in normal modes, as it now resolves AO artifacts
+            staticFogEffect.uniforms.get('uFogEnabled').value = 1.0;
+            dynamicFogEffect.uniforms.get('uFogEnabled').value = 1.0;
             n8aoPass.enabled = true;
             needsStaticRender = true;
         }
@@ -328,7 +356,8 @@ app.ports.renderThreeJS.subscribe(data => {
         const bgColor = parseHex(c.bg);
         staticScene.background.copy(bgColor);
         groundPlane.material.color.copy(bgColor);
-        fogUniforms.uFogColor.value.copy(bgColor);
+        staticFogEffect.uniforms.get('uFogColor').value.copy(bgColor);
+        dynamicFogEffect.uniforms.get('uFogColor').value.copy(bgColor);
     }
 
 
