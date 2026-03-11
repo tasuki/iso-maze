@@ -5,6 +5,7 @@ import Animate
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
+import Set exposing (Set)
 
 
 port renderThreeJS : E.Value -> Cmd msg
@@ -110,7 +111,58 @@ sceneData model =
 
 staticRenderables : Model -> List Renderable
 staticRenderables model =
-    List.concatMap drawBlock (M.toBlocks model.maze)
+    let
+        mazeBlocks = List.concatMap drawBlock (M.toBlocks model.maze)
+        holes = findHoles model.maze
+        holeBlocks = List.map (\(x, y) -> BoxRenderable
+            { x = toFloat x * 10
+            , y = toFloat y * 10
+            , z = -10.5
+            , sizeX = 10
+            , sizeY = 10
+            , sizeZ = 1
+            , material = "base"
+            , rotationZ = 0
+            }) holes
+    in
+    mazeBlocks ++ holeBlocks
+
+
+findHoles : M.Maze -> List M.Pos2d
+findHoles maze =
+    let
+        limits = M.getLimits maze
+        minX = limits.minX - 1
+        maxX = limits.maxX + 1
+        minY = limits.minY - 1
+        maxY = limits.maxY + 1
+
+        isOutside ( x, y ) =
+            x < minX || x > maxX || y < minY || y > maxY
+
+        isBlocked ( x, y ) =
+            M.get ( x, y ) maze /= Nothing
+
+        neighbors ( x, y ) =
+            [ ( x + 1, y ), ( x - 1, y ), ( x, y + 1 ), ( x, y - 1 ) ]
+                |> List.filter (\p -> not (isOutside p) && not (isBlocked p))
+
+        floodFill stack visited =
+            case stack of
+                [] -> visited
+                current :: rest ->
+                    if Set.member current visited then
+                        floodFill rest visited
+                    else
+                        floodFill (neighbors current ++ rest) (Set.insert current visited)
+
+        reachableFromOutside = floodFill [ ( minX, minY ) ] Set.empty
+
+        allSpaces =
+            List.concatMap (\y -> List.map (\x -> ( x, y )) (List.range limits.minX limits.maxX)) (List.range limits.minY limits.maxY)
+    in
+    allSpaces
+        |> List.filter (\pos -> not (isBlocked pos) && not (Set.member pos reachableFromOutside))
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
