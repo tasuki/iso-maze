@@ -392,15 +392,15 @@ computeCameraConfig model =
         paddingFactor = 0.9
         viewSize = max h (w / aspect) / paddingFactor
     in
-    { viewSize = viewSize * 0.01
+    { viewSize = viewSize
     , focalPoint =
-        { x = focal3d.x * 0.01
-        , y = focal3d.y * 0.01
-        , z = focal3d.z * 0.01
+        { x = focal3d.x
+        , y = focal3d.y
+        , z = focal3d.z
         }
     , cameraPosition =
-        { x = cameraPosition3d.x * 0.01
-        , y = cameraPosition3d.y * 0.01
-        , z = cameraPosition3d.z * 0.01
+        { x = cameraPosition3d.x
+        , y = cameraPosition3d.y
+        , z = cameraPosition3d.z
         }
     }

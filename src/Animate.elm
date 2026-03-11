@@ -19,14 +19,13 @@ type alias AnimatorState =
     }
 
 fallDuration : Float
-fallDuration =
-    2.0
+fallDuration = 2
 
 initAnimator : Triple Vec3 -> AnimatorState
 initAnimator ( t1, t2, t3 ) =
     let
         initSphere target =
-            { current = { x = target.x, y = target.y, z = target.z + 30.0 }
+            { current = { x = target.x, y = target.y, z = target.z + 30 }
             , velocity = { x = 0, y = 0, z = 0 }
             }
     in
@@ -51,8 +50,8 @@ initAnimatorAt ( t1, t2, t3 ) =
 isAnimatorMoving : Triple Vec3 -> AnimatorState -> Bool
 isAnimatorMoving ( t1, t2, t3 ) state =
     let
-        velThreshold = 0.1
-        posThreshold = 0.01
+        velThreshold = 10
+        posThreshold = 1
         isSphereMoving target s =
             let
                 dv2 = s.velocity.x * s.velocity.x
@@ -76,7 +75,7 @@ updateAnimator totalDt ( t1, t2, t3 ) state =
         staggerDelay = 0.1
 
         ( bottomSphere, _, _ ) = state.spheres
-        isIntroFalling = bottomSphere.current.z > t1.z + 10.0
+        isIntroFalling = bottomSphere.current.z > t1.z + 10
 
         springK = if isIntroFalling then 40 else 600
         damping = if isIntroFalling then 15 else 30
