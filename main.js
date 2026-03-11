@@ -19,8 +19,8 @@ let groundPlane;
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 const fogUniforms = {
-    uFogColor: { value: new THREE.Color(0x668899) },
-    uFogNear: { value: -0 },
+    uFogColor: { value: new THREE.Vector3(0.4, 0.53, 0.6) },
+    uFogNear: { value: -10 },
     uFogFar: { value: -40 },
 };
 
@@ -31,15 +31,15 @@ const heightFogShader = `
     uniform mat4 projectionMatrixInverse;
     uniform mat4 viewMatrixInverse;
 
-    void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-        float depth = readDepth(uv);
+    void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
         vec4 clipPos = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
         vec4 viewPos = projectionMatrixInverse * clipPos;
         viewPos /= viewPos.w;
         vec4 worldPos = viewMatrixInverse * viewPos;
 
         float fogFactor = clamp((worldPos.z - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
-        outputColor = vec4(mix(inputColor.rgb, uFogColor, fogFactor), inputColor.a);
+        vec3 colorWithFog = mix(inputColor.rgb, uFogColor, fogFactor);
+        outputColor = vec4(max(colorWithFog, uFogColor), inputColor.a);
     }
 `;
 
@@ -56,11 +56,15 @@ class HeightFogEffect extends PP.Effect {
             ])
         });
         this.camera = camera;
+        this.fogUniforms = fogUniforms;
     }
 
     update(renderer, inputBuffer, deltaTime) {
         this.uniforms.get('projectionMatrixInverse').value.copy(this.camera.projectionMatrixInverse);
         this.uniforms.get('viewMatrixInverse').value.copy(this.camera.matrixWorld);
+        this.uniforms.get('uFogColor').value.copy(this.fogUniforms.uFogColor.value);
+        this.uniforms.get('uFogNear').value = this.fogUniforms.uFogNear.value;
+        this.uniforms.get('uFogFar').value = this.fogUniforms.uFogFar.value;
     }
 }
 
@@ -237,8 +241,8 @@ container.appendChild(renderer.domElement);
 const n8aoPass = new N8AOPostPass(
     staticScene, camera, container.clientWidth, container.clientHeight
 );
-n8aoPass.configuration.aoRadius = 30;
-n8aoPass.configuration.distanceFalloff = 1;
+n8aoPass.configuration.aoRadius = 15;
+n8aoPass.configuration.distanceFalloff = 50;
 n8aoPass.configuration.intensity = 5;
 n8aoPass.setQualityMode("High");
 
@@ -247,10 +251,7 @@ staticComposer.autoRenderToScreen = false;
 staticComposer.addPass(new PP.RenderPass(staticScene, camera));
 staticComposer.addPass(n8aoPass);
 heightFogEffect = new HeightFogEffect(camera, fogUniforms);
-staticComposer.addPass(new PP.EffectPass(camera,
-    heightFogEffect,
-    new PP.SMAAEffect({ preset: PP.SMAAPreset.HIGH })
-));
+staticComposer.addPass(new PP.EffectPass(camera, heightFogEffect, new PP.SMAAEffect({ preset: PP.SMAAPreset.HIGH })));
 
 // Dynamic pass
 const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
@@ -346,10 +347,7 @@ app.ports.renderThreeJS.subscribe(data => {
         const bgColor = parseHex(c.bg);
         staticScene.background.copy(bgColor);
         groundPlane.material.color.copy(bgColor);
-        fogUniforms.uFogColor.value.copy(bgColor);
-        if (heightFogEffect) {
-            heightFogEffect.uniforms.get('uFogColor').value.copy(bgColor);
-        }
+        fogUniforms.uFogColor.value.set(bgColor.r, bgColor.g, bgColor.b);
     }
 
 
@@ -359,15 +357,16 @@ app.ports.renderThreeJS.subscribe(data => {
             updateScene(latestData);
 
             if (needsStaticRender) {
+                backgroundQuad.material.map = null;
+                backgroundQuad.material.needsUpdate = true;
+
                 renderer.info.reset();
                 staticComposer.render();
                 lastStaticStats = {
                     calls: renderer.info.render.calls,
                     triangles: renderer.info.render.triangles
                 };
-                // a LLM says this is sometimes empty and needs to fall back to
-                // staticComposer.readBuffer.texture; haven't managed to replicate
-                backgroundQuad.material.map = staticComposer.getRenderer().getRenderTarget().texture;
+                backgroundQuad.material.map = staticComposer.outputBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
                 pendingStatic = null;
@@ -403,9 +402,12 @@ app.ports.renderThreeJS.subscribe(data => {
 });
 
 function parseHex(hex) {
-    return new THREE.Color(
-        '#' + hex.split('').map(char => char + char).join('')
-    );
+    if (hex.length === 3) {
+        return new THREE.Color(
+            '#' + hex.split('').map(char => char + char).join('')
+        );
+    }
+    return new THREE.Color('#' + hex);
 }
 
 function updateScene(data) {
