@@ -11,7 +11,7 @@ const app = Elm.Main.init({
     }
 });
 
-let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer;
+let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer, heightFogEffect;
 let backgroundScene, backgroundCamera, backgroundQuad;
 let groundPlane;
 
@@ -24,44 +24,44 @@ const fogUniforms = {
     uFogFar: { value: -40 },
 };
 
-function applyFog(material) {
-    material.onBeforeCompile = (shader) => {
-        shader.uniforms.uFogColor = fogUniforms.uFogColor;
-        shader.uniforms.uFogNear = fogUniforms.uFogNear;
-        shader.uniforms.uFogFar = fogUniforms.uFogFar;
+const heightFogShader = `
+    uniform vec3 uFogColor;
+    uniform float uFogNear;
+    uniform float uFogFar;
+    uniform mat4 projectionMatrixInverse;
+    uniform mat4 viewMatrixInverse;
 
-        shader.vertexShader = shader.vertexShader.replace(
-            '#include <common>',
-            `#include <common>
-            varying float vWorldZ;`
-        );
+    void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+        float depth = readDepth(uv);
+        vec4 clipPos = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+        vec4 viewPos = projectionMatrixInverse * clipPos;
+        viewPos /= viewPos.w;
+        vec4 worldPos = viewMatrixInverse * viewPos;
 
-        shader.vertexShader = shader.vertexShader.replace(
-            '#include <begin_vertex>',
-            `#include <begin_vertex>
-            #ifdef USE_INSTANCING
-                vWorldZ = (modelMatrix * instanceMatrix * vec4(position, 1.0)).z;
-            #else
-                vWorldZ = (modelMatrix * vec4(position, 1.0)).z;
-            #endif`
-        );
+        float fogFactor = clamp((worldPos.z - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
+        outputColor = vec4(mix(inputColor.rgb, uFogColor, fogFactor), inputColor.a);
+    }
+`;
 
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <common>',
-            `#include <common>
-            varying float vWorldZ;
-            uniform vec3 uFogColor;
-            uniform float uFogNear;
-            uniform float uFogFar;`
-        );
+class HeightFogEffect extends PP.Effect {
+    constructor(camera, fogUniforms) {
+        super('HeightFogEffect', heightFogShader, {
+            attributes: PP.EffectAttribute.DEPTH,
+            uniforms: new Map([
+                ['uFogColor', new THREE.Uniform(fogUniforms.uFogColor.value)],
+                ['uFogNear', new THREE.Uniform(fogUniforms.uFogNear.value)],
+                ['uFogFar', new THREE.Uniform(fogUniforms.uFogFar.value)],
+                ['projectionMatrixInverse', new THREE.Uniform(new THREE.Matrix4())],
+                ['viewMatrixInverse', new THREE.Uniform(new THREE.Matrix4())],
+            ])
+        });
+        this.camera = camera;
+    }
 
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <dithering_fragment>',
-            `#include <dithering_fragment>
-            float fogFactor = clamp((vWorldZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);`
-        );
-    };
+    update(renderer, inputBuffer, deltaTime) {
+        this.uniforms.get('projectionMatrixInverse').value.copy(this.camera.projectionMatrixInverse);
+        this.uniforms.get('viewMatrixInverse').value.copy(this.camera.matrixWorld);
+    }
 }
 
 // Caches
@@ -75,9 +75,6 @@ const materials = {
     focus: new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 4, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
 };
-Object.keys(materials).forEach(name => {
-    if (name !== 'occlusion') applyFog(materials[name]);
-});
 
 const geometryCache = new Map();
 function getUnitBox() {
@@ -249,9 +246,11 @@ staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFl
 staticComposer.autoRenderToScreen = false;
 staticComposer.addPass(new PP.RenderPass(staticScene, camera));
 staticComposer.addPass(n8aoPass);
-staticComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
-    preset: PP.SMAAPreset.HIGH,
-})));
+heightFogEffect = new HeightFogEffect(camera, fogUniforms);
+staticComposer.addPass(new PP.EffectPass(camera,
+    heightFogEffect,
+    new PP.SMAAEffect({ preset: PP.SMAAPreset.HIGH })
+));
 
 // Dynamic pass
 const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
@@ -348,6 +347,9 @@ app.ports.renderThreeJS.subscribe(data => {
         staticScene.background.copy(bgColor);
         groundPlane.material.color.copy(bgColor);
         fogUniforms.uFogColor.value.copy(bgColor);
+        if (heightFogEffect) {
+            heightFogEffect.uniforms.get('uFogColor').value.copy(bgColor);
+        }
     }
 
 
