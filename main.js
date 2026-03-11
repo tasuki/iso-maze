@@ -13,6 +13,9 @@ const app = Elm.Main.init({
 
 let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer;
 let backgroundScene, backgroundCamera, backgroundQuad;
+let blitScene, blitQuad;
+let staticStableRenderTarget;
+let bloomPass, smaaPassStatic, smaaPassDynamic;
 
 // Z is up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -131,12 +134,14 @@ class HeightFogEffect extends PP.Effect {
                 viewPos /= viewPos.w;
                 vec4 worldPos = uViewMatrixInverse * viewPos;
 
-                float f = smoothstep(uFogFar, uFogNear, worldPos.z);
-                vec3 finalColor = mix(uFogColor, inputColor.rgb, f);
-                if (worldPos.z < uFogNear) {
-                    finalColor = max(finalColor, uFogColor);
-                }
-                outputColor = vec4(finalColor, inputColor.a);
+                float fogFactor = smoothstep(uFogFar, uFogNear, worldPos.z);
+                if (depth >= 1.0) fogFactor = 0.0;
+
+                vec3 colorWithFog = mix(uFogColor, inputColor.rgb, fogFactor);
+
+                // Ensure we don't go darker than the fog color at the bottom
+                // to avoid AO artifacts against the background.
+                outputColor = vec4(max(colorWithFog, uFogColor), inputColor.a);
             }
         `, {
             attributes: PP.EffectAttribute.DEPTH,
@@ -152,6 +157,7 @@ class HeightFogEffect extends PP.Effect {
     }
 
     update(renderer, inputBuffer, deltaTime) {
+        this.camera.updateMatrixWorld();
         this.uniforms.get('uProjectionMatrixInverse').value.copy(this.camera.projectionMatrixInverse);
         this.uniforms.get('uViewMatrixInverse').value.copy(this.camera.matrixWorld);
     }
@@ -186,15 +192,23 @@ const staticBatchManager = new BatchManager(staticScene, materials);
 const occlusionBatchManager = new BatchManager(dynamicScene, { occlusion: materials.occlusion }, -10000);
 const dynamicBatchManager = new BatchManager(dynamicScene, materials);
 
-// Background scene
+// Background & Blit setup
+backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+backgroundCamera.position.z = 1;
+
 backgroundScene = new THREE.Scene();
-backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 20);
-backgroundCamera.position.z = 5;
 backgroundQuad = new THREE.Mesh(
     new THREE.PlaneGeometry(2, 2),
     new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false })
 );
 backgroundScene.add(backgroundQuad);
+
+blitScene = new THREE.Scene();
+blitQuad = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false })
+);
+blitScene.add(blitQuad);
 
 // Camera
 let lastViewSize = 1.4;
@@ -221,6 +235,9 @@ renderer.autoClear = false;
 renderer.info.autoReset = false;
 container.appendChild(renderer.domElement);
 
+// Stability Target
+staticStableRenderTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+
 // Static pass
 const n8aoPass = new N8AOPostPass(
     staticScene, camera, container.clientWidth, container.clientHeight
@@ -235,10 +252,10 @@ staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFl
 staticComposer.autoRenderToScreen = false;
 staticComposer.addPass(new PP.RenderPass(staticScene, camera));
 staticComposer.addPass(n8aoPass);
-heightFogEffect = new HeightFogEffect(camera, { color: defaultBg, near: -10, far: -40 });
-staticComposer.addPass(new PP.EffectPass(camera, heightFogEffect, new PP.SMAAEffect({
-    preset: PP.SMAAPreset.HIGH,
-})));
+heightFogEffect = new HeightFogEffect(camera, { color: new THREE.Color(0x000000), near: -10, far: -40 });
+staticComposer.addPass(new PP.EffectPass(camera, heightFogEffect));
+smaaPassStatic = new PP.EffectPass(camera, new PP.SMAAEffect());
+staticComposer.addPass(smaaPassStatic);
 
 // Dynamic pass
 const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
@@ -247,25 +264,29 @@ dynamicRenderPass.clear = false;
 dynamicComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 dynamicComposer.addPass(new PP.RenderPass(backgroundScene, backgroundCamera));
 dynamicComposer.addPass(dynamicRenderPass);
-dynamicComposer.addPass(new PP.EffectPass(camera,
+
+bloomPass = new PP.EffectPass(camera,
     new PP.BloomEffect({
         intensity: 5,
         luminanceThreshold: 1,
         mipmapBlur: true,
-    }),
-    new PP.SMAAEffect({
-        preset: PP.SMAAPreset.LOW,
     })
-));
+);
+dynamicComposer.addPass(bloomPass);
+
+smaaPassDynamic = new PP.EffectPass(camera, new PP.SMAAEffect());
+dynamicComposer.addPass(smaaPassDynamic);
 
 // Updates and Listeners
 function updateSize() {
     const w = container.clientWidth;
     const h = container.clientHeight;
-    renderer.setPixelRatio(getDpr());
+    const dpr = getDpr();
+    renderer.setPixelRatio(dpr);
     renderer.setSize(w, h);
     dynamicComposer.setSize(w, h);
     staticComposer.setSize(w, h);
+    staticStableRenderTarget.setSize(Math.floor(w * dpr), Math.floor(h * dpr));
 }
 updateSize();
 
@@ -306,6 +327,28 @@ app.ports.renderThreeJS.subscribe(data => {
 
     if (data.staticUpdate) {
         const c = data.config;
+        if (heightFogEffect) {
+            heightFogEffect.uniforms.get('uFogColor').value.copy(parseHex(c.bg));
+        }
+
+        if (n8aoPass) {
+            if (data.performance === 'potato') {
+                n8aoPass.enabled = false;
+            } else {
+                n8aoPass.enabled = true;
+                n8aoPass.setQualityMode(data.performance === 'rocket' ? "Ultra" : "High");
+            }
+        }
+        if (bloomPass) {
+            bloomPass.enabled = data.performance !== 'potato';
+        }
+        if (smaaPassStatic) {
+            smaaPassStatic.enabled = data.performance !== 'potato';
+        }
+        if (smaaPassDynamic) {
+            smaaPassDynamic.enabled = data.performance !== 'potato';
+        }
+
         [staticLights, dynamicLights].forEach(ls => {
             const intensityScale = 10000;
             ls.left.color.copy(parseHex(c.left.color));
@@ -322,7 +365,6 @@ app.ports.renderThreeJS.subscribe(data => {
         });
         const bgColor = parseHex(c.bg);
         staticScene.background.copy(bgColor);
-        if (heightFogEffect) heightFogEffect.uniforms.get('uFogColor').value.copy(bgColor);
     }
 
 
@@ -332,23 +374,41 @@ app.ports.renderThreeJS.subscribe(data => {
             updateScene(latestData);
 
             if (needsStaticRender) {
+                // Completely detach all textures before static pass
+                backgroundQuad.material.map = null;
+                blitQuad.material.map = null;
+
                 renderer.info.reset();
                 staticComposer.render();
+
                 lastStaticStats = {
                     calls: renderer.info.render.calls,
                     triangles: renderer.info.render.triangles
                 };
-                // a LLM says this is sometimes empty and needs to fall back to
-                // staticComposer.readBuffer.texture; haven't managed to replicate
-                backgroundQuad.material.map = staticComposer.getRenderer().getRenderTarget().texture;
-                backgroundQuad.material.needsUpdate = true;
+
+                // Safe blit to staticStableRenderTarget
+                blitQuad.material.map = staticComposer.outputBuffer.texture;
+                renderer.setRenderTarget(staticStableRenderTarget);
+                renderer.clear();
+                renderer.render(blitScene, backgroundCamera);
+                renderer.setRenderTarget(null);
+
+                // Detach immediately to prevent feedback loop
+                blitQuad.material.map = null;
+
                 needsStaticRender = false;
                 pendingStatic = null;
             }
 
+            // Use the stable texture for background
+            backgroundQuad.material.map = staticStableRenderTarget.texture;
+
             renderer.info.reset();
-            renderer.setRenderTarget(null);
             dynamicComposer.render();
+
+            // Detach to be safe for next frame
+            backgroundQuad.material.map = null;
+
             const dynamicStats = {
                 calls: renderer.info.render.calls,
                 triangles: renderer.info.render.triangles
@@ -387,7 +447,6 @@ function updateScene(data) {
         staticBatchManager.reset();
         occlusionBatchManager.reset();
 
-        // Sorting helps with render order even within batches if using transparency
         const sortedStatic = [...staticToUse].sort((a, b) => {
             return (a.z - a.x - a.y) - (b.z - b.x - b.y);
         });
