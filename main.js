@@ -313,6 +313,9 @@ app.ports.renderThreeJS.subscribe(data => {
                     calls: renderer.info.render.calls,
                     triangles: renderer.info.render.triangles
                 };
+                // Use a ternary to capture the texture from either the current render target or the read buffer.
+                // This is necessary because some passes (like N8AOPostPass) may leave the result in the renderer's
+                // target, while others use the composer's internal buffers.
                 backgroundQuad.material.map = staticComposer.getRenderer().getRenderTarget() ? staticComposer.getRenderer().getRenderTarget().texture : staticComposer.readBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
