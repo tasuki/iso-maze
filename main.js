@@ -142,7 +142,7 @@ groundPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(3000, 3000),
     new THREE.MeshLambertMaterial({ color: defaultBg })
 );
-groundPlane.position.z = -10;
+groundPlane.position.z = -14;
 
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();

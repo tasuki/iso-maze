@@ -160,12 +160,13 @@ encodeVec3 v =
 
 drawBase : String -> Float -> Float -> Float -> Box
 drawBase material x y z =
+    let bottom = 7 in
     { x = x * 10
     , y = y * 10
-    , z = z * 5 - 5
+    , z = z * 5 - bottom
     , sizeX = 10
     , sizeY = 10
-    , sizeZ = z * 10 + 10
+    , sizeZ = z * 10 + 2 * bottom
     , material = material
     , rotationZ = 0
     }
