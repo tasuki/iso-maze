@@ -81,19 +81,19 @@ class BatchManager {
         }
     }
 
-    add(r, unitScale) {
+    add(r) {
         const batch = this.getBatch(r.type, r.material);
         if (batch.count >= MAX_INSTANCES) return;
 
-        this.tempPosition.set(r.x * unitScale, r.y * unitScale, r.z * unitScale);
+        this.tempPosition.set(r.x, r.y, r.z);
 
         if (r.type === 'box') {
             const rot = (r.rotationZ || 0) * Math.PI / 180;
             this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
-            this.tempScale.set(r.sizeX * unitScale, r.sizeY * unitScale, r.sizeZ * unitScale);
+            this.tempScale.set(r.sizeX, r.sizeY, r.sizeZ);
         } else {
             this.tempQuaternion.set(0, 0, 0, 1);
-            this.tempScale.set(r.radius * unitScale, r.radius * unitScale, r.radius * unitScale);
+            this.tempScale.set(r.radius, r.radius, r.radius);
         }
 
         this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
@@ -139,10 +139,10 @@ const staticLights = createLights();
 addLightsToScene(staticScene, staticLights);
 
 groundPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(30, 30),
+    new THREE.PlaneGeometry(3000, 3000),
     new THREE.MeshLambertMaterial({ color: defaultBg })
 );
-groundPlane.position.z = -0.1;
+groundPlane.position.z = -10.0;
 
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
@@ -175,7 +175,7 @@ function updateCamera() {
     camera.updateProjectionMatrix();
 }
 container = document.getElementById('three-container');
-camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 20);
+camera = new THREE.OrthographicCamera(0, 0, 0, 0, 1, 2000);
 camera.up.set(0, 0, 1);
 
 // Renderer
@@ -191,8 +191,8 @@ container.appendChild(renderer.domElement);
 const n8aoPass = new N8AOPostPass(
     staticScene, camera, container.clientWidth, container.clientHeight
 );
-n8aoPass.configuration.aoRadius = 0.5;
-n8aoPass.configuration.distanceFalloff = 1.5;
+n8aoPass.configuration.aoRadius = 50.0;
+n8aoPass.configuration.distanceFalloff = 150.0;
 n8aoPass.configuration.intensity = 6.0;
 n8aoPass.setQualityMode("High");
 
@@ -261,7 +261,6 @@ app.ports.savePerformance.subscribe(perf => {
 });
 
 app.ports.renderThreeJS.subscribe(data => {
-    const unitScale = 0.01;
     latestData = data;
     if (data.performance === 'potato') {
         if (groundPlane.parent === staticScene) {
@@ -283,17 +282,18 @@ app.ports.renderThreeJS.subscribe(data => {
     if (data.staticUpdate) {
         const c = data.config;
         [staticLights, dynamicLights].forEach(ls => {
+            const intensityScale = 10000;
             ls.left.color.copy(parseHex(c.left.color));
-            ls.left.intensity = c.left.intensity;
-            ls.left.position.set(c.left.position.x * unitScale, c.left.position.y * unitScale, c.left.position.z * unitScale);
+            ls.left.intensity = c.left.intensity * intensityScale;
+            ls.left.position.set(c.left.position.x, c.left.position.y, c.left.position.z);
 
             ls.right.color.copy(parseHex(c.right.color));
-            ls.right.intensity = c.right.intensity;
-            ls.right.position.set(c.right.position.x * unitScale, c.right.position.y * unitScale, c.right.position.z * unitScale);
+            ls.right.intensity = c.right.intensity * intensityScale;
+            ls.right.position.set(c.right.position.x, c.right.position.y, c.right.position.z);
 
             ls.above.color.copy(parseHex(c.above.color));
-            ls.above.intensity = c.above.intensity;
-            ls.above.position.set(c.above.position.x * unitScale, c.above.position.y * unitScale, c.above.position.z * unitScale);
+            ls.above.intensity = c.above.intensity * intensityScale;
+            ls.above.position.set(c.above.position.x, c.above.position.y, c.above.position.z);
         });
         const bgColor = parseHex(c.bg);
         staticScene.background.copy(bgColor);
@@ -304,7 +304,7 @@ app.ports.renderThreeJS.subscribe(data => {
     if (!rafId) {
         rafId = requestAnimationFrame(() => {
             const t0 = performance.now();
-            updateScene(latestData, unitScale);
+            updateScene(latestData);
 
             if (needsStaticRender) {
                 renderer.info.reset();
@@ -315,7 +315,9 @@ app.ports.renderThreeJS.subscribe(data => {
                 };
                 // a LLM says this is sometimes empty and needs to fall back to
                 // staticComposer.readBuffer.texture; haven't managed to replicate
-                backgroundQuad.material.map = staticComposer.getRenderer().getRenderTarget().texture;
+                backgroundQuad.material.map = staticComposer.getRenderer().getRenderTarget() ?
+                    staticComposer.getRenderer().getRenderTarget().texture :
+                    staticComposer.readBuffer.texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
                 pendingStatic = null;
@@ -356,7 +358,7 @@ function parseHex(hex) {
     );
 }
 
-function updateScene(data, unitScale) {
+function updateScene(data) {
     const staticToUse = pendingStatic || (data.staticUpdate ? data.static : null);
     if (staticToUse) {
         staticBatchManager.reset();
@@ -368,8 +370,8 @@ function updateScene(data, unitScale) {
         });
 
         sortedStatic.forEach(r => {
-            staticBatchManager.add(r, unitScale);
-            occlusionBatchManager.add({...r, material: 'occlusion'}, unitScale);
+            staticBatchManager.add(r);
+            occlusionBatchManager.add({...r, material: 'occlusion'});
         });
 
         staticBatchManager.update();
@@ -381,7 +383,7 @@ function updateScene(data, unitScale) {
         return (a.z - a.x - a.y) - (b.z - b.x - b.y);
     });
     sortedDynamic.forEach(r => {
-        dynamicBatchManager.add(r, unitScale);
+        dynamicBatchManager.add(r);
     });
     dynamicBatchManager.update();
 

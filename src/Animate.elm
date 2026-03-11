@@ -51,8 +51,8 @@ initAnimatorAt ( t1, t2, t3 ) =
 isAnimatorMoving : Triple Vec3 -> AnimatorState -> Bool
 isAnimatorMoving ( t1, t2, t3 ) state =
     let
-        velThreshold = 0.1
-        posThreshold = 0.01
+        velThreshold = 10.0
+        posThreshold = 1.0
         isSphereMoving target s =
             let
                 dv2 = s.velocity.x * s.velocity.x
