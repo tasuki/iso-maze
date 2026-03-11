@@ -162,10 +162,10 @@ drawBase : String -> Float -> Float -> Float -> Box
 drawBase material x y z =
     { x = x * 10
     , y = y * 10
-    , z = z * 5 - 5
+    , z = z * 5 - 20.5
     , sizeX = 10
     , sizeY = 10
-    , sizeZ = z * 10 + 10
+    , sizeZ = z * 10 + 41
     , material = material
     , rotationZ = 0
     }

@@ -13,7 +13,6 @@ const app = Elm.Main.init({
 
 let staticScene, dynamicScene, camera, renderer, container, dynamicComposer, staticComposer;
 let backgroundScene, backgroundCamera, backgroundQuad;
-let groundPlane;
 
 // Z is up
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -117,6 +116,47 @@ class BatchManager {
     }
 }
 
+class HeightFogEffect extends PP.Effect {
+    constructor(camera, { color = new THREE.Color(0x000000), near = -10, far = -40 } = {}) {
+        super('HeightFogEffect', `
+            uniform vec3 uFogColor;
+            uniform float uFogNear;
+            uniform float uFogFar;
+            uniform mat4 uProjectionMatrixInverse;
+            uniform mat4 uViewMatrixInverse;
+
+            void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
+                vec4 ndc = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+                vec4 viewPos = uProjectionMatrixInverse * ndc;
+                viewPos /= viewPos.w;
+                vec4 worldPos = uViewMatrixInverse * viewPos;
+
+                float f = smoothstep(uFogFar, uFogNear, worldPos.z);
+                vec3 finalColor = mix(uFogColor, inputColor.rgb, f);
+                if (worldPos.z < uFogNear) {
+                    finalColor = max(finalColor, uFogColor);
+                }
+                outputColor = vec4(finalColor, inputColor.a);
+            }
+        `, {
+            attributes: PP.EffectAttribute.DEPTH,
+            uniforms: new Map([
+                ['uFogColor', new THREE.Uniform(color)],
+                ['uFogNear', new THREE.Uniform(near)],
+                ['uFogFar', new THREE.Uniform(far)],
+                ['uProjectionMatrixInverse', new THREE.Uniform(new THREE.Matrix4())],
+                ['uViewMatrixInverse', new THREE.Uniform(new THREE.Matrix4())]
+            ])
+        });
+        this.camera = camera;
+    }
+
+    update(renderer, inputBuffer, deltaTime) {
+        this.uniforms.get('uProjectionMatrixInverse').value.copy(this.camera.projectionMatrixInverse);
+        this.uniforms.get('uViewMatrixInverse').value.copy(this.camera.matrixWorld);
+    }
+}
+
 // Scenes & Lights
 function createLights() {
     return {
@@ -137,12 +177,6 @@ const defaultBg = parseHex('689');
 staticScene.background = defaultBg;
 const staticLights = createLights();
 addLightsToScene(staticScene, staticLights);
-
-groundPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(3000, 3000),
-    new THREE.MeshLambertMaterial({ color: defaultBg })
-);
-groundPlane.position.z = -10;
 
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
@@ -196,11 +230,13 @@ n8aoPass.configuration.distanceFalloff = 1;
 n8aoPass.configuration.intensity = 5;
 n8aoPass.setQualityMode("High");
 
+let heightFogEffect;
 staticComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 staticComposer.autoRenderToScreen = false;
 staticComposer.addPass(new PP.RenderPass(staticScene, camera));
 staticComposer.addPass(n8aoPass);
-staticComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
+heightFogEffect = new HeightFogEffect(camera, { color: defaultBg, near: -10, far: -40 });
+staticComposer.addPass(new PP.EffectPass(camera, heightFogEffect, new PP.SMAAEffect({
     preset: PP.SMAAPreset.HIGH,
 })));
 
@@ -262,17 +298,6 @@ app.ports.savePerformance.subscribe(perf => {
 
 app.ports.renderThreeJS.subscribe(data => {
     latestData = data;
-    if (data.performance === 'potato') {
-        if (groundPlane.parent === staticScene) {
-            staticScene.remove(groundPlane);
-            needsStaticRender = true;
-        }
-    } else {
-        if (groundPlane.parent !== staticScene) {
-            staticScene.add(groundPlane);
-            needsStaticRender = true;
-        }
-    }
 
     if (data.staticUpdate && data.static) {
         needsStaticRender = true;
@@ -297,7 +322,7 @@ app.ports.renderThreeJS.subscribe(data => {
         });
         const bgColor = parseHex(c.bg);
         staticScene.background.copy(bgColor);
-        groundPlane.material.color.copy(bgColor);
+        if (heightFogEffect) heightFogEffect.uniforms.get('uFogColor').value.copy(bgColor);
     }
 
 
