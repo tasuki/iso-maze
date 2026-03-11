@@ -21,7 +21,8 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 const fogUniforms = {
     uFogColor: { value: new THREE.Color(0x668899) },
     uFogNear: { value: 0.0 },
-    uFogFar: { value: -0.2 }
+    uFogFar: { value: -0.2 },
+    uFogEnabled: { value: 0.0 }
 };
 
 function applyFog(material) {
@@ -29,14 +30,15 @@ function applyFog(material) {
         shader.uniforms.uFogColor = fogUniforms.uFogColor;
         shader.uniforms.uFogNear = fogUniforms.uFogNear;
         shader.uniforms.uFogFar = fogUniforms.uFogFar;
+        shader.uniforms.uFogEnabled = fogUniforms.uFogEnabled;
         shader.vertexShader = shader.vertexShader.replace('#include <common>',
             '#include <common>\nvarying float vWorldZ;');
         shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
             '#include <begin_vertex>\n#ifdef USE_INSTANCING\nvWorldZ = (modelMatrix * instanceMatrix * vec4(position, 1.0)).z;\n#else\nvWorldZ = (modelMatrix * vec4(position, 1.0)).z;\n#endif');
         shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
-            '#include <common>\nvarying float vWorldZ;\nuniform vec3 uFogColor;\nuniform float uFogNear;\nuniform float uFogFar;');
+            '#include <common>\nvarying float vWorldZ;\nuniform vec3 uFogColor;\nuniform float uFogNear;\nuniform float uFogFar;\nuniform float uFogEnabled;');
         shader.fragmentShader = shader.fragmentShader.replace('#include <dithering_fragment>',
-            '#include <dithering_fragment>\nfloat fogFactor = clamp((vWorldZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);\ngl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);');
+            '#include <dithering_fragment>\nif (uFogEnabled > 0.5) {\nfloat fogFactor = clamp((vWorldZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);\ngl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);\n}');
     };
 }
 
@@ -165,7 +167,7 @@ addLightsToScene(staticScene, staticLights);
 
 groundPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(30, 30),
-    new THREE.MeshLambertMaterial({ color: defaultBg })
+    new THREE.MeshBasicMaterial({ color: defaultBg })
 );
 groundPlane.position.z = -0.1;
 
@@ -288,13 +290,17 @@ app.ports.renderThreeJS.subscribe(data => {
     const unitScale = 0.01;
     latestData = data;
     if (data.performance === 'potato') {
-        if (groundPlane.parent === staticScene) {
+        if (groundPlane.parent === staticScene || fogUniforms.uFogEnabled.value !== 1.0 || n8aoPass.enabled) {
             staticScene.remove(groundPlane);
+            fogUniforms.uFogEnabled.value = 1.0;
+            n8aoPass.enabled = false;
             needsStaticRender = true;
         }
     } else {
-        if (groundPlane.parent !== staticScene) {
+        if (groundPlane.parent !== staticScene || fogUniforms.uFogEnabled.value !== 0.0 || !n8aoPass.enabled) {
             staticScene.add(groundPlane);
+            fogUniforms.uFogEnabled.value = 0.0;
+            n8aoPass.enabled = true;
             needsStaticRender = true;
         }
     }
