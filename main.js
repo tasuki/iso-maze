@@ -207,19 +207,20 @@ staticComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
 // Dynamic pass
 const dynamicRenderPass = new PP.RenderPass(dynamicScene, camera);
 dynamicRenderPass.clear = false;
-const bloomEffectPass = new PP.EffectPass(camera, new PP.BloomEffect({
-    intensity: 5,
-    luminanceThreshold: 1,
-    mipmapBlur: true,
-}));
 
 dynamicComposer = new PP.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
 dynamicComposer.addPass(new PP.RenderPass(backgroundScene, backgroundCamera));
 dynamicComposer.addPass(dynamicRenderPass);
-dynamicComposer.addPass(bloomEffectPass);
-dynamicComposer.addPass(new PP.EffectPass(camera, new PP.SMAAEffect({
-    preset: PP.SMAAPreset.LOW,
-})));
+dynamicComposer.addPass(new PP.EffectPass(camera,
+    new PP.BloomEffect({
+        intensity: 5,
+        luminanceThreshold: 1,
+        mipmapBlur: true,
+    }),
+    new PP.SMAAEffect({
+        preset: PP.SMAAPreset.LOW,
+    })
+));
 
 // Updates and Listeners
 function updateSize() {
@@ -312,9 +313,9 @@ app.ports.renderThreeJS.subscribe(data => {
                     calls: renderer.info.render.calls,
                     triangles: renderer.info.render.triangles
                 };
-                // weird parity of passes, watch out for inputBuffer vs outputBuffer
-                // llms say set needsSwap, but no that doesn't help
-                backgroundQuad.material.map = staticComposer.inputBuffer.texture;
+                // a LLM says this is sometimes empty and needs to fall back to
+                // staticComposer.readBuffer.texture; haven't managed to replicate
+                backgroundQuad.material.map = staticComposer.getRenderer().getRenderTarget().texture;
                 backgroundQuad.material.needsUpdate = true;
                 needsStaticRender = false;
                 pendingStatic = null;
