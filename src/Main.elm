@@ -820,11 +820,11 @@ viewAnalyzer a =
         , H.br [] []
         , H.text ("Reachable: " ++ (if a.reachable then "✔️" else "❌"))
         , H.br [] []
-        , H.text ("Total Cells: " ++ String.fromInt a.totalCells)
-        , H.br [] []
-        , H.text ("Greenery: " ++ String.fromInt a.greenery)
+        , H.text ("Occluding: " ++ String.fromInt (Set.size a.occluding))
         , H.br [] []
         , H.text ("Unreachable: " ++ String.fromInt a.unreachable)
+        , H.br [] []
+        , H.text ("Total Cells: " ++ String.fromInt a.totalCells)
         , H.br [] []
         , H.text ("Shortest Path: " ++ (a.shortestPathLength |> Maybe.map String.fromInt |> Maybe.withDefault "N/A"))
         , H.br [] []
@@ -833,6 +833,8 @@ viewAnalyzer a =
         , H.text ("River Factor: " ++ formatFloat a.riverFactor)
         , H.br [] []
         , H.text ("Loop Count: " ++ String.fromInt a.loopCount)
+        , H.br [] []
+        , H.text ("Greenery: " ++ String.fromInt a.greenery)
         ]
 
 
