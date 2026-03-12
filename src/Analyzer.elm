@@ -14,6 +14,7 @@ type alias Analysis =
     , solutionDensity : Float
     , riverFactor : Float
     , loopCount : Int
+    , occluding : List M.Pos2d
     }
 
 
@@ -84,6 +85,35 @@ analyze maze =
             else toFloat v / toFloat (junctions + deadEnds)
 
         loopCount = e - v + c
+
+        limits = M.getLimits maze
+        allPos = M.mapCoords (List.range limits.minY limits.maxY) (List.range limits.minX limits.maxX) (\y x -> ( x, y ))
+
+        isOccluding ( x, y ) =
+            case M.get ( x, y ) maze of
+                Nothing -> False
+                Just block ->
+                    let
+                        h = M.positionZ (M.blockPosition block)
+                        check k =
+                            let
+                                targetPos = ( x + k, y + k )
+                            in
+                            if x + k > limits.maxX || y + k > limits.maxY then False
+                            else
+                                case M.get targetPos maze of
+                                    Nothing -> check (k + 1)
+                                    Just targetBlock ->
+                                        let
+                                            hk = M.positionZ (M.blockPosition targetBlock)
+                                        in
+                                        if hk < h - k then True
+                                        else if h - k <= 0 then False
+                                        else check (k + 1)
+                    in
+                    check 1
+
+        occluding = allPos |> List.filter isOccluding
     in
     { reachable = isReachable
     , totalCells = v
@@ -99,6 +129,7 @@ analyze maze =
                 0
     , riverFactor = riverFactor
     , loopCount = loopCount
+    , occluding = occluding
     }
 
 

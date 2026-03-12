@@ -65,10 +65,10 @@ suite =
             , test "Path through bridge" <| \_ -> (analyze bridgeMaze).shortestPathLength |> Expect.equal (Just 2)
             ]
         , describe "Occluded Maze"
-            [ test "Reachable" <| \_ -> (analyze occludedMaze).occluding |> Expect.equal
-                [ ( 3, 0 )
-                , ( 5, 1 )
-                , ( 5, 3 )
+            [ test "Occluding" <| \_ -> (analyze occludedMaze).occluding |> Expect.equal
+                [ ( 2, 0 )
+                , ( 4, 1 )
+                , ( 4, 3 )
                 ]
             ]
         ]
