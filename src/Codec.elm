@@ -55,7 +55,7 @@ encodeMazeBlock block =
         M.GreeneryBlock z -> "g" ++ charFromIndex z
 
 removeSpaces : String -> String
-removeSpaces = String.filter (\c -> c /= ' ')
+removeSpaces = String.words >> String.join ""
 
 decode : String -> Maybe M.Maze
 decode str =

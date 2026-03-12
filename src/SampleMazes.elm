@@ -122,28 +122,30 @@ assymetric =
 empty = "sz:1,1;st:0,0;end:0,0;mz:o0"
     |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
-ziggurat = "sz:9,9;st:3,3;end:7,7;mz:"
-    ++ "x x o2o2o3o3o3o3o3"
-    ++ "x x o2z3o3z4z5o5o3"
-    ++ "x o1s2o1o3o3o3s5o3"
-    ++ "o0o1o1o1z2o2o3s4o3"
-    ++ "o0o0s1o1o1s2o3o3o3"
-    ++ "x o0o0o0o1o1o1s3o2"
-    ++ "x x x o0z1o1z2o2o2"
-    ++ "x x x o0o0o1o1x x "
-    ++ "x x x x o0o0x x x "
+ziggurat = """sz:9,9;st:3,3;end:7,7;mz:
+    x x o2o2o3o3o3o3o3
+    x x o2z3o3z4z5o5o3
+    x o1s2o1o3o3o3s5o3
+    o0o1o1o1z2o2o3s4o3
+    o0o0s1o1o1s2o3o3o3
+    x o0o0o0o1o1o1s3o2
+    x x x o0z1o1z2o2o2
+    x x x o0o0o1o1x x
+    x x x x o0o0x x x
+    """
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
-ziggurat2 = "sz:11,11;st:4,4;end:8,8;mz:"
-    ++ "o0o0o1o2o3o3x x x x x "
-    ++ "S1o0o1o2o2o3o3o3o3o3x "
-    ++ "o1z2l2o2z3o3z4z5o5o3x "
-    ++ "o1o1o1s2o1o3o3o3s5o3x "
-    ++ "x o0o1o1o1z2o2o3s4o3x "
-    ++ "x o0o0s1o1o1s2o3o3o3o3"
-    ++ "x x o0o0o0o1o1o1s3o2o3"
-    ++ "x x x x o0z1o1z2o2o2o2"
-    ++ "x x x x o0o0o1o1l2o1o1"
-    ++ "x x x x x o0o0o1s2o0o0"
-    ++ "x x x x x x x o1o1Z1o0"
+ziggurat2 = """sz:11,11;st:4,4;end:8,8;mz:
+    o0o0o1o2o3o3x x x x x
+    S1o0o1o2o2o3o3o3o3o3x
+    o1z2l2o2z3o3z4z5o5o3x
+    o1o1o1s2o1o3o3o3s5o3x
+    x o0o1o1o1z2o2o3s4o3x
+    x o0o0s1o1o1s2o3o3o3o3
+    x x o0o0o0o1o1o1s3o2o3
+    x x x x o0z1o1z2o2o2o2
+    x x x x o0o0o1o1l2o1o1
+    x x x x x o0o0o1s2o0o0
+    x x x x x x x o1o1Z1o0
+    """
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
