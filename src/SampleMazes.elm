@@ -69,7 +69,8 @@ roundabout = """sz:9,9;st:3,3;end:7,7;mz:
     x x o0o0o1o1o2s3o3
     x x x o0z1o1z2o2o2
     x x x x o0o0o1o1x
-    x x x x x o0o0x x """
+    x x x x x o0o0x x
+    """
     |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
 
@@ -107,7 +108,8 @@ assymetric = """sz:2,6;st:0,0;end:1,5;mz:
     o0x
     o0x
     o0x
-    o0x """
+    o0x
+    """
     |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
 
@@ -125,7 +127,8 @@ ziggurat = """sz:9,9;st:3,3;end:7,7;mz:
     x o0o0o0o1o1o1s3o2
     x x x o0z1o1z2o2o2
     x x x o0o0o1o1x x
-    x x x x o0o0x x x """
+    x x x x o0o0x x x
+    """
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
 ziggurat2 = """sz:11,11;st:4,4;end:8,8;mz:
@@ -139,5 +142,6 @@ ziggurat2 = """sz:11,11;st:4,4;end:8,8;mz:
     x x x x o0z1o1z2o2o2o2
     x x x x o0o0o1o1l2o1o1
     x x x x x o0o0o1s2o0o0
-    x x x x x x x o1o1Z1o0"""
+    x x x x x x x o1o1Z1o0
+    """
         |> Codec.decode |> Maybe.withDefault M.emptyMaze

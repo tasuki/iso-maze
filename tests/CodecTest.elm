@@ -29,7 +29,8 @@ encodeTest =
                     o0x
                     o0x
                     o0x
-                    o0x """
+                    o0x
+                    """
                 ))
                 (encode SM.assymetric)
         , test "Encodes the roundabout (with defaults omitted)" <|
@@ -43,7 +44,8 @@ encodeTest =
                     x x o0o0o1o1o2s3o3
                     x x x o0z1o1z2o2o2
                     x x x x o0o0o1o1x
-                    x x x x x o0o0x x """
+                    x x x x x o0o0x x
+                    """
                 ))
                 (encode SM.roundabout)
         , test "Encodes with custom config" <|
@@ -66,7 +68,8 @@ encodeTest =
                         o0x
                         o0x
                         o0x
-                        o0x """
+                        o0x
+                        """
                     ))
                     (encode maze)
         ]

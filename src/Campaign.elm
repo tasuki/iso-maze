@@ -26,7 +26,8 @@ mazeDefs =
         o0x o0
         o0o0o0
         o0x o0
-        o0x o0"""
+        o0x o0
+        """
       }
 
     , { emoji = "🐛"
@@ -36,7 +37,8 @@ mazeDefs =
         o2o2x x
         s2o2o2o2
         o1o1o1o2
-        o0z1o1o2"""
+        o0z1o1o2
+        """
       }
 
     , { emoji = "🐝"
@@ -46,7 +48,8 @@ mazeDefs =
         x o0o0o0o1
         o1l1o1o0x
         o1o0s1x x
-        o1o0o0x x """
+        o1o0o0x x
+        """
       }
 
     , { emoji = "🦋"
@@ -61,7 +64,8 @@ mazeDefs =
         x o0o0o0o1o1o1s3o2
         x x x o0z1o1z2o2o2
         x x x o0o0o1o1x x
-        x x x x o0o0x x x """
+        x x x x o0o0x x x
+        """
       }
 
     , { emoji = "🐌"
@@ -76,7 +80,8 @@ mazeDefs =
         o1o1o3o3l3z4o4o3
         o1Z1o0o1o2z3o3o3
         x o0o0o1o1z2z3o3
-        x x x o1Z1o0x x """
+        x x x o1Z1o0x x
+        """
       }
 
     , { emoji = "🐸"
@@ -93,7 +98,8 @@ mazeDefs =
         o1o1o2l2o2o2Z2o1o0o0x
         o1o0s2o1Z1o0o0l1o0x x
         x o0l1o0o0o0o1o1x x x
-        x x o1o1o1o1o1x x x x """
+        x x o1o1o1o1o1x x x x
+        """
       }
 
     , { emoji = "🐭"
@@ -109,7 +115,8 @@ mazeDefs =
         o0l1o0o1o2o2o2o1o1x
         o0o1o1o1o2s2o1o1x x
         o0o1s1o0z1o1o1x x x
-        o0o0o0o0o0o0x x x x """
+        o0o0o0o0o0o0x x x x
+        """
       }
 
     , { emoji = "🐹"
@@ -126,7 +133,8 @@ mazeDefs =
         o0s1o1o1o1o0o0o0o0x x
         o0o0z1o1o0o0o1x x x x
         x o0o0o1l1o1o1x x x x
-        x x o0o0o0o0x x x x x """
+        x x o0o0o0o0x x x x x
+        """
       }
 
     , { emoji = "🐥"
@@ -143,7 +151,8 @@ mazeDefs =
         o1z2o2Z2o1o1o1o2o2
         s1o1Z1o0o0z1o1o2x
         o0o1o1l1o1o1o1x x
-        o0o0o0o0o0x x x x """
+        o0o0o0o0o0x x x x
+        """
       }
 
     , { emoji = "🐿️"
@@ -159,7 +168,8 @@ mazeDefs =
         o2o1o2o1l1z2o2o3o3x
         o2o1s2o1S1o2o2o3x x
         o1o1s1o1o1o2x x x x
-        o1Z1o0z1o1x x x x x """
+        o1Z1o0z1o1x x x x x
+        """
       }
 
     , { emoji = "🦎"
@@ -175,7 +185,8 @@ mazeDefs =
         s1o2s2o1o2o1o2x x x x
         o0o0s1o1s2o1o2x x x x
         x o0o0o1o1o1x x x x x
-        x x o0z1o1x x x x x x """
+        x x o0z1o1x x x x x x
+        """
       }
 
     , { emoji = "🦔"
@@ -191,7 +202,8 @@ mazeDefs =
         o1l1o1o1o1o1o2s2x x
         o1o0o0o0l1o0z1o1x x
         s1o0o1o1o1o0o0x x x
-        o0o0o0z1o1o0x x x x """
+        o0o0o0z1o1o0x x x x
+        """
       }
 
     , { emoji = "🐰"
@@ -207,7 +219,8 @@ mazeDefs =
         s1o0o0o0o0o1o0s2s1o0x
         o0o0x x o0l1o0o1o0o0x
         x x x o0o0o1o0o0o0x x
-        x x x o0z1o1o0x x x x """
+        x x x o0z1o1o0x x x x
+        """
       }
 
     , { emoji = "🦆"
@@ -228,7 +241,8 @@ mazeDefs =
         o0o1o0o1s2o0o0o0o0x x
         o0l1o0o1o1l1o1o1x x x
         o0s1o0l1o0o0x x x x x
-        o0o0z1o1x x x x x x x """
+        o0o0z1o1x x x x x x x
+        """
       }
 
     , { emoji = "🦇"
@@ -252,7 +266,8 @@ mazeDefs =
         x x x x x x x x o0o0o1o1l2z2z3z4o4
         x x x x x x x x x o0o0o0o2x o2o2s4
         x x x x x x x x x x o0z1l2z2o2z3o3
-        x x x x x x x x x x x x o2x x x x """
+        x x x x x x x x x x x x o2x x x x
+        """
       }
 
     , { emoji = "🐒"
@@ -272,7 +287,8 @@ mazeDefs =
         x x x x x o1l2o1o2s4o3o2o2o1z2l3o2x
         x x x x x x o2o1o1o3o3o2o1o1o1o3o2x
         x x x x x x x x o1o1z2o2o1o2o2o2o2x
-        x x x x x x x x x o0o0z1o1o1o1o1x x """
+        x x x x x x x x x o0o0z1o1o1o1o1x x
+        """
       }
 
     , { emoji = "🦙"
@@ -298,7 +314,8 @@ mazeDefs =
         x x x x x x x x o0o0l1o0o0l1o0l1o0o0x
         x x x x x x x x x x o1o1s1o1o1x x x
         x x x x x x x x x x x x s1o0o1x x x x
-        x x x x x x x x x x x x o0o0o1x x x x """
+        x x x x x x x x x x x x o0o0o1x x x x
+        """
       }
 
     , { emoji = "🐐"
@@ -323,7 +340,8 @@ mazeDefs =
         x x x x x x x x o0x o0o0o0o1o0o1o0o0o1o0o1
         x x x x x x x x o0z1o1o1l1o1o0o1o0o1o1o0x
         x x x x x x x x x x o0o0o0o0o0s1x o1o0o0x
-        x x x x x x x x x x x x x x o0o0o0o0o0x x """
+        x x x x x x x x x x x x x x o0o0o0o0o0x x
+        """
       }
     ]
 
