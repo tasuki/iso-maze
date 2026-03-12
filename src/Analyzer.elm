@@ -14,7 +14,7 @@ type alias Analysis =
     , solutionDensity : Float
     , riverFactor : Float
     , loopCount : Int
-    , occluding : List M.Pos2d
+    , occluding : Set M.Pos2d
     }
 
 
@@ -113,7 +113,7 @@ analyze maze =
                     in
                     check 1
 
-        occluding = allPos |> List.filter isOccluding
+        occluding = allPos |> List.filter isOccluding |> Set.fromList
     in
     { reachable = isReachable
     , totalCells = v

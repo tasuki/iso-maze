@@ -4,6 +4,7 @@ import Analyzer exposing (analyze)
 import Codec
 import Expect
 import Maze as M
+import Set
 import Test exposing (..)
 
 
@@ -66,9 +67,11 @@ suite =
             ]
         , describe "Occluded Maze"
             [ test "Occluding" <| \_ -> (analyze occludedMaze).occluding |> Expect.equal
-                [ ( 2, 0 )
-                , ( 4, 1 )
-                , ( 4, 3 )
-                ]
+                (Set.fromList
+                    [ ( 2, 0 )
+                    , ( 4, 1 )
+                    , ( 4, 3 )
+                    ]
+                )
             ]
         ]

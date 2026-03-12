@@ -834,7 +834,7 @@ viewAnalyzer a =
         , H.br [] []
         , H.text ("Loop Count: " ++ String.fromInt a.loopCount)
         , H.br [] []
-        , H.text ("Occluding: " ++ String.fromInt (List.length a.occluding))
+        , H.text ("Occluding: " ++ String.fromInt (Set.size a.occluding))
         ]
 
 
