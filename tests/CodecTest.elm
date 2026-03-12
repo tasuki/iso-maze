@@ -23,29 +23,27 @@ encodeTest =
     describe "Encode"
         [ test "Encodes assymetric (with defaults omitted)" <|
             \_ -> Expect.equal
-                (removeSpaces ("sz:2,6;st:0,0;end:1,5"
-                    ++ ";mz:"
-                    ++ "x o0"
-                    ++ "o0o0"
-                    ++ "o0x "
-                    ++ "o0x "
-                    ++ "o0x "
-                    ++ "o0x "
+                (removeSpaces ("""sz:2,6;st:0,0;end:1,5;mz:
+                    x o0
+                    o0o0
+                    o0x
+                    o0x
+                    o0x
+                    o0x """
                 ))
                 (encode SM.assymetric)
         , test "Encodes the roundabout (with defaults omitted)" <|
             \_ -> Expect.equal
-                (removeSpaces ("sz:9,9;st:3,3;end:7,7"
-                    ++ ";mz:"
-                    ++ "x x o2o3o3o4o4x x "
-                    ++ "x o1o2z3o3z4o4o4x "
-                    ++ "o0o1s2o2o2o3o3o4o4"
-                    ++ "o0o0o1o1o2o2o3s4o4"
-                    ++ "x o0s1o1o1o2o2o3o3"
-                    ++ "x x o0o0o1o1o2s3o3"
-                    ++ "x x x o0z1o1z2o2o2"
-                    ++ "x x x x o0o0o1o1x "
-                    ++ "x x x x x o0o0x x "
+                (removeSpaces ("""sz:9,9;st:3,3;end:7,7;mz:
+                    x x o2o3o3o4o4x x
+                    x o1o2z3o3z4o4o4x
+                    o0o1s2o2o2o3o3o4o4
+                    o0o0o1o1o2o2o3s4o4
+                    x o0s1o1o1o2o2o3o3
+                    x x o0o0o1o1o2s3o3
+                    x x x o0z1o1z2o2o2
+                    x x x x o0o0o1o1x
+                    x x x x x o0o0x x """
                 ))
                 (encode SM.roundabout)
         , test "Encodes with custom config" <|
@@ -62,14 +60,13 @@ encodeTest =
                 in
                 Expect.equal
                     (removeSpaces (
-                        "bg:abc;left:123,50;"
-                        ++ "sz:2,6;st:0,0;end:1,5;mz:"
-                        ++ "x o0"
-                        ++ "o0o0"
-                        ++ "o0x "
-                        ++ "o0x "
-                        ++ "o0x "
-                        ++ "o0x "
+                        """bg:abc;left:123,50;sz:2,6;st:0,0;end:1,5;mz:
+                        x o0
+                        o0o0
+                        o0x
+                        o0x
+                        o0x
+                        o0x """
                     ))
                     (encode maze)
         ]

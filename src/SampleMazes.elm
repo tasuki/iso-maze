@@ -60,19 +60,17 @@ zigZag =
 
 
 roundabout : M.Maze
-roundabout =
-    M.fromBlocks (zigZagBlocks ++
-            [ M.createStairs -1  1 1 M.SE
-            , M.createStairs  1 -1 1 M.SW
-            , M.createStairs -1  3 2 M.SE
-            , M.createStairs  3 -1 2 M.SW
-            , M.createStairs  4  0 3 M.SE
-            , M.createStairs  0  4 3 M.SW
-            , M.createStairs  4  2 4 M.SE
-            , M.createStairs  2  4 4 M.SW
-            ])
-        |> setStartEnd ( 0, 0 ) ( 4, 4 )
-        |> normalizeMaze
+roundabout = """sz:9,9;st:3,3;end:7,7;mz:
+    x x o2o3o3o4o4x x
+    x o1o2z3o3z4o4o4x
+    o0o1s2o2o2o3o3o4o4
+    o0o0o1o1o2o2o3s4o4
+    x o0s1o1o1o2o2o3o3
+    x x o0o0o1o1o2s3o3
+    x x x o0z1o1z2o2o2
+    x x x x o0o0o1o1x
+    x x x x x o0o0x x """
+    |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
 
 fourStairs : M.Maze
@@ -103,18 +101,14 @@ maxMaze =
 
 
 assymetric : M.Maze
-assymetric =
-    M.fromBlocks
-        [ M.createBase 0 -1 0
-        , M.createBase 0  0 0
-        , M.createBase 0  1 0
-        , M.createBase 0  2 0
-        , M.createBase 0  3 0
-        , M.createBase 1  3 0
-        , M.createBase 1  4 0
-        ]
-        |> setStartEnd ( 0, -1 ) ( 1, 4 )
-        |> normalizeMaze
+assymetric = """sz:2,6;st:0,0;end:1,5;mz:
+    x o0
+    o0o0
+    o0x
+    o0x
+    o0x
+    o0x """
+    |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
 
 -- enter a new era of representing mazes
@@ -122,28 +116,28 @@ assymetric =
 empty = "sz:1,1;st:0,0;end:0,0;mz:o0"
     |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
-ziggurat = "sz:9,9;st:3,3;end:7,7;mz:"
-    ++ "x x o2o2o3o3o3o3o3"
-    ++ "x x o2z3o3z4z5o5o3"
-    ++ "x o1s2o1o3o3o3s5o3"
-    ++ "o0o1o1o1z2o2o3s4o3"
-    ++ "o0o0s1o1o1s2o3o3o3"
-    ++ "x o0o0o0o1o1o1s3o2"
-    ++ "x x x o0z1o1z2o2o2"
-    ++ "x x x o0o0o1o1x x "
-    ++ "x x x x o0o0x x x "
+ziggurat = """sz:9,9;st:3,3;end:7,7;mz:
+    x x o2o2o3o3o3o3o3
+    x x o2z3o3z4z5o5o3
+    x o1s2o1o3o3o3s5o3
+    o0o1o1o1z2o2o3s4o3
+    o0o0s1o1o1s2o3o3o3
+    x o0o0o0o1o1o1s3o2
+    x x x o0z1o1z2o2o2
+    x x x o0o0o1o1x x
+    x x x x o0o0x x x """
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
 
-ziggurat2 = "sz:11,11;st:4,4;end:8,8;mz:"
-    ++ "o0o0o1o2o3o3x x x x x "
-    ++ "S1o0o1o2o2o3o3o3o3o3x "
-    ++ "o1z2l2o2z3o3z4z5o5o3x "
-    ++ "o1o1o1s2o1o3o3o3s5o3x "
-    ++ "x o0o1o1o1z2o2o3s4o3x "
-    ++ "x o0o0s1o1o1s2o3o3o3o3"
-    ++ "x x o0o0o0o1o1o1s3o2o3"
-    ++ "x x x x o0z1o1z2o2o2o2"
-    ++ "x x x x o0o0o1o1l2o1o1"
-    ++ "x x x x x o0o0o1s2o0o0"
-    ++ "x x x x x x x o1o1Z1o0"
+ziggurat2 = """sz:11,11;st:4,4;end:8,8;mz:
+    o0o0o1o2o3o3x x x x x
+    S1o0o1o2o2o3o3o3o3o3x
+    o1z2l2o2z3o3z4z5o5o3x
+    o1o1o1s2o1o3o3o3s5o3x
+    x o0o1o1o1z2o2o3s4o3x
+    x o0o0s1o1o1s2o3o3o3o3
+    x x o0o0o0o1o1o1s3o2o3
+    x x x x o0z1o1z2o2o2o2
+    x x x x o0o0o1o1l2o1o1
+    x x x x x o0o0o1s2o0o0
+    x x x x x x x o1o1Z1o0"""
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
