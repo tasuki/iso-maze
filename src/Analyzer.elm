@@ -15,6 +15,7 @@ type alias Analysis =
     , riverFactor : Float
     , loopCount : Int
     , greenery : Int
+    , hanging : Set M.Position
     }
 
 
@@ -110,6 +111,46 @@ analyze maze =
 
         occluding : Set M.Position
         occluding = blocks |> List.filter isOccluding |> List.map M.blockPosition |> Set.fromList
+
+        isHanging block =
+            case block of
+                M.Base _ ->
+                    False
+
+                M.Greenery _ ->
+                    False
+
+                M.Stairs pos dir ->
+                    let
+                        hasDown = M.move pos dir maze /= Nothing
+                        hasUp = M.move pos (M.oppositeDirection dir) maze /= Nothing
+                    in
+                    not (hasDown && hasUp)
+
+                M.Bridge ( x, y, z ) ->
+                    let
+                        topExits =
+                            [ M.SE, M.SW, M.NE, M.NW ]
+                                |> List.filter (\dir -> M.move ( x, y, z ) dir maze /= Nothing)
+
+                        bottomExits =
+                            [ M.SE, M.SW, M.NE, M.NW ]
+                                |> List.filter (\dir -> M.move ( x, y, z - 1 ) dir maze /= Nothing)
+
+                        hasAll list sub =
+                            List.all (\item -> List.member item list) sub
+
+                        pair1 = [ M.SE, M.NW ]
+                        pair2 = [ M.SW, M.NE ]
+
+                        ok =
+                            (hasAll topExits pair1 && hasAll bottomExits pair2)
+                                || (hasAll topExits pair2 && hasAll bottomExits pair1)
+                    in
+                    not ok
+
+        hanging : Set M.Position
+        hanging = blocks |> List.filter isHanging |> List.map M.blockPosition |> Set.fromList
     in
     { reachable = isReachable
     , occluding = occluding
@@ -126,6 +167,7 @@ analyze maze =
     , riverFactor = riverFactor
     , loopCount = loopCount
     , greenery = greenery
+    , hanging = hanging
     }
 
 

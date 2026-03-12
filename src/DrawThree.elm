@@ -150,8 +150,21 @@ drawDebugSpheres maybeAnalysis =
                                     , material = "debugOccluding"
                                     }
                             )
+
+                hangingSpheres =
+                    Set.toList a.hanging
+                        |> List.map
+                            (\( x, y, z ) ->
+                                SphereRenderable
+                                    { x = toFloat x * 10
+                                    , y = toFloat y * 10
+                                    , z = toFloat z * 10 + 3.0
+                                    , radius = 3.0
+                                    , material = "debugHanging"
+                                    }
+                            )
             in
-            unreachableSpheres ++ occludingSpheres
+            unreachableSpheres ++ occludingSpheres ++ hangingSpheres
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =

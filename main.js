@@ -30,6 +30,7 @@ const materials = {
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
     debugUnreachable: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
     debugOccluding: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
+    debugHanging: new THREE.MeshStandardMaterial({ color: 0xffff00, roughness: 0.8, metalness: 0.2 }),
 };
 
 const geometryCache = new Map();
