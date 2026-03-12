@@ -16,6 +16,7 @@ type alias Analysis =
     , loopCount : Int
     , greenery : Int
     , hanging : Set M.Position
+    , holes : Int
     }
 
 
@@ -151,6 +152,46 @@ analyze maze =
 
         hanging : Set M.Position
         hanging = blocks |> List.filter isHanging |> List.map M.blockPosition |> Set.fromList
+
+        -- Holes
+        minX = maze.offsetX
+        minY = maze.offsetY
+        maxX = minX + maze.width - 1
+        maxY = minY + maze.height - 1
+
+        reachableEmpty =
+            let
+                isInsideExpanded ( x, y ) =
+                    x >= minX - 1 && x <= maxX + 1 && y >= minY - 1 && y <= maxY + 1
+
+                getEmptyNeighbors ( x, y ) =
+                    [ ( x + 1, y ), ( x - 1, y ), ( x, y + 1 ), ( x, y - 1 ) ]
+                        |> List.filter (\pos -> isInsideExpanded pos && M.get pos maze == Nothing)
+
+                startPoints =
+                    List.concat
+                        [ List.range (minX - 1) (maxX + 1) |> List.concatMap (\x -> [ ( x, minY - 1 ), ( x, maxY + 1 ) ])
+                        , List.range (minY - 1) (maxY + 1) |> List.concatMap (\y -> [ ( minX - 1, y ), ( maxX + 1, y ) ])
+                        ]
+
+                loop stack visited =
+                    case stack of
+                        [] ->
+                            visited
+
+                        curr :: rest ->
+                            if Set.member curr visited then
+                                loop rest visited
+                            else
+                                loop (getEmptyNeighbors curr ++ rest) (Set.insert curr visited)
+            in
+            loop startPoints Set.empty
+
+        holes =
+            List.range minX maxX
+                |> List.concatMap (\x -> List.range minY maxY |> List.map (\y -> ( x, y )))
+                |> List.filter (\pos -> M.get pos maze == Nothing && not (Set.member pos reachableEmpty))
+                |> List.length
     in
     { reachable = isReachable
     , occluding = occluding
@@ -168,6 +209,7 @@ analyze maze =
     , loopCount = loopCount
     , greenery = greenery
     , hanging = hanging
+    , holes = holes
     }
 
 

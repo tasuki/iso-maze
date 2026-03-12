@@ -842,6 +842,8 @@ viewAnalyzer a =
         , H.text ("Loop Count: " ++ String.fromInt a.loopCount)
         , H.br [] []
         , H.text ("Greenery: " ++ String.fromInt a.greenery)
+        , H.br [] []
+        , H.text ("Holes: " ++ String.fromInt a.holes)
         ]
 
 

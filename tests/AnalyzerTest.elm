@@ -84,4 +84,35 @@ suite =
                     ]
                 )
             ]
+        , describe "Holes"
+            [ test "No holes in simple path" <| \_ -> (analyze simplePath).holes |> Expect.equal 0
+            , test "One hole enclosed" <| \_ ->
+                let
+                    holeMaze = "sz:3,3;st:0,0;end:2,0;mz:"
+                        ++ "o0o0o0"
+                        ++ "o0x o0"
+                        ++ "o0o0o0"
+                        |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                in
+                (analyze holeMaze).holes |> Expect.equal 1
+            , test "Multiple holes enclosed" <| \_ ->
+                let
+                    holesMaze = "sz:4,4;st:0,0;end:3,0;mz:"
+                        ++ "o0o0o0o0"
+                        ++ "o0x x o0"
+                        ++ "o0x x o0"
+                        ++ "o0o0o0o0"
+                        |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                in
+                (analyze holesMaze).holes |> Expect.equal 4
+            , test "Not a hole if open to edge" <| \_ ->
+                let
+                    notAHoleMaze = "sz:3,3;st:0,0;end:2,0;mz:"
+                        ++ "o0o0o0"
+                        ++ "o0x x "
+                        ++ "o0o0o0"
+                        |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                in
+                (analyze notAHoleMaze).holes |> Expect.equal 0
+            ]
         ]
