@@ -106,7 +106,15 @@ analyze maze =
             case M.get ( x, y ) maze of
                 Nothing -> False
                 Just block ->
-                    isOccluded 1 (M.positionZ (M.blockPosition block)) x y
+                    let
+                        h = M.positionZ (M.blockPosition block)
+                        adjustedH =
+                            case block of
+                                M.Stairs _ M.NW -> h - 1
+                                M.Stairs _ M.NE -> h - 1
+                                _ -> h
+                    in
+                    isOccluded 1 adjustedH x y
 
         occluding = allPos |> List.filter isOccluding |> Set.fromList
     in
