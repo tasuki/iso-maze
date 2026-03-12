@@ -822,7 +822,7 @@ viewAnalyzer a =
         , H.br [] []
         , H.text ("Occluding: " ++ String.fromInt (Set.size a.occluding))
         , H.br [] []
-        , H.text ("Unreachable: " ++ String.fromInt a.unreachable)
+        , H.text ("Unreachable: " ++ String.fromInt (Set.size a.unreachable))
         , H.br [] []
         , H.text ("Total Cells: " ++ String.fromInt a.totalCells)
         , H.br [] []

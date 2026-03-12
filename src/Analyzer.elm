@@ -7,14 +7,14 @@ import Set exposing (Set)
 
 type alias Analysis =
     { reachable : Bool
+    , occluding : Set M.Position
+    , unreachable : Set M.Position
     , totalCells : Int
-    , greenery : Int
-    , unreachable : Int
     , shortestPathLength : Maybe Int
     , solutionDensity : Float
     , riverFactor : Float
     , loopCount : Int
-    , occluding : Set M.Pos2d
+    , greenery : Int
     }
 
 
@@ -57,6 +57,7 @@ analyze maze =
         bfsDistances = bfs start getNeighbors
         reachableSet = Dict.keys bfsDistances |> Set.fromList
         isReachable = Set.member end reachableSet
+        unreachableSet = Set.diff (Set.fromList allCellsList) reachableSet
         shortestPathLength = Dict.get end bfsDistances
 
         -- Components
@@ -86,42 +87,34 @@ analyze maze =
 
         loopCount = e - v + c
 
-        limits = M.getLimits maze
-        allPos = M.mapCoords
-            (List.range limits.minY limits.maxY)
-            (List.range limits.minX limits.maxX)
-            (\y x -> ( x, y ))
-
         isOccluded k h x y =
-            if x + k > limits.maxX || y + k > limits.maxY then False
+            if h - k <= 0 then False
             else
                 case M.get ( x + k, y + k ) maze of
                     Nothing -> isOccluded (k + 1) h x y
                     Just targetBlock ->
                         if M.positionZ (M.blockPosition targetBlock) < h - k then True
-                        else if h - k <= 0 then False
                         else isOccluded (k + 1) h x y
 
-        isOccluding ( x, y ) =
-            case M.get ( x, y ) maze of
-                Nothing -> False
-                Just block ->
-                    let
-                        h = M.positionZ (M.blockPosition block)
-                        adjustedH =
-                            case block of
-                                M.Stairs _ M.NW -> h - 1
-                                M.Stairs _ M.NE -> h - 1
-                                _ -> h
-                    in
-                    isOccluded 1 adjustedH x y
+        isOccluding block =
+            let
+                ( x, y, _ ) = M.blockPosition block
+                h = M.positionZ (M.blockPosition block)
+                adjustedH =
+                    case block of
+                        M.Stairs _ M.NW -> h - 1
+                        M.Stairs _ M.NE -> h - 1
+                        _ -> h
+            in
+            isOccluded 1 adjustedH x y
 
-        occluding = allPos |> List.filter isOccluding |> Set.fromList
+        occluding : Set M.Position
+        occluding = blocks |> List.filter isOccluding |> List.map M.blockPosition |> Set.fromList
     in
     { reachable = isReachable
+    , occluding = occluding
+    , unreachable = unreachableSet
     , totalCells = v
-    , greenery = greenery
-    , unreachable = v - Set.size reachableSet - greenery
     , shortestPathLength = shortestPathLength
     , solutionDensity =
         case shortestPathLength of
@@ -132,7 +125,7 @@ analyze maze =
                 0
     , riverFactor = riverFactor
     , loopCount = loopCount
-    , occluding = occluding
+    , greenery = greenery
     }
 
 
