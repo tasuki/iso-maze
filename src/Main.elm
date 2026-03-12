@@ -247,6 +247,11 @@ update message model =
                     , heightPx = preModel.heightPx
                     , staticUpdate = preModel.staticUpdate
                     , performance = performanceToString preModel.performance
+                    , analysis =
+                        if preModel.debugLevel == DebugAnalysis then
+                            Just (Analyzer.analyze preModel.maze)
+                        else
+                            Nothing
                     }
         in
         ( { preModel | staticUpdate = False }
@@ -428,7 +433,7 @@ updateModel message model =
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
         SetDebugLevel level ->
-            ( { model | debugLevel = level }, Cmd.none )
+            ( { model | debugLevel = level, staticUpdate = True }, Cmd.none )
 
         CycleDebug ->
             let
@@ -438,7 +443,7 @@ updateModel message model =
                         DebugTechnical -> DebugAnalysis
                         DebugAnalysis -> DebugOff
             in
-            ( { model | debugLevel = newLevel }, Cmd.none )
+            ( { model | debugLevel = newLevel, staticUpdate = True }, Cmd.none )
 
         SetPerformance perf ->
             ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )

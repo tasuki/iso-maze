@@ -1,10 +1,12 @@
 port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS, sceneData)
 
+import Analyzer
 import Angle
 import Animate
 import Json.Encode as E
 import Maze as M
 import MazeEdit as ME
+import Set
 
 
 port renderThreeJS : E.Value -> Cmd msg
@@ -32,6 +34,7 @@ type alias Model =
     , heightPx : Int
     , staticUpdate : Bool
     , performance : String
+    , analysis : Maybe Analyzer.Analysis
     }
 
 
@@ -111,6 +114,44 @@ sceneData model =
 staticRenderables : Model -> List Renderable
 staticRenderables model =
     List.concatMap drawBlock (M.toBlocks model.maze)
+        ++ drawDebugSpheres model.analysis
+
+
+drawDebugSpheres : Maybe Analyzer.Analysis -> List Renderable
+drawDebugSpheres maybeAnalysis =
+    case maybeAnalysis of
+        Nothing ->
+            []
+
+        Just a ->
+            let
+                unreachableSpheres =
+                    Set.toList a.unreachable
+                        |> List.map
+                            (\( x, y, z ) ->
+                                SphereRenderable
+                                    { x = toFloat x * 10
+                                    , y = toFloat y * 10
+                                    , z = toFloat z * 10 + 2.0
+                                    , radius = 2.0
+                                    , material = "debugUnreachable"
+                                    }
+                            )
+
+                occludingSpheres =
+                    Set.toList a.occluding
+                        |> List.map
+                            (\( x, y, z ) ->
+                                SphereRenderable
+                                    { x = toFloat x * 10
+                                    , y = toFloat y * 10
+                                    , z = toFloat z * 10 + 3.0
+                                    , radius = 3.0
+                                    , material = "debugOccluding"
+                                    }
+                            )
+            in
+            unreachableSpheres ++ occludingSpheres
 
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
