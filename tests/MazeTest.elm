@@ -110,3 +110,31 @@ moveTest =
                     Nothing
                     (move ( 0, 0, 0 ) NE mazeWithGreenery)
         ]
+
+
+focusTest =
+    describe "Focus test"
+        [ test "isFocusValid: empty maze is valid at (0,0)" <|
+            \_ -> Expect.equal True (isFocusValid ( 0, 0 ) emptyMaze)
+        , test "isFocusValid: empty maze is invalid at (1,0)" <|
+            \_ -> Expect.equal False (isFocusValid ( 1, 0 ) emptyMaze)
+        , test "isFocusValid: valid at block position" <|
+            \_ -> Expect.equal True (isFocusValid ( 0, 0 ) simpleEightMaze)
+        , test "isFocusValid: valid in 3x3 neighborhood" <|
+            \_ -> Expect.equal True (isFocusValid ( -1, -1 ) simpleEightMaze)
+        , test "isFocusValid: invalid outside 3x3 neighborhood" <|
+            \_ -> Expect.equal False (isFocusValid ( -2, 0 ) simpleEightMaze)
+        , test "snapFocus: snaps to (0,0) in empty maze" <|
+            \_ -> Expect.equal ( 0, 0, 5 ) (snapFocus ( 10, 10, 5 ) emptyMaze)
+        , test "snapFocus: snaps to neighbor of existing block" <|
+            \_ ->
+                let maze = fromBlocks [ Base ( 0, 0, 0 ) ] in
+                Expect.equal ( 1, 1, 5 ) (snapFocus ( 10, 10, 5 ) maze)
+        , test "snapFocus: keeps position if already valid" <|
+            \_ ->
+                let maze = fromBlocks [ Base ( 0, 0, 0 ) ] in
+                Expect.equal ( 1, 0, 5 ) (snapFocus ( 1, 0, 5 ) maze)
+        , test "isFocusValid: invalid at grid boundary if no block is near" <|
+            \_ ->
+                Expect.equal False (isFocusValid ( 10, 10 ) simpleEightMaze)
+        ]
