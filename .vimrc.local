@@ -2,8 +2,9 @@ function! CreateMaze()
     let lines = [
         \ '    , { emoji = ""',
         \ '      , name = ""',
-        \ '      , maze =',
+        \ '      , maze ="""',
         \ '',
+        \ '        """',
         \ '      }',
         \ '',
     \ ]
@@ -13,8 +14,9 @@ endfunction
 
 function! FormatMaze()
     let chunk_size = matchstr(getline('.'), 'sz:\zs\d\+') * 2
-    s/^\(.*mz:\)/maze = "\1"\r/
-    execute "s/x/x /g | s/\\(.\\{" . chunk_size . "}\\)/        ++ \"\\1\"\r/g"
+    s/^.\{-}[?]//
+    s/^\(.\{-}mz:\)/        \1\r/
+    execute "s/x/x /g | s/\\(.\\{" . chunk_size . "}\\)/        \\1\r/g"
 endfunction
 
 command! CreateMaze call CreateMaze()
