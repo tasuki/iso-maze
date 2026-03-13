@@ -4,7 +4,7 @@ import Array exposing (Array)
 import Maybe.Extra
 
 minHeight = 0
-maxHeight = 10
+maxHeight = 35
 
 type alias LightConfig =
     { color : String
@@ -350,7 +350,7 @@ normalize maze =
 
 shiftPosition : Position -> Vector -> Position
 shiftPosition ( x, y, z ) ( xd, yd, zd ) =
-    if z + zd >= 0
+    if z + zd >= minHeight && z + zd <= maxHeight
         then ( x + xd, y + yd, z + zd )
         else ( x + xd, y + yd, z )
 
