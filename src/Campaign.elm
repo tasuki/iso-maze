@@ -152,7 +152,7 @@ mazeDefs =
 
     , { emoji = "🐥"
       , name = "chick"
-      , maze = """above:fff,60;
+      , maze = """bg:990;left:cc0,50;right:cc0,7;above:fff,60;
         sz:9,11;st:0,0;end:8,10;mz:
         x x x x o2o2z3z4o4
         x x x x o2o3o3o3o3
