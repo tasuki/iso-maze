@@ -12,11 +12,14 @@ type alias Analysis =
     , totalCells : Int
     , shortestPathLength : Maybe Int
     , solutionDensity : Float
+    , stairsProportion : Float
+    , bridgesProportion : Float
     , riverFactor : Float
     , loopCount : Int
     , greenery : Int
     , hanging : Set M.Position
     , holes : Int
+    , squares : Int
     }
 
 
@@ -115,12 +118,6 @@ analyze maze =
 
         isHanging block =
             case block of
-                M.Base _ ->
-                    False
-
-                M.Greenery _ ->
-                    False
-
                 M.Stairs pos dir ->
                     let
                         hasDown = M.move pos dir maze /= Nothing
@@ -149,6 +146,8 @@ analyze maze =
                                 || (hasAll topExits pair2 && hasAll bottomExits pair1)
                     in
                     not ok
+
+                _ -> False
 
         hanging : Set M.Position
         hanging = blocks |> List.filter isHanging |> List.map M.blockPosition |> Set.fromList
@@ -192,6 +191,44 @@ analyze maze =
                 |> List.concatMap (\x -> List.range minY maxY |> List.map (\y -> ( x, y )))
                 |> List.filter (\pos -> M.get pos maze == Nothing && not (Set.member pos reachableEmpty))
                 |> List.length
+
+        isBaseAt ( x, y, z ) =
+            case M.get ( x, y ) maze of
+                Just (M.Base ( _, _, bz )) -> bz == z
+                _ -> False
+
+        numSquares =
+            blocks
+                |> List.filterMap
+                    (\b -> case b of
+                        M.Base pos -> Just pos
+                        _ -> Nothing
+                    )
+                |> List.filter
+                    (\( x, y, z ) ->
+                        isBaseAt ( x + 1, y, z ) &&
+                        isBaseAt ( x, y + 1, z ) &&
+                        isBaseAt ( x + 1, y + 1, z )
+                    )
+                |> List.length
+
+        numStairs =
+            blocks
+                |> List.filter
+                    (\b -> case b of
+                        M.Stairs _ _ -> True
+                        _ -> False
+                    )
+                |> List.length
+
+        numBridges =
+            blocks
+                |> List.filter
+                    (\b -> case b of
+                        M.Bridge _ -> True
+                        _ -> False
+                    )
+                |> List.length
     in
     { reachable = isReachable
     , occluding = occluding
@@ -200,16 +237,16 @@ analyze maze =
     , shortestPathLength = shortestPathLength
     , solutionDensity =
         case shortestPathLength of
-            Just len ->
-                if v == 0 then 0
-                else toFloat len / toFloat v
-            Nothing ->
-                0
+            Just len -> toFloat len / toFloat v
+            Nothing -> 0
+    , stairsProportion = toFloat numStairs / toFloat v
+    , bridgesProportion = toFloat numBridges / toFloat v
     , riverFactor = riverFactor
     , loopCount = loopCount
     , greenery = greenery
     , hanging = hanging
     , holes = holes
+    , squares = numSquares
     }
 
 

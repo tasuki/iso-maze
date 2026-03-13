@@ -837,6 +837,10 @@ viewAnalyzer a =
         , H.br [] []
         , H.text ("Sol. Density: " ++ formatFloat a.solutionDensity)
         , H.br [] []
+        , H.text ("Stairs: " ++ formatFloat a.stairsProportion)
+        , H.br [] []
+        , H.text ("Bridges: " ++ formatFloat a.bridgesProportion)
+        , H.br [] []
         , H.text ("River Factor: " ++ formatFloat a.riverFactor)
         , H.br [] []
         , H.text ("Loop Count: " ++ String.fromInt a.loopCount)
@@ -844,6 +848,8 @@ viewAnalyzer a =
         , H.text ("Greenery: " ++ String.fromInt a.greenery)
         , H.br [] []
         , H.text ("Holes: " ++ String.fromInt a.holes)
+        , H.br [] []
+        , H.text ("Squares: " ++ String.fromInt a.squares)
         ]
 
 
