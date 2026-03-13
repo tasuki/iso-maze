@@ -41,6 +41,17 @@ mazeDefs =
         """
       }
 
+    , { emoji = "🐜"
+      , name = "ant"
+      , maze = """
+        sz:5,4;st:1,1;end:4,3;mz:
+        o0z1z2o2o2
+        o0o0o1o1o1
+        x o0s1o0s1
+        x o0o0o0o0
+        """
+      }
+
     , { emoji = "🐝"
       , name = "bee"
       , maze = """sz:5,5;st:0,0;end:4,3;mz:
@@ -83,6 +94,8 @@ mazeDefs =
         x x x o1Z1o0x x
         """
       }
+
+    -- -- --
 
     , { emoji = "🐸"
       , name = "frog"
@@ -189,6 +202,8 @@ mazeDefs =
         """
       }
 
+    -- -- --
+
     , { emoji = "🦔"
       , name = "hedgehog"
       , maze = """sz:10,11;st:0,0;end:8,9;mz:
@@ -223,9 +238,25 @@ mazeDefs =
         """
       }
 
+    , { emoji = "🐦"
+      , name = "bird"
+      , maze = """
+        sz:13,7;st:2,0;end:11,6;mz:
+        o5z6z7o7o7o7o7z8z9o9o9o9x
+        s5o4o3o6o6o6o6o6o6o6o6s9x
+        o4o4o3o3o3z4z5o5o5o5o6s8o6
+        s4o2o1z2l3o2o4l5z5z6o6l7o6
+        s3o2o1o1s3o2s4o5z6z7o7o7o6
+        o2o2s1o1s2o2o3o3o4z5z6o6o6
+        x x o0z1o1z2z3o3x x x x x
+        """
+      }
+
     , { emoji = "🦆"
       , name = "duck"
-      , maze = """sz:11,16;st:0,0;end:8,15;mz:
+      , maze = """
+        bg:0cf;
+        sz:11,16;st:0,0;end:8,15;mz:
         x x x o3z4o4o4o4o4x x
         x x x s3o3o3o3o3o4o4x
         x o1z2o2o4l4o4o3o3o4o4
@@ -245,29 +276,138 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦇"
-      , name = "bat"
-      , maze = """bg:234;left:6bf,15;right:234,25;above:def,40;
-        sz:17,17;st:6,15;end:5,5;mz:
-        x x o4o4z5o5x x x x x x x x x x x
-        x o3s4o4o4o5o5x x x x x x x x x x
-        o2o3o3o3o4o4o5o5x x x x x x x x x
-        o2s3o1o3o3o4z5o5o5x x x x x x x x
-        o2o2o1s3o2o2o3s5o5x x x x x x x x
-        x s2o1o2o2z3o3o4l5o4x x x x x x x
-        x s1o1o1o2o2o3o3o5o4x x x x x x x
-        x o0o0o1o1o2o2o3o5l5o5o5o5x x x x
-        x x o0o0o1o1o2o3o3o4o4o4o5o5x x x
-        x x x o0o0o1o2o2o2s4o3o4o4o5x x x
-        x x x x x s1o0o0s2s3o3o3o4l5o4x x
-        x x x x x o0o0o1o1o2z3o3o5o5o4x x
-        x x x x x x o0o0o0o0o1o3o3o3o4o4x
-        x x x x x x x x o1l1o1o3s3o3o3o4o4
-        x x x x x x x x o1o0o1o1l2z2z3z4o4
-        x x x x x x x x x o0o0o2o2x o2o2s4
-        x x x x x x x x x x o0z1o1z2o2z3o3
+    , { emoji = "🐓"
+      , name = "rooster"
+      , maze = """
+        left:ff0,30;right:0ff,30;above:f0f,90;
+        sz:16,15;st:0,0;end:14,13;mz:
+        x x x o3o3o3o3Z3o2o2o2o2x x x x
+        x x o1o1o1o1o1o1o2z3o3o2o4o4o5o5
+        x x o1o2o2o2o2l2o2o3o3o2o2o4o4s5
+        x x o1o1o1o1o1o1o2o2o2z3l3o3o4s4
+        x o2o2o2o2o2o2o1o1o1o1o1o2o3o4o3
+        x s2o0o1o1z2o2o1o2o2o2o2o2o3o4o3
+        o0l1o0o1o0o0z1o1l2o1o2o3o3o3l4o3
+        o0o1o0o1o0z1z2o2o2o1o2z3z4o4o4x
+        S1s1o0o1o0o1o1o1o2o1o2o2o2x x x
+        o1o0o0o1o0o0o0o1o2o1o1o1x x x x
+        o1l1o1o1o1o1S1o1o2o2x x x x x x
+        o1o0o0o0o0o0o1o1o1o2x x x x x x
+        s1o0o1o1o1o0o0z1o1x x x x x x x
+        o0o0l1o0o1o1o1x x x x x x x x x
+        o0z1o1o0o0o0x x x x x x x x x x
         """
       }
+
+    , { emoji = "🦚"
+      , name = "peacock"
+      , maze = """
+        left:fc0,40;right:0cf,40;above:fff,55;
+        sz:18,18;st:1,1;end:15,15;mz:
+        x x x x x x x x x o7o7o7o7o7o7o7x x
+        x x x x x x x o7o7o7Z7Z6o5z6z7o7x x
+        x x x x x x o6o6o6o6o6o6o6o6o6o7o7o7
+        x x x x x o5o5o5o5o5o5l6o5o5o6o6s7o7
+        x x x o2o2o5o6o6o6o6o6o6o6o5o5o6s6o7
+        x x x o2o4o5o6Z6Z5o4o4o4o6o6o5l6o5o7
+        x x x s2o4o5o5o5o5l5o5o4o4o6o5o6S6o7
+        x x o1o1o4o4o4o4o4o4o5o5o4o6o5o6S7o7
+        x o1o1o5o5o5o5o5o5o4o4o5o4o6o5o6o7o7
+        o1o1o4o4o4o4o4x o5o5l5o5S5o6o5o6o7x
+        o1o3o3o3o3o3o4o4o4l5o4o5S6o6o5o6o7x
+        o1s3o2Z2o1o3l4z4z5o5o4o5o6o6o5o6x x
+        s1o2o2o2o1o3o4o4o4o5o4o5o5o5o5x x x
+        o0o2s2o2o1o1o1s4o4o5o4o4o4o2x x x x
+        o0z1o1o2o2o2S2o3o4o5o1z2o2o2x x x x
+        o0o1o1o1z2o2o2o3o4o1o1x x x x x x x
+        o0o0o1s1o2o2z3o3o1o1x x x x x x x x
+        x o0o0o0o0z1o1o1o1x x x x x x x x x
+        """
+      }
+
+    -- -- --
+
+    -- , { emoji = "🦢"
+    --   , name = "swan"
+    --   , maze = """
+    --     """
+    --   }
+
+    -- , { emoji = "🦩"
+    --   , name = "flamingo"
+    --   , maze = """
+    --     """
+    --   }
+
+    -- , { emoji = "🦜"
+    --   , name = "parrot"
+    --   , maze = """
+    --     """
+    --   }
+
+    -- , { emoji = "🐧"
+    --   , name = "linux"
+    --   , maze = """
+    --     """
+    --   }
+
+    , { emoji = "🦥"
+      , name = "sloth"
+      , maze ="""
+        bg:896;right:cfc,20;
+        sz:18,13;st:1,0;end:17,11;mz:
+        x x x x x x x x x o5z6z7o7o7o7z8o8x
+        x x x x x o5o5o5o5o5o6o6o6o6o6o6o8o8
+        x x x x x o5z6o6o6o6o6o5o5z6z7l7o7o8
+        x x x x o4o4z5o5o5o5o6l6o6o6o6o6o7o8
+        x x x o3o3o3o3z4o4o5o5o5o6o5o5o6o7o8
+        x x o2o2o3s3o4o4o4o4o4l5o4z5o5o6o7o8
+        x x s2o2z3l3o3o3o3o3o4o5o4o5o5o6o7o8
+        x x o1o1z2o2o2o2o2o3o4s5o6o5S6s6o7o8
+        x o0o0o0o0o0z1o1o2o3o4o4o6o5l6o5o7x
+        o1l1o1o1o1z2o2o1o2o3o3o4o6l6o6o7o7x
+        o1o0o0o0o0o0o2o1o2s3o3o4o5o5x x x x
+        o1l1o1o1o0S1o2l2o2o2o3o4o5x x x x x
+        x o0z1o1o1o1o1o1x x x x x x x x x x
+        """
+      }
+
+    , { emoji = "🐱"
+      , name = "cat"
+      , maze ="""
+        sz:19,16;st:0,0;end:18,15;mz:
+        x x x x x x x x x x x x x x o4z5z6o6o7
+        x x x x x x o3o3z4o4o4o4o4z5l5o5o6o6o7
+        x x x x x o4l4o4z5o5o5Z5Z4o3o4o5o6o5o7
+        x x x x x x o3o3o3o3o3z4o4o3o4o5l6o5s7
+        x x x x x o1o1o1o1z2o2o2o4o3o4o5o6o5o6
+        x x x x o0z1z2o2l2z3o3o2s4o3o4s5o6o5o6
+        x x x x o0o0z1o1o1o3o3l3o3o3o4s4o6l6o6
+        x x o0z1o1z2o2o2l2o2o4S3o3o3l4o3o3o5o5
+        x x o0o0o0o0o0o0o1o2o4S4o3o4o4o4o3o3x
+        x o1o0z1o1o1o1o0o1o2o4o4o3o3z4o4o4x x
+        x o1o1o1o1o0l1o0o1o2z3o3o4o4z5o5o4x x
+        o0o0o0o0o0o0s1o1o1o2o3o3z4o4o5o5x x x
+        o0o1o1o0z1o1o0o1o2o2o2o2Z2o1x x x x x
+        o0o1s1o1o1o1o0o1o2o1o1o1o1o1x x x x x
+        o0s1o0l1o0o0o0o1o2x x x x x x x x x x
+        o0o0o0o1o1o1o1o1x x x x x x x x x x x
+        """
+      }
+
+    -- -- --
+
+    -- , { emoji = "🦊"
+    --   , name = "fox"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐕"
+    --   , name = "dog"
+    --   , maze ="""
+    --     """
+    --   }
 
     , { emoji = "🐒"
       , name = "monkey"
@@ -290,30 +430,33 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦙"
-      , name = "llama"
-      , maze = """bg:960;left:ff9,25;right:9ff,10;above:fef,70;
-        sz:19,20;st:7,19;end:14,0;mz:
-        x x x x x o2z3o3x x x x x x x x x x x
-        x x x x o0s2o1o3x x x x x x x x x x x
-        x x x x o0o1o1s3x x x x x x x x x x x
-        x o1o1o1o0o0o1o2o2z3o3x x x x x x x x
-        x o1o0l1o0o0o1o2x x o3x x x x x x x x
-        o0l1o0o1o1o0o1l2z2o2o3o3x x x x x x x
-        o0o1x x o1o0o1s2x o2o2o3x x x x x x x
-        o0l1z1o1o1z2o2l2o2o2s2s3x x x x x x x
-        x s1o0o0o0o0o2o1o1o0o1o2x x o1Z1o0o0x
-        x o0o0x x o0s2x o1o0o1o2Z2o1o1o1o1l1o1
-        x x x x x o0l1o0o1o0l1o0o0o0o0o0o1o0S2
-        x x x x x x s1S1x o0o1o1o1o1o1o0o1o0o2
-        x x x x x x o0o1o1o0S2x x S2o1o0o1o0o2
-        x x x x x x o0o0o1S1o2x x o2o1o0o1o0s2
-        x x x x x x x o0o1o1o2o2o2o2x o0o1l1o1
-        x x x x x x x o0o0o1o1o1o1o1x S1x o0x
-        x x x x x x x x o0o0l1o0o0l1o0l1o0o0x
-        x x x x x x x x x x o1o1o1s1o1o1x x x
-        x x x x x x x x x x x x s1o0o1x x x x
-        x x x x x x x x x x x x o0o0o1x x x x
+    -- , { emoji = "🦉"
+    --   , name = "owl"
+    --   , maze ="""
+    --     """
+    --   }
+
+    , { emoji = "🦇"
+      , name = "bat"
+      , maze = """bg:234;left:6bf,15;right:234,25;above:def,40;
+        sz:17,17;st:6,15;end:5,5;mz:
+        x x o4o4z5o5x x x x x x x x x x x
+        x o3s4o4o4o5o5x x x x x x x x x x
+        o2o3o3o3o4o4o5o5x x x x x x x x x
+        o2s3o1o3o3o4z5o5o5x x x x x x x x
+        o2o2o1s3o2o2o3s5o5x x x x x x x x
+        x s2o1o2o2z3o3o4l5o4x x x x x x x
+        x s1o1o1o2o2o3o3o5o4x x x x x x x
+        x o0o0o1o1o2o2o3o5l5o5o5o5x x x x
+        x x o0o0o1o1o2o3o3o4o4o4o5o5x x x
+        x x x o0o0o1o2o2o2s4o3o4o4o5x x x
+        x x x x x s1o0o0s2s3o3o3o4l5o4x x
+        x x x x x o0o0o1o1o2z3o3o5o5o4x x
+        x x x x x x o0o0o0o0o1o3o3o3o4o4x
+        x x x x x x x x o1l1o1o3s3o3o3o4o4
+        x x x x x x x x o1o0o1o1l2z2z3z4o4
+        x x x x x x x x x o0o0o2o2x o2o2s4
+        x x x x x x x x x x o0z1o1z2o2z3o3
         """
       }
 
@@ -340,6 +483,47 @@ mazeDefs =
         x x x x x x x x o0z1o1o1l1o1o0o1o0o1o1o0x
         x x x x x x x x x x o0o0o0o0o0s1x o1o0o0x
         x x x x x x x x x x x x x x o0o0o0o0o0x x
+        """
+      }
+
+    -- -- --
+
+    -- , { emoji = "🐑"
+    --   , name = "sheep"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐷"
+    --   , name = "pig"
+    --   , maze ="""
+    --     """
+    --   }
+
+    , { emoji = "🦙"
+      , name = "llama"
+      , maze = """bg:960;left:ff9,25;right:9ff,10;above:fef,70;
+        sz:19,20;st:7,19;end:14,0;mz:
+        x x x x x o2z3o3x x x x x x x x x x x
+        x x x x o0s2o1o3x x x x x x x x x x x
+        x x x x o0o1o1s3x x x x x x x x x x x
+        x o1o1o1o0o0o1o2o2z3o3x x x x x x x x
+        x o1o0l1o0o0o1o2x x o3x x x x x x x x
+        o0l1o0o1o1o0o1l2z2o2o3o3x x x x x x x
+        o0o1x x o1o0o1s2x o2o2o3x x x x x x x
+        o0l1z1o1o1z2o2l2o2o2s2s3x x x x x x x
+        x s1o0o0o0o0o2o1o1o0o1o2x x o1Z1o0o0x
+        x o0o0x x o0s2x o1o0o1o2Z2o1o1o1o1l1o1
+        x x x x x o0l1o0o1o0l1o0o0o0o0o0o1o0S2
+        x x x x x x s1S1x o0o1o1o1o1o1o0o1o0o2
+        x x x x x x o0o1o1o0S2x x S2o1o0o1o0o2
+        x x x x x x o0o0o1S1o2x x o2o1o0o1o0s2
+        x x x x x x x o0o1o1o2o2o2o2x o0o1l1o1
+        x x x x x x x o0o0o1o1o1o1o1x S1x o0x
+        x x x x x x x x o0o0l1o0o0l1o0l1o0o0x
+        x x x x x x x x x x o1o1o1s1o1o1x x x
+        x x x x x x x x x x x x s1o0o1x x x x
+        x x x x x x x x x x x x o0o0o1x x x x
         """
       }
     ]
