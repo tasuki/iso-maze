@@ -174,7 +174,7 @@ init flags url navKey =
             , maze = defaultMaze
             , playerState = M.Idle ( 999, 999, 999 )
             , animator = Animate.initAnimator initialTargets
-            , focus = ( 0, 0, 1 )
+            , focus = M.snapFocus ( 0, 0, 1 ) defaultMaze
             , dpr = flags.dpr
             , renderHistory = []
             , tickHistory = []
@@ -382,20 +382,40 @@ updateModel message model =
             )
 
         FocusShift vector ->
-            let newFocus = M.shiftPosition model.focus vector in
-            ( { model | focus = newFocus, staticUpdate = True }, Cmd.none )
+            let
+                newFocus =
+                    M.shiftPosition model.focus vector
+            in
+            if M.isFocusValid (M.positionTo2d newFocus) model.maze then
+                ( { model | focus = newFocus, staticUpdate = True }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
 
         ToggleMode ->
             let
-                newMode = if model.mode == ME.Running
-                    then ME.Editing
-                    else ME.Running
+                newMode =
+                    if model.mode == ME.Running then
+                        ME.Editing
 
-                cmd = if newMode == ME.Editing
-                    then pushUrl model.navKey model.maze
-                    else Cmd.none
+                    else
+                        ME.Running
+
+                cmd =
+                    if newMode == ME.Editing then
+                        pushUrl model.navKey model.maze
+
+                    else
+                        Cmd.none
+
+                newFocus =
+                    if newMode == ME.Editing then
+                        M.snapFocus model.focus model.maze
+
+                    else
+                        model.focus
             in
-            ( { model | mode = newMode, staticUpdate = True }, cmd )
+            ( { model | mode = newMode, focus = newFocus, staticUpdate = True }, cmd )
 
         ToggleBlock -> updateMaze ME.toggleBlock { model | currentLevel = Nothing }
         ToggleStairs -> updateMaze ME.toggleStairs { model | currentLevel = Nothing }
@@ -595,7 +615,7 @@ updateMaze fun model =
     in
     ( { model
         | maze = newMaze
-        , focus = M.shiftPosition model.focus ( dx, dy, 0 )
+        , focus = M.snapFocus (M.shiftPosition model.focus ( dx, dy, 0 )) newMaze
         , playerState = newPlayerState
         , animator = updatedAnimator
         , staticUpdate = True

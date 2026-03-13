@@ -380,6 +380,74 @@ isValidPosition _ = True
 isValidPos2d : Pos2d -> Bool
 isValidPos2d _ = True
 
+isFocusValid : Pos2d -> Maze -> Bool
+isFocusValid ( x, y ) maze =
+    let
+        blocks =
+            toBlocks maze
+    in
+    if List.isEmpty blocks then
+        x == 0 && y == 0
+
+    else
+        let
+            isNear b =
+                let
+                    ( bx, by, _ ) =
+                        blockPosition b
+                in
+                abs (x - bx) <= 1 && abs (y - by) <= 1
+        in
+        List.any isNear blocks
+
+snapFocus : Position -> Maze -> Position
+snapFocus ( xf, yf, zf ) maze =
+    let
+        blocks =
+            toBlocks maze
+    in
+    if List.isEmpty blocks then
+        ( 0, 0, zf )
+
+    else if isFocusValid ( xf, yf ) maze then
+        ( xf, yf, zf )
+
+    else
+        let
+            closestPoint b =
+                let
+                    ( bx, by, _ ) =
+                        blockPosition b
+                in
+                ( clamp (bx - 1) (bx + 1) xf
+                , clamp (by - 1) (by + 1) yf
+                )
+
+            dist ( x1, y1 ) ( x2, y2 ) =
+                max (abs (x1 - x2)) (abs (y1 - y2))
+
+            points =
+                List.map closestPoint blocks
+
+            bestPoint =
+                case points of
+                    [] ->
+                        ( 0, 0 )
+
+                    first :: rest ->
+                        List.foldl
+                            (\p acc ->
+                                if dist p ( xf, yf ) < dist acc ( xf, yf ) then
+                                    p
+
+                                else
+                                    acc
+                            )
+                            first
+                            rest
+        in
+        ( Tuple.first bestPoint, Tuple.second bestPoint, zf )
+
 mapAllCoords : (Int -> Int -> a) -> List a
 mapAllCoords fun =
     mapCoords (List.range -10 20) (List.range -10 20) fun
