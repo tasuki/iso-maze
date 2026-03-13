@@ -115,4 +115,35 @@ suite =
                 in
                 (analyze notAHoleMaze).holes |> Expect.equal 0
             ]
+        , describe "New Metrics"
+            [ test "Squares: 2x2" <| \_ ->
+                let
+                    maze = "sz:2,2;st:0,0;end:1,1;mz:o0o0o0o0" |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                in
+                (analyze maze).squares |> Expect.equal 1
+            , test "Squares: 2x3" <| \_ ->
+                let
+                    maze = "sz:3,2;st:0,0;end:2,1;mz:o0o0o0o0o0o0" |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                in
+                (analyze maze).squares |> Expect.equal 2
+            , test "Squares: mixed height" <| \_ ->
+                let
+                    maze = "sz:2,2;st:0,0;end:1,1;mz:o0o0o0o1" |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                in
+                (analyze maze).squares |> Expect.equal 0
+            , test "Stairs Proportion" <| \_ ->
+                let
+                    maze = "sz:2,1;st:0,0;end:1,0;mz:o0s1" |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                    -- totalCells (v) = 2 (o0 and s1)
+                    -- numStairs = 1
+                in
+                (analyze maze).stairsProportion |> Expect.within (Expect.Absolute 0.01) 0.5
+            , test "Bridges Proportion" <| \_ ->
+                let
+                    maze = "sz:2,1;st:0,0;end:1,0;mz:o1l1" |> Codec.decode |> Maybe.withDefault M.emptyMaze
+                    -- totalCells (v) = 3 (o1 is 1 cell, l1 is 2 cells)
+                    -- numBridges = 1
+                in
+                (analyze maze).bridgesProportion |> Expect.within (Expect.Absolute 0.01) (1 / 3)
+            ]
         ]

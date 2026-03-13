@@ -17,6 +17,9 @@ type alias Analysis =
     , greenery : Int
     , hanging : Set M.Position
     , holes : Int
+    , stairsProportion : Float
+    , bridgesProportion : Float
+    , squares : Int
     }
 
 
@@ -192,6 +195,54 @@ analyze maze =
                 |> List.concatMap (\x -> List.range minY maxY |> List.map (\y -> ( x, y )))
                 |> List.filter (\pos -> M.get pos maze == Nothing && not (Set.member pos reachableEmpty))
                 |> List.length
+
+        isBaseAt ( x, y, z ) =
+            case M.get ( x, y ) maze of
+                Just (M.Base ( _, _, bz )) ->
+                    bz == z
+
+                _ ->
+                    False
+
+        numSquares =
+            blocks
+                |> List.filterMap
+                    (\b ->
+                        case b of
+                            M.Base pos ->
+                                Just pos
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.filter (\( x, y, z ) -> isBaseAt ( x + 1, y, z ) && isBaseAt ( x, y + 1, z ) && isBaseAt ( x + 1, y + 1, z ))
+                |> List.length
+
+        numStairs =
+            blocks
+                |> List.filter
+                    (\b ->
+                        case b of
+                            M.Stairs _ _ ->
+                                True
+
+                            _ ->
+                                False
+                    )
+                |> List.length
+
+        numBridges =
+            blocks
+                |> List.filter
+                    (\b ->
+                        case b of
+                            M.Bridge _ ->
+                                True
+
+                            _ ->
+                                False
+                    )
+                |> List.length
     in
     { reachable = isReachable
     , occluding = occluding
@@ -210,6 +261,9 @@ analyze maze =
     , greenery = greenery
     , hanging = hanging
     , holes = holes
+    , stairsProportion = if v == 0 then 0 else toFloat numStairs / toFloat v
+    , bridgesProportion = if v == 0 then 0 else toFloat numBridges / toFloat v
+    , squares = numSquares
     }
 
 
