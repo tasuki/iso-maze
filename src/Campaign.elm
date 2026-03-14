@@ -381,6 +381,23 @@ mazeDefs =
     , { emoji = "🦜"
       , name = "parrot"
       , maze = """
+        bg:0cc;left:ff0,30;right:f09,30;above:6ff,100;
+        sz:16,15;st:1,2;end:15,12;mz:
+        x x x x x x x o4o4o4o4x x x x x
+        x x x x x x o3o3o3o3o4o4o4o4x x
+        x x x x x o2l3o2o2o2z3l4o3o4o4o4
+        x x x x o3o3o3o3l3o3x o4o3o3o3o3
+        x x x o2o2o2o2o2o2o3o3o4o4o4o4o3
+        x x o1o1o1o1l2o1o2o2l3z3o3o3o4o3
+        x x o1z2o2o2o2o1z2z3o3x o4l4o4o3
+        x o2z3o3l3o3o2o2o2o3o3o4o4o3o3o3
+        o1l2o1z2o2o3o3o3o2S4o3o4x x x x
+        o1s2S2o1o1o1o1o3o2o4o3o4o3x x x
+        o1s1o2o2o2o2o1s3S3o4l4o4o3x x x
+        o1l1o1o1o1o2o1o2o3o4o3o3o3x x x
+        x o0l1o0o1o1o1o2o3o4o2o2x x x x
+        x S1o1o0o0z1z2o2o2o2o2x x x x x
+        x o1o1x x x x x x x x x x x x x
         """
       }
 
