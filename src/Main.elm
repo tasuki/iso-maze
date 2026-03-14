@@ -932,13 +932,14 @@ viewJoystick model =
                 angle = atan2 dy dx
                 kx = clampedDist * cos angle
                 ky = clampedDist * sin angle
+                isLeashed = dist > (leashDistance - 5)
             in
             H.div
                 [ HA.class "joystick-container"
                 , HA.style "left" (String.fromFloat start.x ++ "px")
                 , HA.style "top" (String.fromFloat start.y ++ "px")
                 ]
-                [ H.div [ HA.class "joystick-base" ] []
+                [ H.div [ HA.classList [ ( "joystick-base", True ), ( "leashed", isLeashed ) ] ] []
                 , H.div [ HA.class "joystick-crosshair-h" ] []
                 , H.div [ HA.class "joystick-crosshair-v" ] []
                 , H.div

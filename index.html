@@ -64,7 +64,9 @@
         .joystick-base {
             position: absolute; left: -40px; top: -40px; width: 80px; height: 80px;
             border: 2px solid #FFF4; border-radius: 50%;
+            transition: border-color 0.25s;
         }
+        .joystick-base.leashed { border-color: #F999; }
         .joystick-crosshair-h { position: absolute; left: -30px; top: 0; width: 60px; height: 2px; background: #FFF3; }
         .joystick-crosshair-v { position: absolute; left: 0; top: -30px; width: 2px; height: 60px; background: #FFF3; }
         .joystick-knob { position: absolute; width: 30px; height: 30px; background: #FFF6; border-radius: 50%; }
