@@ -137,8 +137,10 @@ blockToMazeBlock block =
 
 setAt : Position -> MazeBlock -> Maze -> Maze
 setAt ( x, y, _ ) mazeBlock maze =
-    if x < maze.offsetX || y < maze.offsetY || x >= maze.offsetX + maze.width || y >= maze.offsetY + maze.height then
-        -- Grow the maze if needed
+    if isValidPos2d maze ( x, y ) then
+        { maze | maze = Array.set (toIndex maze.width maze.offsetX maze.offsetY x y) mazeBlock maze.maze }
+    else
+        -- grow the maze
         let
             newMinX = min maze.offsetX x
             newMinY = min maze.offsetY y
@@ -166,8 +168,6 @@ setAt ( x, y, _ ) mazeBlock maze =
             , offsetX = newMinX
             , offsetY = newMinY
         }
-    else
-        { maze | maze = Array.set (toIndex maze.width maze.offsetX maze.offsetY x y) mazeBlock maze.maze }
 
 set : Block -> Maze -> Maze
 set block maze =
@@ -175,10 +175,10 @@ set block maze =
 
 clear : Pos2d -> Maze -> Maze
 clear ( x, y ) maze =
-    if x < maze.offsetX || y < maze.offsetY || x >= maze.offsetX + maze.width || y >= maze.offsetY + maze.height then
-        maze
-    else
+    if isValidPos2d maze ( x, y ) then
         { maze | maze = Array.set (toIndex maze.width maze.offsetX maze.offsetY x y) EmptyBlock maze.maze }
+    else
+        maze
 
 toBlocks : Maze -> List Block
 toBlocks maze =
@@ -374,11 +374,12 @@ posX = Tuple.first
 posY : Pos2d -> Int
 posY = Tuple.second
 
-isValidPosition : Position -> Bool
-isValidPosition _ = True
-
-isValidPos2d : Pos2d -> Bool
-isValidPos2d _ = True
+isValidPos2d : Maze -> Pos2d -> Bool
+isValidPos2d maze ( x, y ) =
+    x >= maze.offsetX &&
+    y >= maze.offsetY &&
+    x < maze.offsetX + maze.width &&
+    y < maze.offsetY + maze.height
 
 isFocusValid : Pos2d -> Maze -> Bool
 isFocusValid ( x, y ) maze =

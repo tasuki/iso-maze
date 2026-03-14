@@ -39,6 +39,10 @@ toggleGreenery ( x, y, z ) maze =
     if z >= 1 then M.set (M.Greenery ( x, y, z - 1 )) maze
     else maze
 
+clearTile : M.Position -> M.Maze -> M.Maze
+clearTile ( x, y, _ ) maze =
+    M.clear ( x, y ) maze
+
 placeStart : M.Position -> M.Maze -> M.Maze
 placeStart ( x, y, z ) maze =
     { maze | start = ( x, y ) }

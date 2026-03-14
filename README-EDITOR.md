@@ -18,6 +18,7 @@
 - `space`: toggle ground
 - `s`: stairs (press multiple to change direction)
 - `b`: bridge
+- `q`: remove tile
 - `a`: place snowman
 - `z`: place hat
 
