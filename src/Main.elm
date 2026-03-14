@@ -30,6 +30,7 @@ import Url.Parser as UP exposing ((</>))
 
 defaultMaze = SM.ziggurat2
 secondsPerStep = 0.25
+leashDistance = 80.0
 
 
 type Overlay
@@ -338,28 +339,41 @@ updateModel message model =
             )
 
         Moved dc ->
-            case ( model.orbiting && model.activeOverlay == Nothing, model.pointerLast ) of
-                ( True, Just lastDc ) ->
-                    let
-                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-                        newAzimuth =
-                            model.azimuth
-                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
-                        newElevation =
-                            model.elevation
-                                |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
-                                |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
-                    in
-                    ( { model
-                        | azimuth = newAzimuth
-                        , elevation = newElevation
-                        , pointerLast = Just dc
-                        , staticUpdate = True
-                      }
-                    , Cmd.none
-                    )
-                _ ->
-                    ( { model | pointerLast = Just dc }, Cmd.none )
+            let
+                ( updatedModel, cmd ) =
+                    case ( model.mode, model.activeOverlay == Nothing, model.pointerStart ) of
+                        ( ME.Running, True, Just start ) ->
+                            let
+                                dx = dc.x - start.x
+                                dy = dc.y - start.y
+                                dist = sqrt (dx * dx + dy * dy)
+                            in
+                            if dist > leashDistance then
+                                let
+                                    angle = atan2 dy dx
+                                    newStart = { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
+                                in
+                                ( { model | pointerStart = Just newStart }, Cmd.none )
+                            else ( model, Cmd.none )
+
+                        _ ->
+                            case ( model.orbiting && model.activeOverlay == Nothing, model.pointerLast ) of
+                                ( True, Just lastDc ) ->
+                                    let
+                                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+                                        newAzimuth =
+                                            model.azimuth
+                                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+                                        newElevation =
+                                            model.elevation
+                                                |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
+                                                |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
+                                    in
+                                    ( { model | azimuth = newAzimuth, elevation = newElevation, staticUpdate = True }, Cmd.none )
+                                _ ->
+                                    ( model, Cmd.none )
+            in
+            ( { updatedModel | pointerLast = Just dc }, cmd )
 
         Finished _ ->
             ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
