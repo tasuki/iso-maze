@@ -122,6 +122,7 @@ type Msg
     | ToggleStairs
     | ToggleBridge
     | ToggleGreenery
+    | ClearTile
     | PlaceStart
     | PlaceEnd
     | SetDebugLevel DebugLevel
@@ -408,6 +409,7 @@ updateModel message model =
         ToggleStairs -> updateMaze ME.toggleStairs { model | currentLevel = Nothing }
         ToggleBridge -> updateMaze ME.toggleBridge { model | currentLevel = Nothing }
         ToggleGreenery -> updateMaze ME.toggleGreenery { model | currentLevel = Nothing }
+        ClearTile -> updateMaze ME.clearTile { model | currentLevel = Nothing }
         PlaceStart -> updateMaze ME.placeStart { model | currentLevel = Nothing }
         PlaceEnd -> updateMaze ME.placeEnd { model | currentLevel = Nothing }
 
@@ -633,6 +635,7 @@ keydown mode keycode =
                 "s" -> ToggleStairs
                 "b" -> ToggleBridge
                 "g" -> ToggleGreenery
+                "q" -> ClearTile
                 "a" -> PlaceStart
                 "z" -> PlaceEnd
                 _   -> Noop
