@@ -48,6 +48,13 @@ function getUnitSphere() {
     return geometryCache.get('unit_sphere');
 }
 
+function getUnitCylinder() {
+    if (!geometryCache.has('unit_cylinder')) {
+        geometryCache.set('unit_cylinder', new THREE.CylinderGeometry(1, 1, 1, 8));
+    }
+    return geometryCache.get('unit_cylinder');
+}
+
 const MAX_INSTANCES = 5000;
 
 class BatchManager {
@@ -60,6 +67,7 @@ class BatchManager {
         this.tempPosition = new THREE.Vector3();
         this.tempQuaternion = new THREE.Quaternion();
         this.tempScale = new THREE.Vector3();
+        this.tempEuler = new THREE.Euler();
         this.upVector = new THREE.Vector3(0, 0, 1);
     }
 
@@ -67,7 +75,11 @@ class BatchManager {
         const key = `${type}_${materialName}`;
         if (!this.batches.has(key)) {
             const material = this.materials[materialName];
-            const geometry = type === 'box' ? getUnitBox() : getUnitSphere();
+            let geometry;
+            if (type === 'box') geometry = getUnitBox();
+            else if (type === 'cylinder') geometry = getUnitCylinder();
+            else geometry = getUnitSphere();
+
             const mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
             mesh.count = 0;
             mesh.renderOrder = this.baseRenderOrder;
@@ -90,12 +102,17 @@ class BatchManager {
 
         this.tempPosition.set(r.x, r.y, r.z);
 
+        const rx = (r.rotationX || 0) * Math.PI / 180;
+        const ry = (r.rotationY || 0) * Math.PI / 180;
+        const rz = (r.rotationZ || 0) * Math.PI / 180;
+        this.tempEuler.set(rx, ry, rz);
+        this.tempQuaternion.setFromEuler(this.tempEuler);
+
         if (r.type === 'box') {
-            const rot = (r.rotationZ || 0) * Math.PI / 180;
-            this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
             this.tempScale.set(r.sizeX, r.sizeY, r.sizeZ);
+        } else if (r.type === 'cylinder') {
+            this.tempScale.set(r.radius, r.height, r.radius);
         } else {
-            this.tempQuaternion.set(0, 0, 0, 1);
             this.tempScale.set(r.radius, r.radius, r.radius);
         }
 

@@ -46,6 +46,8 @@ type alias Box =
     , sizeY : Float
     , sizeZ : Float
     , material : String
+    , rotationX : Float
+    , rotationY : Float
     , rotationZ : Float
     }
 
@@ -57,9 +59,22 @@ type alias Sphere =
     , material : String
     }
 
+type alias Cylinder =
+    { x : Float
+    , y : Float
+    , z : Float
+    , radius : Float
+    , height : Float
+    , material : String
+    , rotationX : Float
+    , rotationY : Float
+    , rotationZ : Float
+    }
+
 type Renderable
     = BoxRenderable Box
     | SphereRenderable Sphere
+    | CylinderRenderable Cylinder
 
 
 sceneData : Model -> E.Value
@@ -170,7 +185,7 @@ dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
     List.concat
         [ List.map SphereRenderable (drawPlayer model.playerSpheres)
-        , List.map SphereRenderable (drawFocus model.mode model.focus)
+        , drawFocus model.mode model.focus
         , List.map BoxRenderable (drawEnd model.maze model.playerState model.playerSpheres model.animatorTimer model.animatorInitialFall)
         ]
 
@@ -187,6 +202,8 @@ encodeRenderable r =
                 , ( "sizeY", E.float b.sizeY )
                 , ( "sizeZ", E.float b.sizeZ )
                 , ( "material", E.string b.material )
+                , ( "rotationX", E.float b.rotationX )
+                , ( "rotationY", E.float b.rotationY )
                 , ( "rotationZ", E.float b.rotationZ )
                 ]
 
@@ -198,6 +215,20 @@ encodeRenderable r =
                 , ( "z", E.float s.z )
                 , ( "radius", E.float s.radius )
                 , ( "material", E.string s.material )
+                ]
+
+        CylinderRenderable c ->
+            E.object
+                [ ( "type", E.string "cylinder" )
+                , ( "x", E.float c.x )
+                , ( "y", E.float c.y )
+                , ( "z", E.float c.z )
+                , ( "radius", E.float c.radius )
+                , ( "height", E.float c.height )
+                , ( "material", E.string c.material )
+                , ( "rotationX", E.float c.rotationX )
+                , ( "rotationY", E.float c.rotationY )
+                , ( "rotationZ", E.float c.rotationZ )
                 ]
 
 
@@ -222,6 +253,8 @@ drawBase material x y z =
     , sizeY = 10
     , sizeZ = z * 10 + 2 * bottom
     , material = material
+    , rotationX = 0
+    , rotationY = 0
     , rotationZ = 0
     }
 
@@ -240,6 +273,8 @@ drawBlock block =
                 , sizeY = 10
                 , sizeZ = 1
                 , material = "bridge"
+                , rotationX = 0
+                , rotationY = 0
                 , rotationZ = 0
                 }
             , BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
@@ -262,6 +297,8 @@ drawBlock block =
                     , sizeY = sd
                     , sizeZ = sh
                     , material = "stairs"
+                    , rotationX = 0
+                    , rotationY = 0
                     , rotationZ = 0
                     }
 
@@ -326,10 +363,14 @@ drawEnd maze playerState ( _, _, head ) timer initialFall =
             , sizeY = 1.6 * sXY
             , sizeZ = 1.6 * sZ
             , material = "goal"
+            , rotationX = 0
+            , rotationY = 0
             , rotationZ = rotation
             }
     in
     [ hatPart 0, hatPart 30, hatPart 60 ]
+
+
 
 
 drawPlayer : ( Vec3, Vec3, Vec3 ) -> List Sphere
@@ -340,7 +381,7 @@ drawPlayer ( p1, p2, p3 ) =
     ]
 
 
-drawFocus : ME.Mode -> M.Position -> List Sphere
+drawFocus : ME.Mode -> M.Position -> List Renderable
 drawFocus mode ( x, y, z ) =
     case mode of
         ME.Running -> []
@@ -352,17 +393,34 @@ drawFocus mode ( x, y, z ) =
                 ymax = toFloat y * 10 + 5
                 zmin = toFloat z * 10 - 10
                 zmax = toFloat z * 10
+                xmid = toFloat x * 10
+                ymid = toFloat y * 10
+                zmid = toFloat z * 10 - 5
+
+                r = 0.2 -- Line thickness
+
                 s xpos ypos zpos =
-                    { x = xpos, y = ypos, z = zpos, radius = 0.5, material = "focus" }
+                    SphereRenderable { x = xpos, y = ypos, z = zpos, radius = 0.5, material = "focus" }
+
+                -- 12 lines (using thin boxes for stability)
+                -- 4 along X
+                cx xpos ypos zpos =
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = 10, sizeY = r, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
+                -- 4 along Y
+                cy xpos ypos zpos =
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = 10, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
+                -- 4 along Z
+                cz xpos ypos zpos =
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = r, sizeZ = 10, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
             in
-            [ s xmin ymin zmin
-            , s xmax ymin zmin
-            , s xmin ymax zmin
-            , s xmax ymax zmin
-            , s xmin ymin zmax
-            , s xmax ymin zmax
-            , s xmin ymax zmax
-            , s xmax ymax zmax
+            [ s xmin ymin zmin, s xmax ymin zmin, s xmin ymax zmin, s xmax ymax zmin
+            , s xmin ymin zmax, s xmax ymin zmax, s xmin ymax zmax, s xmax ymax zmax
+            -- Connections along X
+            , cx xmid ymin zmin, cx xmid ymax zmin, cx xmid ymin zmax, cx xmid ymax zmax
+            -- Connections along Y
+            , cy xmin ymid zmin, cy xmax ymid zmin, cy xmin ymid zmax, cy xmax ymid zmax
+            -- Connections along Z
+            , cz xmin ymin zmid, cz xmax ymin zmid, cz xmin ymax zmid, cz xmax ymax zmid
             ]
 
 
