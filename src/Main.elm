@@ -938,7 +938,12 @@ viewJoystick model =
                 , HA.style "left" (String.fromFloat start.x ++ "px")
                 , HA.style "top" (String.fromFloat start.y ++ "px")
                 ]
-                [ H.div [ HA.class "joystick-base" ] []
+                [ H.div
+                    [ HA.classList
+                        [ ( "joystick-base", True )
+                        , ( "too-far", dist > (leashDistance - 5) )
+                        ]
+                    ] []
                 , H.div [ HA.class "joystick-crosshair-h" ] []
                 , H.div [ HA.class "joystick-crosshair-v" ] []
                 , H.div
