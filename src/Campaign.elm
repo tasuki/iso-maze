@@ -402,8 +402,27 @@ mazeDefs =
       }
 
     , { emoji = "🐧"
-      , name = "linux"
+      , name = "penguin"
       , maze = """
+        bg:069;right:069,20;
+        bg:069;right:069,20;sz:18,17;st:0,0;end:17,15;mz:
+        x x x x x x o4o4o4o4o4o4o4o4o4o4o4x
+        x x x x x o1z2z3o3l4z4z5o5o5o5o5l5o5
+        x x x x x o1o3o3z4o4o4o4o4o4o4o4s4o5
+        x x x x x o1z2o2o2z3o3o3o3o3o3o4o3s5
+        x x o1o2o2z3o3o3o3o4o4o4o4o4o3o4o3o4
+        x x o1o2o1z2o2o2l3z3o3o3o3o4o3o4o3o4
+        x x s1o2o1o0z1o1o3o4o4o4o3o4o3s4o3o4
+        x x o0o2o1o0o0S2o3o4o3o4o3o4o3o3o3o4
+        x x o0o2o1l1o1o2o3o4o3o4o3o4o4o3o4o4
+        x x o0o0o0o0S2s2o3s4o3o4o3o3o4o3o4x
+        x x o0z1o1o1o2o1o3s3o3o4o4l4o4o3o4x
+        x o0o0o2o2l2o2o1o3o2o3o3o2o3o3o3x x
+        x o0o1l2o1o1o2o1s3o2z3o3o2x x x x x
+        o0o0o1s2o1o0o2l2o2o2o1z2o2x x x x x
+        S1o0o1s1o1o0z1o1o0z1o1x x x x x x x
+        o1o0l1o0o1o0o0o0o0x x x x x x x x x
+        o1o1o1o1Z1o0x x x x x x x x x x x x
         """
       }
 
