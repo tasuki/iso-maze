@@ -8,6 +8,7 @@ const app = Elm.Main.init({
         dpr: getDpr(),
         finishedLevels: JSON.parse(localStorage.getItem('finishedLevels') || '[]'),
         performance: localStorage.getItem('performance') || 'normal',
+        leashEnabled: localStorage.getItem('leashEnabled') === 'false' ? false : true,
     }
 });
 
@@ -261,6 +262,10 @@ app.ports.saveFinishedLevels.subscribe(levels => {
 
 app.ports.savePerformance.subscribe(perf => {
     localStorage.setItem('performance', perf);
+});
+
+app.ports.saveLeashEnabled.subscribe(enabled => {
+    localStorage.setItem('leashEnabled', enabled);
 });
 
 app.ports.renderThreeJS.subscribe(data => {

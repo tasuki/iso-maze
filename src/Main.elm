@@ -101,6 +101,7 @@ type alias Model =
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
     , performance : Performance
+    , leashEnabled : Bool
     }
 
 type Msg
@@ -129,6 +130,7 @@ type Msg
     | SetDebugLevel DebugLevel
     | CycleDebug
     | SetPerformance Performance
+    | SetLeashEnabled Bool
     | ResetProgress
     | ShowOverlay Overlay
     | CloseOverlay
@@ -139,6 +141,7 @@ type alias Flags =
     { dpr : Float
     , finishedLevels : List String
     , performance : String
+    , leashEnabled : Bool
     }
 
 main : Program Flags Model Msg
@@ -184,6 +187,7 @@ init flags url navKey =
             , staticUpdate = True
             , activeOverlay = Nothing
             , performance = performanceFromString flags.performance
+            , leashEnabled = flags.leashEnabled
             }
 
         ( routedModel, routeCmd ) = changeRouteTo url model
@@ -343,17 +347,19 @@ updateModel message model =
                 ( updatedModel, cmd ) =
                     case ( model.mode, model.activeOverlay == Nothing, model.pointerStart ) of
                         ( ME.Running, True, Just start ) ->
-                            let
-                                dx = dc.x - start.x
-                                dy = dc.y - start.y
-                                dist = sqrt (dx * dx + dy * dy)
-                            in
-                            if dist > leashDistance then
+                            if model.leashEnabled then
                                 let
-                                    angle = atan2 dy dx
-                                    newStart = { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
+                                    dx = dc.x - start.x
+                                    dy = dc.y - start.y
+                                    dist = sqrt (dx * dx + dy * dy)
                                 in
-                                ( { model | pointerStart = Just newStart }, Cmd.none )
+                                if dist > leashDistance then
+                                    let
+                                        angle = atan2 dy dx
+                                        newStart = { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
+                                    in
+                                    ( { model | pointerStart = Just newStart }, Cmd.none )
+                                else ( model, Cmd.none )
                             else ( model, Cmd.none )
 
                         _ ->
@@ -470,6 +476,9 @@ updateModel message model =
 
         SetPerformance perf ->
             ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
+
+        SetLeashEnabled enabled ->
+            ( { model | leashEnabled = enabled }, saveLeashEnabled enabled )
 
         ResetProgress ->
             ( { model | finishedLevels = Set.empty }, saveFinishedLevels [] )
@@ -671,6 +680,7 @@ port updateDpr : (Float -> msg) -> Sub msg
 port updateRenderTime : (RenderUpdate -> msg) -> Sub msg
 port saveFinishedLevels : List String -> Cmd msg
 port savePerformance : String -> Cmd msg
+port saveLeashEnabled : Bool -> Cmd msg
 
 
 -- View
@@ -709,6 +719,18 @@ viewOverlay model overlay =
                             , HE.onClick (SetPerformance Rocket)
                             ]
                             [ H.text "🚀" ]
+                        ]
+                    , H.div [ HA.class "modal-row" ]
+                        [ H.div
+                            [ HA.class ("icon" ++ if model.leashEnabled then " active" else "")
+                            , HE.onClick (SetLeashEnabled True)
+                            ]
+                            [ H.text "🐕✔️" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if not model.leashEnabled then " active" else "")
+                            , HE.onClick (SetLeashEnabled False)
+                            ]
+                            [ H.text "🐕❌" ]
                         ]
                     , H.div [ HA.class "modal-row" ]
                         [ H.div
