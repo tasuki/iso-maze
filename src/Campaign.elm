@@ -327,29 +327,47 @@ mazeDefs =
 
     -- -- --
 
-    -- , { emoji = "🦢"
-    --   , name = "swan"
-    --   , maze = """
-    --     """
-    --   }
+    , { emoji = "🦢"
+      , name = "swan"
+      , maze = """
+        bg:0cf;left:fc9,40;right:0cf,10;above:fff,65;
+        sz:19,16;st:1,0;end:16,15;mz:
+        x x x x x x x x x x x o6o6o6o6o6o6x x
+        x x x x x x x o3z4o4o5l6o5o5o5o5o6o6o6
+        x x x x x o2o2l3o2o4o5o6o6o6o6o5o5o5o6
+        x x x x o1l2o1o3o2o4l5z5o5s6o6o6o6o5x
+        x x x x o1o2o1o3o2x s5o5o5o5o5o5o6o5x
+        x x x o1o1o2o1o3o2o2o4o4o4o4o4o5o6o5x
+        x x x o1o2o2o1o3o3o2o2z3o3o3o4o5o6x x
+        x o1o1o1o2o1o1o1o3o3o3z4o4l4o4o5x x x
+        x o1z2o2o2o2o2l2o2o2l3o2z3o3o4o5x x x
+        x o1o0o0z1o1o1o1o1o1o3o4Z4o3o4x x x x
+        x o1o0z1z2o2o2o2o2o1s3s4o2o2o4x x x x
+        x o1o0o0z1o1o1o1o2l2o2o3Z3o2x x x x x
+        x o1o0o1z2o2o2o1o1o1o2Z2o1x x x x x x
+        o1o1o0o1o1o1o2o2o2o1Z1o0x x x x x x x
+        s1o0o0l1o0o1o1o1s2x x x x x x x x x x
+        o0o0z1o1o0o0o0o1o1x x x x x x x x x x
+        """
+      }
 
-    -- , { emoji = "🦩"
-    --   , name = "flamingo"
-    --   , maze = """
-    --     """
-    --   }
+    , { emoji = "🦩"
+      , name = "flamingo"
+      , maze = """
+        """
+      }
 
-    -- , { emoji = "🦜"
-    --   , name = "parrot"
-    --   , maze = """
-    --     """
-    --   }
+    , { emoji = "🦜"
+      , name = "parrot"
+      , maze = """
+        """
+      }
 
-    -- , { emoji = "🐧"
-    --   , name = "linux"
-    --   , maze = """
-    --     """
-    --   }
+    , { emoji = "🐧"
+      , name = "linux"
+      , maze = """
+        """
+      }
 
     , { emoji = "🦥"
       , name = "sloth"
@@ -397,17 +415,17 @@ mazeDefs =
 
     -- -- --
 
-    -- , { emoji = "🦊"
-    --   , name = "fox"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🦊"
+      , name = "fox"
+      , maze ="""
+        """
+      }
 
-    -- , { emoji = "🐕"
-    --   , name = "dog"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🐕"
+      , name = "dog"
+      , maze ="""
+        """
+      }
 
     , { emoji = "🐒"
       , name = "monkey"
