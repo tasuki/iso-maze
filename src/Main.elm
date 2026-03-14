@@ -345,39 +345,12 @@ updateModel message model =
         Moved dc ->
             let
                 ( updatedModel, cmd ) =
-                    case ( model.mode, model.activeOverlay == Nothing, model.pointerStart ) of
-                        ( ME.Running, True, Just start ) ->
-                            if model.leashEnabled then
-                                let
-                                    dx = dc.x - start.x
-                                    dy = dc.y - start.y
-                                    dist = sqrt (dx * dx + dy * dy)
-                                in
-                                if dist > leashDistance then
-                                    let
-                                        angle = atan2 dy dx
-                                        newStart = { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
-                                    in
-                                    ( { model | pointerStart = Just newStart }, Cmd.none )
-                                else ( model, Cmd.none )
-                            else ( model, Cmd.none )
-
-                        _ ->
-                            case ( model.orbiting && model.activeOverlay == Nothing, model.pointerLast ) of
-                                ( True, Just lastDc ) ->
-                                    let
-                                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-                                        newAzimuth =
-                                            model.azimuth
-                                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
-                                        newElevation =
-                                            model.elevation
-                                                |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
-                                                |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
-                                    in
-                                    ( { model | azimuth = newAzimuth, elevation = newElevation, staticUpdate = True }, Cmd.none )
-                                _ ->
-                                    ( model, Cmd.none )
+                    if model.mode == ME.Running && model.activeOverlay == Nothing then
+                        ( applyLeash dc model, Cmd.none )
+                    else if model.orbiting && model.activeOverlay == Nothing then
+                        ( applyOrbit dc model, Cmd.none )
+                    else
+                        ( model, Cmd.none )
             in
             ( { updatedModel | pointerLast = Just dc }, cmd )
 
@@ -595,6 +568,47 @@ loadMaze maze maybeName model =
         , currentLevel = maybeName |> Maybe.andThen Campaign.getLevel
         , activeOverlay = Nothing
     }
+
+applyLeash : DD.DocumentCoords -> Model -> Model
+applyLeash dc model =
+    case ( model.leashEnabled, model.pointerStart ) of
+        ( True, Just start ) ->
+            let
+                dx = dc.x - start.x
+                dy = dc.y - start.y
+                dist = sqrt (dx * dx + dy * dy)
+            in
+            if dist > leashDistance then
+                let
+                    angle = atan2 dy dx
+                    newStart = { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
+                in
+                { model | pointerStart = Just newStart }
+            else model
+
+        _ ->
+            model
+
+
+applyOrbit : DD.DocumentCoords -> Model -> Model
+applyOrbit dc model =
+    case model.pointerLast of
+        Just lastDc ->
+            let
+                rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+                newAzimuth =
+                    model.azimuth
+                        |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+                newElevation =
+                    model.elevation
+                        |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
+                        |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
+            in
+            { model | azimuth = newAzimuth, elevation = newElevation, staticUpdate = True }
+
+        Nothing ->
+            model
+
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
