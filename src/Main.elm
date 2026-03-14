@@ -30,6 +30,7 @@ import Url.Parser as UP exposing ((</>))
 
 defaultMaze = SM.ziggurat2
 secondsPerStep = 0.25
+leashDistance = 80.0
 
 
 type Overlay
@@ -100,6 +101,7 @@ type alias Model =
     , staticUpdate : Bool
     , activeOverlay : Maybe Overlay
     , performance : Performance
+    , leashEnabled : Bool
     }
 
 type Msg
@@ -128,6 +130,7 @@ type Msg
     | SetDebugLevel DebugLevel
     | CycleDebug
     | SetPerformance Performance
+    | SetLeashEnabled Bool
     | ResetProgress
     | ShowOverlay Overlay
     | CloseOverlay
@@ -138,6 +141,7 @@ type alias Flags =
     { dpr : Float
     , finishedLevels : List String
     , performance : String
+    , leashEnabled : Bool
     }
 
 main : Program Flags Model Msg
@@ -183,6 +187,7 @@ init flags url navKey =
             , staticUpdate = True
             , activeOverlay = Nothing
             , performance = performanceFromString flags.performance
+            , leashEnabled = flags.leashEnabled
             }
 
         ( routedModel, routeCmd ) = changeRouteTo url model
@@ -338,28 +343,16 @@ updateModel message model =
             )
 
         Moved dc ->
-            case ( model.orbiting && model.activeOverlay == Nothing, model.pointerLast ) of
-                ( True, Just lastDc ) ->
-                    let
-                        rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-                        newAzimuth =
-                            model.azimuth
-                                |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
-                        newElevation =
-                            model.elevation
-                                |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
-                                |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
-                    in
-                    ( { model
-                        | azimuth = newAzimuth
-                        , elevation = newElevation
-                        , pointerLast = Just dc
-                        , staticUpdate = True
-                      }
-                    , Cmd.none
-                    )
-                _ ->
-                    ( { model | pointerLast = Just dc }, Cmd.none )
+            let
+                ( updatedModel, cmd ) =
+                    if model.mode == ME.Running && model.activeOverlay == Nothing then
+                        ( applyLeash dc model, Cmd.none )
+                    else if model.orbiting && model.activeOverlay == Nothing then
+                        ( applyOrbit dc model, Cmd.none )
+                    else
+                        ( model, Cmd.none )
+            in
+            ( { updatedModel | pointerLast = Just dc }, cmd )
 
         Finished _ ->
             ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
@@ -456,6 +449,9 @@ updateModel message model =
 
         SetPerformance perf ->
             ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
+
+        SetLeashEnabled enabled ->
+            ( { model | leashEnabled = enabled }, saveLeashEnabled enabled )
 
         ResetProgress ->
             ( { model | finishedLevels = Set.empty }, saveFinishedLevels [] )
@@ -573,6 +569,43 @@ loadMaze maze maybeName model =
         , activeOverlay = Nothing
     }
 
+applyLeash : DD.DocumentCoords -> Model -> Model
+applyLeash dc model =
+    case ( model.leashEnabled, model.pointerStart ) of
+        ( True, Just start ) ->
+            let
+                dx = dc.x - start.x
+                dy = dc.y - start.y
+                dist = sqrt (dx * dx + dy * dy)
+            in
+            if dist > leashDistance then
+                let
+                    angle = atan2 dy dx
+                    newStart = { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
+                in
+                { model | pointerStart = Just newStart }
+            else model
+        _ ->
+            model
+
+applyOrbit : DD.DocumentCoords -> Model -> Model
+applyOrbit dc model =
+    case model.pointerLast of
+        Just lastDc ->
+            let
+                rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+                newAzimuth =
+                    model.azimuth
+                        |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+                newElevation =
+                    model.elevation
+                        |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
+                        |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
+            in
+            { model | azimuth = newAzimuth, elevation = newElevation, staticUpdate = True }
+        Nothing ->
+            model
+
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
     let
@@ -657,6 +690,7 @@ port updateDpr : (Float -> msg) -> Sub msg
 port updateRenderTime : (RenderUpdate -> msg) -> Sub msg
 port saveFinishedLevels : List String -> Cmd msg
 port savePerformance : String -> Cmd msg
+port saveLeashEnabled : Bool -> Cmd msg
 
 
 -- View
@@ -695,6 +729,18 @@ viewOverlay model overlay =
                             , HE.onClick (SetPerformance Rocket)
                             ]
                             [ H.text "🚀" ]
+                        ]
+                    , H.div [ HA.class "modal-row" ]
+                        [ H.div
+                            [ HA.class ("icon" ++ if not model.leashEnabled then " active" else "")
+                            , HE.onClick (SetLeashEnabled False)
+                            ]
+                            [ H.text "🎯📌" ]
+                        , H.div
+                            [ HA.class ("icon" ++ if model.leashEnabled then " active" else "")
+                            , HE.onClick (SetLeashEnabled True)
+                            ]
+                            [ H.text "🎯🏃" ]
                         ]
                     , H.div [ HA.class "modal-row" ]
                         [ H.div
