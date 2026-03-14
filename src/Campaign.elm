@@ -475,6 +475,22 @@ mazeDefs =
     , { emoji = "🦊"
       , name = "fox"
       , maze ="""
+        bg:c60;left:c60,40;right:cfc,10;above:fff,90;
+        sz:16,14;st:0,0;end:14,12;mz:
+        x x x o4o4o4z5o5o5o5o5o5o5o5z6o6
+        x x o3o3o3o3o3z4o4o4o4l5o4o5o7o6
+        x x o3o2o2o2o3o5o5o5o5s5o5o5o7o6
+        x x o3l3o3o2o3z4o4l5o4o4o5o6o7o6
+        x o2o2o2o3z4o4o4z5o5o5o4o5o6l7o6
+        o1l2o1o2z3o3o3o3z4o4o5o4o5o5s7x
+        o1s2o1o1o1o1o1z2o2o4o5o4o4o5s6x
+        o1s1o1o0o0o0o1o2o2o4s5o3o4o5o5x
+        o1o0o1o0o1o0o1o2z3o3s4o3o4x x x
+        o1o0l1o0o1o0S2o3o3o3s3o3o4x x x
+        o1o1o1o0o1o0o2o3o2o2o2o3x x x x
+        o0l1o0o0o1o0o2o3o2o3o3o3x x x x
+        o0s1o1o1o1S1o2o3l3o3x x x x x x
+        o0o0o0z1o1o1o2o2o2x x x x x x x
         """
       }
 
