@@ -354,6 +354,27 @@ mazeDefs =
     , { emoji = "🦩"
       , name = "flamingo"
       , maze = """
+        bg:e6e;left:e6e,30;right:93f,10;above:fff,66;
+        sz:16,19;st:0,1;end:15,17;mz:
+        x x x x x x x x o7o7o7o7o7o7o7x
+        x x x x x x x o5z6o6o6o6l7o6o7o8
+        x x x x x x o4l5o4o5o5o5o7S7o7o8
+        x x x x x x o4o5o4l5o4o4o7S8o7o8
+        x x x x o4o4o4o5o5o5o5o4o7o8o7o8
+        x x x o3o4o3l4o3z4z5o5o5s7o8o8o8
+        x x x o3s4s3o4o4o4o4o4o5o6o6o6s8
+        x x x o3s3o2o2o2o2s4o4o5o5z6o6o7
+        x x x o3l3o3o3o3o2o3o4o4o5o5o6o7
+        x x o2o2o2o2o2o3o2o3o3o4o4o5l6o5
+        x o1l2o1z2z3l3o3o2o2o3z4o4o2s6o5
+        x o1o2o2o2o2o2o3o3o2o2o2o2o2s5o5
+        x S2o2o1o1o1z2o2o3Z3o2o3o3o3o4o5
+        x o2o2o1z2z3o3o2o3o2o2o3o4o4o4x
+        o1o1o2l2o2o3o3o2o3o3o3o3x x x x
+        s1o1s2o1o2o2o3o2o2x x x x x x x
+        o0o1s1o1o1o2o3Z3o2x x x x x x x
+        o0l1o0z1o1o2o2x x x x x x x x x
+        x o1o1o1o1x x x x x x x x x x x
         """
       }
 
