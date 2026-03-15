@@ -944,8 +944,8 @@ viewJoystick model =
                         , ( "too-far", dist > (leashDistance - 5) )
                         ]
                     ] []
-                , H.div [ HA.class "joystick-crosshair-h" ] []
-                , H.div [ HA.class "joystick-crosshair-v" ] []
+                , H.div [ HA.class "joystick-crosshair-1" ] []
+                , H.div [ HA.class "joystick-crosshair-2" ] []
                 , H.div
                     [ HA.class "joystick-knob"
                     , HA.style "left" (String.fromFloat (kx - 15) ++ "px")
