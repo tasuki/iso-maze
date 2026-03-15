@@ -59,9 +59,22 @@ type alias Sphere =
     , material : String
     }
 
+type alias Plane =
+    { x : Float
+    , y : Float
+    , z : Float
+    , sizeX : Float
+    , sizeY : Float
+    , material : String
+    , rotationX : Float
+    , rotationY : Float
+    , rotationZ : Float
+    }
+
 type Renderable
     = BoxRenderable Box
     | SphereRenderable Sphere
+    | PlaneRenderable Plane
 
 
 sceneData : Model -> E.Value
@@ -171,7 +184,8 @@ drawDebugSpheres maybeAnalysis =
 dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
     List.concat
-        [ List.map SphereRenderable (drawPlayer model.playerSpheres)
+        [ drawHalo model.maze model.playerState
+        , List.map SphereRenderable (drawPlayer model.playerSpheres)
         , drawFocus model.mode model.focus
         , List.map BoxRenderable (drawEnd model.maze model.playerState model.playerSpheres model.animatorTimer model.animatorInitialFall)
         ]
@@ -202,6 +216,20 @@ encodeRenderable r =
                 , ( "z", E.float s.z )
                 , ( "radius", E.float s.radius )
                 , ( "material", E.string s.material )
+                ]
+
+        PlaneRenderable p ->
+            E.object
+                [ ( "type", E.string "plane" )
+                , ( "x", E.float p.x )
+                , ( "y", E.float p.y )
+                , ( "z", E.float p.z )
+                , ( "sizeX", E.float p.sizeX )
+                , ( "sizeY", E.float p.sizeY )
+                , ( "material", E.string p.material )
+                , ( "rotationX", E.float p.rotationX )
+                , ( "rotationY", E.float p.rotationY )
+                , ( "rotationZ", E.float p.rotationZ )
                 ]
 
 
@@ -342,6 +370,55 @@ drawEnd maze playerState ( _, _, head ) timer initialFall =
             }
     in
     [ hatPart 0, hatPart 30, hatPart 60 ]
+
+
+drawHalo : M.Maze -> M.PlayerState -> List Renderable
+drawHalo maze playerState =
+    let
+        ( x, y, z ) = Animate.interpolatedPosition playerState
+
+        getFix ( ix, iy ) =
+            case M.get ( ix, iy ) maze of
+                Just (M.Stairs _ _) -> -5
+                _ -> 0
+
+        x1 = floor x
+        x2 = ceiling x
+        y1 = floor y
+        y2 = ceiling y
+        fx = x - toFloat x1
+        fy = y - toFloat y1
+
+        fix11 = getFix ( x1, y1 )
+        fix12 = getFix ( x1, y2 )
+        fix21 = getFix ( x2, y1 )
+        fix22 = getFix ( x2, y2 )
+
+        fix =
+            if x1 == x2 && y1 == y2 then
+                toFloat fix11
+            else if x1 == x2 then
+                toFloat fix11 * (1 - fy) + toFloat fix12 * fy
+            else if y1 == y2 then
+                toFloat fix11 * (1 - fx) + toFloat fix21 * fx
+            else
+                (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
+                (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
+
+        haloZ = z * 10 + fix
+    in
+    [ PlaneRenderable
+        { x = x * 10
+        , y = y * 10
+        , z = haloZ
+        , sizeX = 8
+        , sizeY = 8
+        , material = "halo"
+        , rotationX = 0
+        , rotationY = 0
+        , rotationZ = 0
+        }
+    ]
 
 
 drawPlayer : ( Vec3, Vec3, Vec3 ) -> List Sphere
