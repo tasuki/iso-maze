@@ -27,8 +27,10 @@ function createHaloTexture() {
     canvas.height = size;
     const ctx = canvas.getContext('2d');
     const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    grad.addColorStop(0, 'rgba(0, 204, 255, 1)');
-    grad.addColorStop(0.5, 'rgba(0, 204, 255, 0.4)');
+    // Archero-style ring: transparent center, cyan ring, transparent outer
+    grad.addColorStop(0, 'rgba(0, 204, 255, 0)');
+    grad.addColorStop(0.7, 'rgba(0, 204, 255, 0.3)');
+    grad.addColorStop(0.9, 'rgba(0, 204, 255, 1)');
     grad.addColorStop(1, 'rgba(0, 204, 255, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
@@ -109,7 +111,16 @@ class BatchManager {
             this.scene.add(mesh);
             this.batches.set(key, mesh);
         }
-        return this.batches.get(key);
+        const b = this.batches.get(key);
+        // Important: halo should render BEFORE player/goal to not cover them
+        // but with depthTest: false it will cover them unless it has lower renderOrder.
+        // Wait, player has renderOrder +20, halo has +10. So player is AFTER halo.
+        // In Three.js, higher renderOrder means it's rendered later.
+        // If they both have depthTest: false, the later one wins.
+        // If player has depthTest: true (default) and halo has depthTest: false,
+        // then halo will always be visible on top of player UNLESS halo is rendered first
+        // AND player is rendered later with depthTest: true.
+        return b;
     }
 
     reset() {
@@ -123,13 +134,14 @@ class BatchManager {
         if (batch.count >= MAX_INSTANCES) return;
 
         this.tempPosition.set(r.x, r.y, r.z);
+        this.tempQuaternion.set(0, 0, 0, 1);
+        this.tempScale.set(1, 1, 1);
 
         if (r.type === 'box') {
             const rot = (r.rotationZ || 0) * Math.PI / 180;
             this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
             this.tempScale.set(r.sizeX, r.sizeY, r.sizeZ);
         } else if (r.type === 'sphere') {
-            this.tempQuaternion.set(0, 0, 0, 1);
             this.tempScale.set(r.radius, r.radius, r.radius);
         } else if (r.type === 'plane') {
             this.tempEuler.set(

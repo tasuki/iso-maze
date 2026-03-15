@@ -375,12 +375,27 @@ drawEnd maze playerState ( _, _, head ) timer initialFall =
 drawHalo : M.Maze -> M.PlayerState -> List Renderable
 drawHalo maze playerState =
     let
-        ( x, y, z ) = Animate.interpolatedPosition playerState
+        ( x, y, logicalZ ) = Animate.interpolatedPosition playerState
 
-        getFix ( ix, iy ) =
+        getHeightAt ( ix, iy ) =
             case M.get ( ix, iy ) maze of
-                Just (M.Stairs _ _) -> -5
-                _ -> 0
+                Just (M.Base ( _, _, z )) -> toFloat z * 10
+                Just (M.Bridge ( _, _, z )) ->
+                    if logicalZ >= toFloat z - 0.5 then toFloat z * 10
+                    else toFloat (z - 1) * 10
+                Just (M.Stairs ( _, _, z ) dir) ->
+                    let
+                        dx = x - toFloat ix
+                        dy = y - toFloat iy
+                        slope = case dir of
+                            M.SE -> dy + 0.5
+                            M.SW -> dx + 0.5
+                            M.NE -> 0.5 - dx
+                            M.NW -> 0.5 - dy
+                    in
+                    toFloat z * 10 + (slope - 1.0) * 10
+                Just (M.Greenery ( _, _, z )) -> toFloat z * 10
+                Nothing -> -10
 
         x1 = floor x
         x2 = ceiling x
@@ -389,28 +404,23 @@ drawHalo maze playerState =
         fx = x - toFloat x1
         fy = y - toFloat y1
 
-        fix11 = getFix ( x1, y1 )
-        fix12 = getFix ( x1, y2 )
-        fix21 = getFix ( x2, y1 )
-        fix22 = getFix ( x2, y2 )
+        h11 = getHeightAt ( x1, y1 )
+        h12 = getHeightAt ( x1, y2 )
+        h21 = getHeightAt ( x2, y1 )
+        h22 = getHeightAt ( x2, y2 )
 
-        fix =
-            if x1 == x2 && y1 == y2 then
-                toFloat fix11
-            else if x1 == x2 then
-                toFloat fix11 * (1 - fy) + toFloat fix12 * fy
-            else if y1 == y2 then
-                toFloat fix11 * (1 - fx) + toFloat fix21 * fx
+        haloZ =
+            if x1 == x2 && y1 == y2 then h11
+            else if x1 == x2 then h11 * (1 - fy) + h12 * fy
+            else if y1 == y2 then h11 * (1 - fx) + h21 * fx
             else
-                (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
-                (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
-
-        haloZ = z * 10 + fix
+                (h11 * (1 - fx) + h21 * fx) * (1 - fy) +
+                (h12 * (1 - fx) + h22 * fx) * fy
     in
     [ PlaneRenderable
         { x = x * 10
         , y = y * 10
-        , z = haloZ
+        , z = haloZ + 0.1
         , sizeX = 8
         , sizeY = 8
         , material = "halo"
