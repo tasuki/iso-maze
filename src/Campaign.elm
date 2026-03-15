@@ -497,6 +497,26 @@ mazeDefs =
     , { emoji = "🐕"
       , name = "dog"
       , maze ="""
+        sz:14,19;st:1,1;end:10,15;mz:
+        x x x x x x x x x x x o7o7x
+        x x x x x o5o5o5z6o6o7o7s7x
+        x x x x o4l5o4o4o4o6o7x s6x
+        x x x x o4o5o5o5o4o6o7x o5o5
+        x x o3o3l4z4o4o5o4o6o6o6o6o5
+        x o4o4o3S5o4o4o5o4o4o4z5l6o5
+        x s4o4o3o5o5o5o5o5o5o5o6o6x
+        o3o3o4o3o4Z4o3o5o6o6o6o6o5x
+        s3o3o4l4o4o3o3o5o5o5o6s6o5x
+        o2o2s4s3o4o3o4o4o4o5o5o5o5x
+        o2s2o3o2o4o3o3o3l4z4z5o5x x
+        o1o1s3s2o4o4o4o4o4o5o5o5x x
+        s1o1o2o1o2o2o2o2z3o3o3x x x
+        o0o0z1o1o1o1l2o1o1o1o3x x x
+        o0o1o1o2o2o2o2o2o2o1o3x x x
+        o0s1o1l2o1o1o1o1o2o1x x x x
+        o0o0o2o2o2o2o2o1o2x x x x x
+        x o0o0z1o1o1l2o1x x x x x x
+        x x o0o0z1z2o2x x x x x x x
         """
       }
 
