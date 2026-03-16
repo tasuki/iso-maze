@@ -35,6 +35,7 @@ type alias Model =
     , staticUpdate : Bool
     , performance : String
     , analysis : Maybe Analyzer.Analysis
+    , joystick : Maybe { dx : Float, dy : Float }
     }
 
 
@@ -111,6 +112,10 @@ sceneData model =
               )
             , ( "dynamic", E.list encodeRenderable (dynamicRenderables model) )
             , ( "staticUpdate", E.bool model.staticUpdate )
+            , ( "joystick", case model.joystick of
+                    Just j -> E.object [ ( "dx", E.float j.dx ), ( "dy", E.float j.dy ) ]
+                    Nothing -> E.null
+              )
             ]
     in
     if model.staticUpdate then
@@ -185,6 +190,7 @@ dynamicRenderables : Model -> List Renderable
 dynamicRenderables model =
     List.concat
         [ drawHalo model.maze model.playerState
+        , drawJoystickDot model
         , List.map SphereRenderable (drawPlayer model.playerSpheres)
         , drawFocus model.mode model.focus
         , List.map BoxRenderable (drawEnd model.maze model.playerState model.playerSpheres model.animatorTimer model.animatorInitialFall)
@@ -391,6 +397,45 @@ drawHalo maze playerState =
         , rotationZ = 0
         }
     ]
+
+
+drawJoystickDot : Model -> List Renderable
+drawJoystickDot model =
+    case model.joystick of
+        Nothing ->
+            []
+
+        Just j ->
+            let
+                ( x, y, z ) = Animate.interpolatedPosition model.playerState
+                fix = Animate.getFix model.maze ( x, y, z )
+                haloZ = z * 10 + fix
+
+                -- Basis vectors (matching computeCameraConfig)
+                a = Angle.inRadians model.azimuth
+                e = Angle.inRadians model.elevation
+                r = { x = -(sin a), y = cos a, z = 0 }
+                u = { x = -(cos a * sin e), y = -(sin a * sin e), z = cos e }
+
+                pixelsToUnits = 0.1
+                dx = j.dx * pixelsToUnits
+                dy = -j.dy * pixelsToUnits
+                offsetX = dx * r.x + dy * u.x
+                offsetY = dx * r.y + dy * u.y
+                offsetZ = dx * r.z + dy * u.z
+            in
+            [ PlaneRenderable
+                { x = x * 10 + offsetX
+                , y = y * 10 + offsetY
+                , z = haloZ + offsetZ + 0.1 -- slightly above halo
+                , sizeX = 2
+                , sizeY = 2
+                , material = "joystickDot"
+                , rotationX = 0
+                , rotationY = 0
+                , rotationZ = 0
+                }
+            ]
 
 
 drawPlayer : ( Vec3, Vec3, Vec3 ) -> List Sphere

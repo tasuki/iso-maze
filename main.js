@@ -37,6 +37,20 @@ function createHaloTexture() {
     return texture;
 }
 
+function createDotTexture() {
+    const size = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 204, 255, 0.8)';
+    ctx.fill();
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+}
+
 const materials = {
     base: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }),
     stairs: new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, metalness: 0.2 }),
@@ -45,6 +59,7 @@ const materials = {
     player: new THREE.MeshStandardMaterial({ color: 0x66ffff, emissive: 0xbbdddd, emissiveIntensity: 1.1, roughness: 0.5, metalness: 0.5, transparent: true }),
     goal: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
     halo: new THREE.MeshBasicMaterial({ map: createHaloTexture(), transparent: true, depthTest: false, depthWrite: false }),
+    joystickDot: new THREE.MeshBasicMaterial({ map: createDotTexture(), transparent: true, depthTest: false, depthWrite: false }),
     focus: new THREE.MeshStandardMaterial({ color: 0xff9900, emissive: 0xff9900, emissiveIntensity: 3, roughness: 0.5, metalness: 0.5 }),
     occlusion: new THREE.MeshBasicMaterial({ colorWrite: false }),
     debugUnreachable: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
@@ -103,6 +118,7 @@ class BatchManager {
             mesh.count = 0;
             mesh.renderOrder = this.baseRenderOrder;
             if (materialName === 'halo') mesh.renderOrder += 10;
+            if (materialName === 'joystickDot') mesh.renderOrder += 15;
             if (materialName === 'player') mesh.renderOrder += 20;
             if (materialName === 'goal') mesh.renderOrder += 20;
 
