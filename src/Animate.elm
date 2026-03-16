@@ -237,41 +237,43 @@ interpolatedPosition playerState =
             in
             ( lerp x1 x2 p, lerp y1 y2 p, lerp z1 z2 p )
 
+getFix : M.Maze -> Triple Float -> Float
+getFix maze ( x, y, z ) =
+    let
+        fixHelper ( ix, iy ) =
+            case M.get ( ix, iy ) maze of
+                Just (M.Stairs _ _) -> -5
+                _ -> 0
+
+        x1 = floor x
+        x2 = ceiling x
+        y1 = floor y
+        y2 = ceiling y
+        fx = x - toFloat x1
+        fy = y - toFloat y1
+
+        fix11 = fixHelper ( x1, y1 )
+        fix12 = fixHelper ( x1, y2 )
+        fix21 = fixHelper ( x2, y1 )
+        fix22 = fixHelper ( x2, y2 )
+    in
+    if x1 == x2 && y1 == y2 then
+        toFloat fix11
+    else if x1 == x2 then
+        toFloat fix11 * (1 - fy) + toFloat fix12 * fy
+    else if y1 == y2 then
+        toFloat fix11 * (1 - fx) + toFloat fix21 * fx
+    else
+        (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
+        (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
+
 getPlayerTargets : M.PlayerState -> M.Maze -> Triple Vec3
 getPlayerTargets playerState maze =
     let
         ( x, y, z ) = interpolatedPosition playerState
+        fix = getFix maze ( x, y, z )
 
         playerPos ( px, py, pz ) zOffset =
-            let
-                getFix ( ix, iy ) =
-                    case M.get ( ix, iy ) maze of
-                        Just (M.Stairs _ _) -> -5
-                        _ -> 0
-
-                x1 = floor px
-                x2 = ceiling px
-                y1 = floor py
-                y2 = ceiling py
-                fx = px - toFloat x1
-                fy = py - toFloat y1
-
-                fix11 = getFix ( x1, y1 )
-                fix12 = getFix ( x1, y2 )
-                fix21 = getFix ( x2, y1 )
-                fix22 = getFix ( x2, y2 )
-
-                fix =
-                    if x1 == x2 && y1 == y2 then
-                        toFloat fix11
-                    else if x1 == x2 then
-                        toFloat fix11 * (1 - fy) + toFloat fix12 * fy
-                    else if y1 == y2 then
-                        toFloat fix11 * (1 - fx) + toFloat fix21 * fx
-                    else
-                        (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
-                        (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
-            in
             { x = px * 10
             , y = py * 10
             , z = pz * 10 + zOffset + fix
