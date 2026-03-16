@@ -226,9 +226,10 @@ update message model =
             preModel.staticUpdate ||
             case message of
                 Resize _ _ -> True
-                Tick _ -> isMoving || wasMoving
-                Moved _ -> preModel.mode == ME.Editing && preModel.orbiting
-                Finished _ -> model.orbiting
+                Tick _ -> isMoving || wasMoving || (preModel.mode == ME.Running && preModel.pointerStart /= Nothing)
+                Started _ -> preModel.mode == ME.Running
+                Moved _ -> (preModel.mode == ME.Editing && preModel.orbiting) || preModel.mode == ME.Running
+                Finished _ -> model.orbiting || (model.mode == ME.Running && model.pointerStart /= Nothing)
                 KeyDown key ->
                     if preModel.mode == ME.Editing then True
                     else key == "e" || key == "c"
@@ -258,6 +259,13 @@ update message model =
                             Just (Analyzer.analyze preModel.maze)
                         else
                             Nothing
+                    , joystick =
+                        case ( preModel.mode, preModel.pointerStart, preModel.pointerLast ) of
+                            ( ME.Running, Just start, Just last ) ->
+                                Just { dx = last.x - start.x, dy = last.y - start.y }
+
+                            _ ->
+                                Nothing
                     }
         in
         ( { preModel | staticUpdate = False }
