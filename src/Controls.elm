@@ -63,7 +63,9 @@ resolveIntent pos (Intent angle _) maze =
 
         validMoves = List.filterMap
             (\d ->
-                if diff d < (pi / 2)
+                -- pi/2 picks direction up to 90° away
+                -- pi/2.5 picks direction up to 72° away
+                if diff d < (pi / 2.5)
                     then M.move pos d maze |> Maybe.map (Tuple.pair d)
                     else Nothing
             )
