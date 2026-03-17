@@ -4,7 +4,11 @@ import Maze as M
 import Set exposing (Set)
 import DocumentDecoders as DD
 
-type MovementIntent = Intent Float
+joystickDeadzone = 10
+joystickMaxDist = 80
+joystickMaxSpeedFactor = 1.5
+
+type MovementIntent = Intent Float Float
 
 getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
 getIntent keysDown pointerStart pointerLast =
@@ -26,14 +30,14 @@ getIntentFromKeyboard keys =
         eps = 0.01
     in
     case ( ( up, down ), ( left, right ) ) of
-        ( ( True, False ), ( True, False ) ) -> Just (Intent (directionToAngle M.NW))
-        ( ( True, False ), ( False, True ) ) -> Just (Intent (directionToAngle M.NE))
-        ( ( False, True ), ( True, False ) ) -> Just (Intent (directionToAngle M.SW))
-        ( ( False, True ), ( False, True ) ) -> Just (Intent (directionToAngle M.SE))
-        ( ( True, False ), _ ) -> Just (Intent (-pi/2 - eps))
-        ( ( False, True ), _ ) -> Just (Intent (pi/2 - eps))
-        ( _, ( True, False ) ) -> Just (Intent (pi - eps))
-        ( _, ( False, True ) ) -> Just (Intent (0 - eps))
+        ( ( True, False ), ( True, False ) ) -> Just (Intent (directionToAngle M.NW) 1.0)
+        ( ( True, False ), ( False, True ) ) -> Just (Intent (directionToAngle M.NE) 1.0)
+        ( ( False, True ), ( True, False ) ) -> Just (Intent (directionToAngle M.SW) 1.0)
+        ( ( False, True ), ( False, True ) ) -> Just (Intent (directionToAngle M.SE) 1.0)
+        ( ( True, False ), _ ) -> Just (Intent (-pi/2 - eps) 1.0)
+        ( ( False, True ), _ ) -> Just (Intent (pi/2 - eps) 1.0)
+        ( _, ( True, False ) ) -> Just (Intent (pi - eps) 1.0)
+        ( _, ( False, True ) ) -> Just (Intent (0 - eps) 1.0)
         _ -> Nothing
 
 getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
@@ -44,15 +48,15 @@ getIntentFromJoystick pointerStart pointerLast =
                 dx = last.x - start.x
                 dy = last.y - start.y
                 dist = sqrt (dx*dx + dy*dy)
-                deadzone = 10
+                speedFactor = min joystickMaxSpeedFactor ((dist / joystickMaxDist) * joystickMaxSpeedFactor)
             in
-            if dist > deadzone
-                then Just (Intent (atan2 dy dx))
+            if dist > joystickDeadzone
+                then Just (Intent (atan2 dy dx) speedFactor)
                 else Nothing
         _ -> Nothing
 
 resolveIntent : M.Position -> MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
-resolveIntent pos (Intent angle) maze =
+resolveIntent pos (Intent angle _) maze =
     let
         allDirs = [ M.NW, M.NE, M.SW, M.SE ]
         diff d = angleDiff angle (directionToAngle d)

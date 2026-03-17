@@ -497,8 +497,9 @@ updateModel message model =
 updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> M.PlayerState -> M.PlayerState
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
+        maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
         maybeMove pos progress =
-            case Controls.getIntent keysDown pointerStart pointerLast of
+            case maybeIntent of
                 Just intent ->
                     case Controls.resolveIntent pos intent maze of
                         Just ( dir, nextTo ) ->
@@ -507,12 +508,17 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
                             M.Idle pos
                 Nothing ->
                     M.Idle pos
+
+        speedFactor =
+            case maybeIntent of
+                Just (Controls.Intent _ s) -> s
+                Nothing -> 1.0
     in
     case playerState of
         M.Idle pos -> maybeMove pos 0
         M.Moving m ->
             let
-                newProgress = m.progress + (dt / secondsPerStep)
+                newProgress = m.progress + (dt * speedFactor / secondsPerStep)
                 isAtGoal = m.to == M.endPosition maze
                 maxProgress = if isAtGoal then 4.0 else 1.0
             in
