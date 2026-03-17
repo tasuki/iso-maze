@@ -519,12 +519,22 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
         M.Idle pos -> maybeMove pos 0
         M.Moving m ->
             let
-                newProgress = m.progress + (dt * speedFactor / secondsPerStep)
-                isAtGoal = m.to == M.endPosition maze
-                maxProgress = if isAtGoal then 4.0 else 1.0
+                oldMaxProgress = if m.to == M.endPosition maze then 4.0 else 1.0
+                tryReverse ( revDir, revTo ) =
+                    if revTo == m.from && m.progress < oldMaxProgress then
+                        { from = m.to, to = m.from, dir = revDir, progress = max 0 (1.0 - m.progress), speedFactor = speedFactor }
+                    else
+                        m
+
+                activeM = maybeIntent
+                    |> Maybe.andThen (\intent -> Controls.resolveIntent m.to intent maze)
+                    |> Maybe.map tryReverse
+                    |> Maybe.withDefault m
+                activeMaxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
+                newProgress = activeM.progress + (dt * speedFactor / secondsPerStep)
             in
-            if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress)
-            else M.Moving { m | progress = newProgress, speedFactor = speedFactor }
+            if newProgress >= activeMaxProgress then maybeMove activeM.to (newProgress - activeMaxProgress)
+            else M.Moving { activeM | progress = newProgress, speedFactor = speedFactor }
 
 type Route
     = Home (Maybe M.Maze)
