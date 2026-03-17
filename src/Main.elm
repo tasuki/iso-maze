@@ -500,19 +500,20 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
         maybeMove pos progress =
             case maybeIntent of
-                Just intent ->
+                Just ((Controls.Intent _ s) as intent) ->
                     case Controls.resolveIntent pos intent maze of
                         Just ( dir, nextTo ) ->
-                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
+                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress, speedFactor = s }
                         Nothing ->
                             M.Idle pos
                 Nothing ->
                     M.Idle pos
 
         speedFactor =
-            case maybeIntent of
-                Just (Controls.Intent _ s) -> s
-                Nothing -> 1.0
+            case (playerState, maybeIntent) of
+                (_, Just (Controls.Intent _ s)) -> s
+                (M.Moving m, Nothing) -> m.speedFactor
+                _ -> 1.0
     in
     case playerState of
         M.Idle pos -> maybeMove pos 0
@@ -523,7 +524,7 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
                 maxProgress = if isAtGoal then 4.0 else 1.0
             in
             if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress)
-            else M.Moving { m | progress = newProgress }
+            else M.Moving { m | progress = newProgress, speedFactor = speedFactor }
 
 type Route
     = Home (Maybe M.Maze)
