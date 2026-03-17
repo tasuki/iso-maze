@@ -55,6 +55,7 @@ type PlayerState
         , to : Position
         , dir : Direction
         , progress : Float
+        , speedFactor : Float
         }
 
 

@@ -497,27 +497,34 @@ updateModel message model =
 updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> M.PlayerState -> M.PlayerState
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
+        maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
         maybeMove pos progress =
-            case Controls.getIntent keysDown pointerStart pointerLast of
-                Just intent ->
+            case maybeIntent of
+                Just ((Controls.Intent _ s) as intent) ->
                     case Controls.resolveIntent pos intent maze of
                         Just ( dir, nextTo ) ->
-                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress }
+                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress, speedFactor = s }
                         Nothing ->
                             M.Idle pos
                 Nothing ->
                     M.Idle pos
+
+        speedFactor =
+            case (playerState, maybeIntent) of
+                (_, Just (Controls.Intent _ s)) -> s
+                (M.Moving m, Nothing) -> m.speedFactor
+                _ -> 1.0
     in
     case playerState of
         M.Idle pos -> maybeMove pos 0
         M.Moving m ->
             let
-                newProgress = m.progress + (dt / secondsPerStep)
+                newProgress = m.progress + (dt * speedFactor / secondsPerStep)
                 isAtGoal = m.to == M.endPosition maze
                 maxProgress = if isAtGoal then 4.0 else 1.0
             in
             if newProgress >= maxProgress then maybeMove m.to (newProgress - maxProgress)
-            else M.Moving { m | progress = newProgress }
+            else M.Moving { m | progress = newProgress, speedFactor = speedFactor }
 
 type Route
     = Home (Maybe M.Maze)
