@@ -240,9 +240,14 @@ interpolatedPosition playerState =
 getFix : M.Maze -> Triple Float -> Float
 getFix maze ( x, y, z ) =
     let
+        iz = round z
         fixHelper ( ix, iy ) =
             case M.get ( ix, iy ) maze of
                 Just (M.Stairs _ _) -> -5
+                Just (M.Bridge ( _, _, bz )) ->
+                    if iz == bz then 1
+                    else if iz == bz - 1 then -2
+                    else 0
                 _ -> 0
 
         x1 = floor x
