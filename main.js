@@ -118,7 +118,7 @@ class BatchManager {
             mesh.count = 0;
             mesh.renderOrder = this.baseRenderOrder;
             if (materialName === 'halo') mesh.renderOrder += 10;
-            if (materialName === 'joystickDot') mesh.renderOrder += 15;
+            if (materialName === 'joystickDot') mesh.renderOrder += 25;
             if (materialName === 'player') mesh.renderOrder += 20;
             if (materialName === 'goal') mesh.renderOrder += 20;
 
