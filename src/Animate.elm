@@ -245,8 +245,7 @@ getFix maze ( x, y, z ) =
             case M.get ( ix, iy ) maze of
                 Just (M.Stairs _ _) -> -5
                 Just (M.Bridge ( _, _, bz ) ) ->
-                    if iz == bz then 1
-                    else -2
+                    if iz == bz then 1 else 0
                 _ -> 0
 
         x1 = floor x
@@ -271,11 +270,49 @@ getFix maze ( x, y, z ) =
         (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
         (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
 
+getSquish : M.Maze -> Triple Float -> Float
+getSquish maze ( x, y, z ) =
+    let
+        iz = round z
+        squishHelper ( ix, iy ) =
+            case M.get ( ix, iy ) maze of
+                Just (M.Bridge ( _, _, bz ) ) ->
+                    if iz == bz - 1 then 1.0 else 0.0
+                _ -> 0.0
+
+        x1 = floor x
+        x2 = ceiling x
+        y1 = floor y
+        y2 = ceiling y
+        fx = x - toFloat x1
+        fy = y - toFloat y1
+
+        s11 = squishHelper ( x1, y1 )
+        s12 = squishHelper ( x1, y2 )
+        s21 = squishHelper ( x2, y1 )
+        s22 = squishHelper ( x2, y2 )
+    in
+    if x1 == x2 && y1 == y2 then
+        s11
+    else if x1 == x2 then
+        s11 * (1 - fy) + s12 * fy
+    else if y1 == y2 then
+        s11 * (1 - fx) + s21 * fx
+    else
+        (s11 * (1 - fx) + s21 * fx) * (1 - fy) +
+        (s12 * (1 - fx) + s22 * fx) * fy
+
 getPlayerTargets : M.PlayerState -> M.Maze -> Triple Vec3
 getPlayerTargets playerState maze =
     let
         ( x, y, z ) = interpolatedPosition playerState
         fix = getFix maze ( x, y, z )
+        squish = getSquish maze ( x, y, z )
+
+        lerp a b t = a + (b - a) * t
+        z1 = lerp 2.0 1.5 squish
+        z2 = lerp 5.5 4.5 squish
+        z3 = lerp 8.5 6.5 squish
 
         playerPos ( px, py, pz ) zOffset =
             { x = px * 10
@@ -284,4 +321,4 @@ getPlayerTargets playerState maze =
             }
         playerSphere zOffset = playerPos ( x, y, z ) zOffset
     in
-    ( playerSphere 2.0, playerSphere 5.5, playerSphere 8.5 )
+    ( playerSphere z1, playerSphere z2, playerSphere z3 )
