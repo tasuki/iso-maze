@@ -277,23 +277,32 @@ fixHelper maze ( ix, iy ) iz =
 getFix : M.Maze -> Triple Float -> Float
 getFix = interpolate fixHelper
 
-squishHelper : InterpolateHelper
-squishHelper maze ( ix, iy ) iz =
-    case M.get ( ix, iy ) maze of
-        Just (M.Bridge ( _, _, bz ) ) ->
-            if iz == bz - 1 then 1 else 0
-        _ -> 0
-
-getSquish : M.Maze -> Triple Float -> Float
-getSquish = interpolate squishHelper
-
+isUnderBridge : M.Maze -> M.Position -> Bool
+isUnderBridge maze ( x, y, z ) =
+    case M.get ( x, y ) maze of
+        Just (M.Bridge ( _, _, bz ) ) -> z == bz - 1
+        _ -> False
 
 getPlayerTargets : M.PlayerState -> M.Maze -> Triple Vec3
 getPlayerTargets playerState maze =
     let
         ( x, y, z ) = interpolatedPosition playerState
         fix = getFix maze ( x, y, z )
-        squish = getSquish maze ( x, y, z )
+
+        squish =
+            case playerState of
+                M.Idle pos ->
+                    if isUnderBridge maze pos then 1.0 else 0.0
+                M.Moving m ->
+                    let
+                        fromUnder = isUnderBridge maze m.from
+                        toUnder = isUnderBridge maze m.to
+                        p = clamp 0 1 m.progress
+                    in
+                    if fromUnder && toUnder then 1.0
+                    else if toUnder then 1.0 - (1.0 - p) ^ 12
+                    else if fromUnder then 1.0 - p ^ 12
+                    else 0.0
 
         lerp a b t = a + (b - a) * t
         z1 = lerp 2.0 1.0 squish
