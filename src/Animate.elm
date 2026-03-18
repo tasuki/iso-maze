@@ -237,18 +237,13 @@ interpolatedPosition playerState =
             in
             ( lerp x1 x2 p, lerp y1 y2 p, lerp z1 z2 p )
 
-getFix : M.Maze -> Triple Float -> Float
-getFix maze ( x, y, z ) =
+
+type alias InterpolateHelper = M.Maze -> ( Int, Int ) -> Int -> Float
+
+interpolate : InterpolateHelper -> M.Maze -> Triple Float -> Float
+interpolate fun maze ( x, y, z ) =
     let
         iz = round z
-        fixHelper ( ix, iy ) =
-            case M.get ( ix, iy ) maze of
-                Just (M.Stairs _ _) -> -5
-                Just (M.Bridge ( _, _, bz ) ) ->
-                    if iz == bz then 1
-                    else -2
-                _ -> 0
-
         x1 = floor x
         x2 = ceiling x
         y1 = floor y
@@ -256,26 +251,54 @@ getFix maze ( x, y, z ) =
         fx = x - toFloat x1
         fy = y - toFloat y1
 
-        fix11 = fixHelper ( x1, y1 )
-        fix12 = fixHelper ( x1, y2 )
-        fix21 = fixHelper ( x2, y1 )
-        fix22 = fixHelper ( x2, y2 )
+        fix11 = fun maze ( x1, y1 ) iz
+        fix12 = fun maze ( x1, y2 ) iz
+        fix21 = fun maze ( x2, y1 ) iz
+        fix22 = fun maze ( x2, y2 ) iz
     in
     if x1 == x2 && y1 == y2 then
-        toFloat fix11
+        fix11
     else if x1 == x2 then
-        toFloat fix11 * (1 - fy) + toFloat fix12 * fy
+        fix11 * (1 - fy) + fix12 * fy
     else if y1 == y2 then
-        toFloat fix11 * (1 - fx) + toFloat fix21 * fx
+        fix11 * (1 - fx) + fix21 * fx
     else
-        (toFloat fix11 * (1 - fx) + toFloat fix21 * fx) * (1 - fy) +
-        (toFloat fix12 * (1 - fx) + toFloat fix22 * fx) * fy
+        (fix11 * (1 - fx) + fix21 * fx) * (1 - fy) +
+        (fix12 * (1 - fx) + fix22 * fx) * fy
+
+fixHelper : InterpolateHelper
+fixHelper maze ( ix, iy ) iz =
+    case M.get ( ix, iy ) maze of
+        Just (M.Stairs _ _) -> -5
+        Just (M.Bridge ( _, _, bz ) ) ->
+            if iz == bz then 1 else 0
+        _ -> 0
+
+getFix : M.Maze -> Triple Float -> Float
+getFix = interpolate fixHelper
+
+squishHelper : InterpolateHelper
+squishHelper maze ( ix, iy ) iz =
+    case M.get ( ix, iy ) maze of
+        Just (M.Bridge ( _, _, bz ) ) ->
+            if iz == bz - 1 then 1 else 0
+        _ -> 0
+
+getSquish : M.Maze -> Triple Float -> Float
+getSquish = interpolate squishHelper
+
 
 getPlayerTargets : M.PlayerState -> M.Maze -> Triple Vec3
 getPlayerTargets playerState maze =
     let
         ( x, y, z ) = interpolatedPosition playerState
         fix = getFix maze ( x, y, z )
+        squish = getSquish maze ( x, y, z )
+
+        lerp a b t = a + (b - a) * t
+        z1 = lerp 2.0 1.0 squish
+        z2 = lerp 5.5 3.0 squish
+        z3 = lerp 8.5 5.5 squish
 
         playerPos ( px, py, pz ) zOffset =
             { x = px * 10
@@ -284,4 +307,4 @@ getPlayerTargets playerState maze =
             }
         playerSphere zOffset = playerPos ( x, y, z ) zOffset
     in
-    ( playerSphere 2.0, playerSphere 5.5, playerSphere 8.5 )
+    ( playerSphere z1, playerSphere z2, playerSphere z3 )
