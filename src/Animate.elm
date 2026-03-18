@@ -293,7 +293,9 @@ getPlayerTargets playerState maze =
     let
         ( x, y, z ) = interpolatedPosition playerState
         fix = getFix maze ( x, y, z )
-        squish = getSquish maze ( x, y, z )
+        -- Non-linear squish: sqrt rises fast and stays high longer.
+        -- Alternative: let s = squish * squish * (3 - 2 * squish) in ... (smoothstep)
+        squish = sqrt (getSquish maze ( x, y, z ))
 
         lerp a b t = a + (b - a) * t
         z1 = lerp 2.0 1.0 squish
