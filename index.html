@@ -71,6 +71,24 @@
         .joystick-crosshair-2 { position: absolute; left: -38px; top: -38px; width: 80px; height: 80px; background: linear-gradient(to bottom right, #0000 calc(50% - 2px), #FFF3, #0000 calc(50% + 2px)); }
         .joystick-knob { position: absolute; width: 30px; height: 30px; background: #FFF6; border-radius: 50%; }
 
+        .arrow-keys-container {
+            position: absolute; right: 20px; bottom: 20px; z-index: 10;
+            display: grid; grid-template-areas: ". up ." "left down right"; gap: 10px;
+            transform: rotate(-10deg); transition: opacity 1s; pointer-events: none;
+            opacity: 0;
+        }
+        .arrow-keys-container.visible { opacity: 1; transition: opacity 0s; }
+        .arrow-key {
+            width: 60px; height: 60px; border-radius: 12px; border: 2px solid #FFF6;
+            display: flex; align-items: center; justify-content: center;
+            color: #FFF6; font-size: 32px; box-sizing: border-box;
+        }
+        .arrow-key.pressed { background: #FFF4; border-color: transparent; color: #FFF; }
+        .arrow-up { grid-area: up; }
+        .arrow-down { grid-area: down; }
+        .arrow-left { grid-area: left; }
+        .arrow-right { grid-area: right; }
+
         .campaign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; min-width: 200px; max-width: 420px; }
         .campaign-level {
             display: flex; align-items: center; justify-content: center;
