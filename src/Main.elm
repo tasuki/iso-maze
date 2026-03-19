@@ -867,7 +867,9 @@ view model =
             , menuLink (ShowOverlay Help) "💡"
             ]
         , H.div (HA.id "three-container" :: watchNow)
-            [ viewJoystick model ]
+            [ viewJoystick model
+            , viewArrowKeys model
+            ]
         , case model.activeOverlay of
             Just overlay -> viewOverlay model overlay
             Nothing -> H.text ""
@@ -962,6 +964,24 @@ formatFloat val =
     if String.contains "." s then s
     else s ++ ".0"
 
+
+viewArrowKeys : Model -> H.Html Msg
+viewArrowKeys model =
+    let
+        isArrow k = k == "ArrowUp" || k == "ArrowDown" || k == "ArrowLeft" || k == "ArrowRight"
+        anyPressed = Set.foldl (\k acc -> acc || isArrow k) False model.keysDown
+        keyView label area key =
+            H.div
+                [ HA.classList [ ( "arrow-key", True ), ( area, True ), ( "pressed", Set.member key model.keysDown ) ] ]
+                [ H.text label ]
+    in
+    H.div
+        [ HA.classList [ ( "arrow-keys-container", True ), ( "visible", anyPressed && model.mode == ME.Running ) ] ]
+        [ keyView "↑" "arrow-up" "ArrowUp"
+        , keyView "←" "arrow-left" "ArrowLeft"
+        , keyView "↓" "arrow-down" "ArrowDown"
+        , keyView "→" "arrow-right" "ArrowRight"
+        ]
 
 viewJoystick : Model -> H.Html Msg
 viewJoystick model =

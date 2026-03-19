@@ -80,6 +80,24 @@
         .campaign-level:active { background: #FFF3; }
         .campaign-level.finished { background: #0F03; position: relative; }
         .campaign-level.finished::after { content: '✅'; position: absolute; font-size: 16px; bottom: 0; right: 0; }
+
+        .arrow-keys-container {
+            position: absolute; right: 20px; bottom: 20px; z-index: 10;
+            display: grid; grid-template-areas: ". up ." "left down right"; gap: 10px;
+            transform: rotate(-5deg); transition: opacity 0.5s; pointer-events: none;
+            opacity: 0;
+        }
+        .arrow-keys-container.visible { opacity: 1; transition: opacity 0s; }
+        .arrow-key {
+            width: 60px; height: 60px; border-radius: 12px; border: 2px solid #FFF6;
+            display: flex; align-items: center; justify-content: center;
+            color: #FFF6; font-size: 32px; box-sizing: border-box;
+        }
+        .arrow-key.pressed { background: #FFF4; border-color: transparent; color: #FFF; }
+        .arrow-up { grid-area: up; }
+        .arrow-down { grid-area: down; }
+        .arrow-left { grid-area: left; }
+        .arrow-right { grid-area: right; }
     </style>
 </head>
 <body>
