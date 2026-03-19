@@ -43,7 +43,6 @@ type Overlay
 type DebugLevel
     = DebugOff
     | DebugTechnical
-    | DebugAnalysis
 
 type Performance
     = Potato
@@ -257,7 +256,7 @@ update message model =
                     , staticUpdate = preModel.staticUpdate
                     , performance = performanceToString preModel.performance
                     , analysis =
-                        if preModel.debugLevel == DebugAnalysis then
+                        if preModel.debugLevel == DebugOff && preModel.mode == ME.Editing then
                             Just (Analyzer.analyze preModel.maze)
                         else
                             Nothing
@@ -466,8 +465,7 @@ updateModel message model =
                 newLevel =
                     case model.debugLevel of
                         DebugOff -> DebugTechnical
-                        DebugTechnical -> DebugAnalysis
-                        DebugAnalysis -> DebugOff
+                        DebugTechnical -> DebugOff
             in
             ( { model | debugLevel = newLevel, staticUpdate = True }, Cmd.none )
 
@@ -874,9 +872,6 @@ view model =
             Just overlay -> viewOverlay model overlay
             Nothing -> H.text ""
         , case model.debugLevel of
-            DebugOff ->
-                H.text ""
-
             DebugTechnical ->
                 H.div [ HA.id "debug-info", HA.class "overlay" ]
                     [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
@@ -896,8 +891,11 @@ view model =
                             H.text ""
                     ]
 
-            DebugAnalysis ->
-                viewAnalyzer (Analyzer.analyze model.maze)
+            DebugOff ->
+                if model.mode == ME.Editing then
+                    viewAnalyzer (Analyzer.analyze model.maze)
+                else
+                    H.text ""
         ]
     }
 
