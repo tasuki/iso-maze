@@ -302,21 +302,28 @@ updateModel message model =
                     else
                         model.playerState
 
-                maybeFinishedLevelName =
-                    case (model.currentLevel, newPlayerState) of
-                        (Just level, M.Idle pos) ->
-                            if pos == M.endPosition model.maze
-                                then Just level.name
-                                else Nothing
+                maybeFinishedLevel =
+                    case newPlayerState of
+                        M.Idle pos ->
+                            if pos == M.endPosition model.maze then
+                                Just (model.currentLevel |> Maybe.map .name |> Maybe.withDefault "")
+                            else Nothing
                         _ -> Nothing
 
                 (newFinishedLevels, saveCmd) =
-                    case maybeFinishedLevelName of
+                    case maybeFinishedLevel of
                         Just name ->
-                            let updated = Set.insert name model.finishedLevels in
-                            (updated, saveFinishedLevels (Set.toList updated))
+                            if name /= "" then
+                                let updated = Set.insert name model.finishedLevels in
+                                ( updated, saveFinishedLevels (Set.toList updated) )
+                            else ( model.finishedLevels, Cmd.none )
                         Nothing ->
-                            (model.finishedLevels, Cmd.none)
+                            ( model.finishedLevels, Cmd.none )
+
+                completionCmd =
+                    case (model.activeOverlay, maybeFinishedLevel) of
+                        (Nothing, Just name) -> notifyMazeCompleted name
+                        _ -> Cmd.none
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
@@ -334,11 +341,11 @@ updateModel message model =
                 , tickHistory = newTickHistory
                 , finishedLevels = newFinishedLevels
                 , activeOverlay =
-                    case maybeFinishedLevelName of
+                    case maybeFinishedLevel of
                         Just name -> Just (LevelComplete name)
                         Nothing -> model.activeOverlay
               }
-            , saveCmd
+            , Cmd.batch [ saveCmd, completionCmd ]
             )
 
         Started dc ->
@@ -716,6 +723,7 @@ port updateRenderTime : (RenderUpdate -> msg) -> Sub msg
 port saveFinishedLevels : List String -> Cmd msg
 port savePerformance : String -> Cmd msg
 port saveLeashEnabled : Bool -> Cmd msg
+port notifyMazeCompleted : String -> Cmd msg
 
 
 -- View

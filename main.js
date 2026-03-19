@@ -326,6 +326,10 @@ app.ports.saveLeashEnabled.subscribe(enabled => {
     localStorage.setItem('leashEnabled', enabled);
 });
 
+app.ports.notifyMazeCompleted.subscribe(name => {
+    fetch(`/completed/${name}`, { method: 'POST' });
+});
+
 app.ports.renderThreeJS.subscribe(data => {
     latestData = data;
     if (data.performance === 'potato') {
