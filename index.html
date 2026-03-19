@@ -60,7 +60,11 @@
             pointer-events: none; z-index: 10; font-size: 16px;
         }
 
-        .joystick-container { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 100; }
+        .joystick-container {
+            position: absolute; width: 0; height: 0; pointer-events: none; z-index: 100;
+            opacity: 0; transition: opacity .5s;
+        }
+        .joystick-container.visible { opacity: 1; transition: opacity 0s; }
         .joystick-base {
             position: absolute; left: -40px; top: -40px; width: 80px; height: 80px;
             border: 2px solid #FFF4; border-radius: 50%;

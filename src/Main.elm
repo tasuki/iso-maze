@@ -86,7 +86,7 @@ type alias Model =
     , pointerLast : Maybe DD.DocumentCoords
     , keysDown : Set String
     , debugLevel : DebugLevel
-    , orbiting : Bool
+    , dragging : Bool
     , elevation : Angle
     , azimuth : Angle
     , mode : ME.Mode
@@ -173,7 +173,7 @@ init flags url navKey =
             , pointerLast = Nothing
             , keysDown = Set.empty
             , debugLevel = DebugOff
-            , orbiting = False
+            , dragging = False
             , elevation = Angle.degrees D.initialElevation
             , azimuth = Angle.degrees D.initialAzimuth
             , mode = ME.Running
@@ -227,10 +227,10 @@ update message model =
             preModel.staticUpdate ||
             case message of
                 Resize _ _ -> True
-                Tick _ -> isMoving || wasMoving || (preModel.mode == ME.Running && preModel.pointerStart /= Nothing)
-                Started _ -> preModel.mode == ME.Running
-                Moved _ -> (preModel.mode == ME.Editing && preModel.orbiting) || preModel.mode == ME.Running
-                Finished _ -> model.orbiting || (model.mode == ME.Running && model.pointerStart /= Nothing)
+                Tick _ -> isMoving || wasMoving || preModel.dragging
+                Started _ -> True
+                Moved _ -> (preModel.mode == ME.Editing && preModel.dragging) || preModel.mode == ME.Running
+                Finished _ -> model.dragging
                 KeyDown key ->
                     if preModel.mode == ME.Editing then True
                     else key == "e" || key == "c"
@@ -261,12 +261,15 @@ update message model =
                         else
                             Nothing
                     , joystick =
-                        case ( preModel.mode, preModel.pointerStart, preModel.pointerLast ) of
-                            ( ME.Running, Just start, Just last ) ->
-                                Just { dx = last.x - start.x, dy = last.y - start.y }
+                        if preModel.dragging && preModel.mode == ME.Running then
+                            case ( preModel.pointerStart, preModel.pointerLast ) of
+                                ( Just start, Just last ) ->
+                                    Just { dx = last.x - start.x, dy = last.y - start.y }
 
-                            _ ->
-                                Nothing
+                                _ ->
+                                    Nothing
+                        else
+                            Nothing
                     }
         in
         ( { preModel | staticUpdate = False }
@@ -299,7 +302,10 @@ updateModel message model =
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
                     if model.mode == ME.Running && model.activeOverlay == Nothing then
-                        updatePlayerState dt model.keysDown model.pointerStart model.pointerLast model.maze model.playerState
+                        updatePlayerState dt model.keysDown
+                            (if model.dragging then model.pointerStart else Nothing)
+                            (if model.dragging then model.pointerLast else Nothing)
+                            model.maze model.playerState
                     else
                         model.playerState
 
@@ -358,7 +364,7 @@ updateModel message model =
 
         Started dc ->
             ( { model
-                | orbiting = model.mode == ME.Editing
+                | dragging = True
                 , pointerStart = Just dc
                 , pointerLast = Just dc
               }
@@ -368,23 +374,24 @@ updateModel message model =
         Moved dc ->
             let
                 ( updatedModel, cmd ) =
-                    if model.mode == ME.Running && model.activeOverlay == Nothing then
-                        ( applyLeash dc model, Cmd.none )
-                    else if model.orbiting && model.activeOverlay == Nothing then
-                        ( applyOrbit dc model, Cmd.none )
+                    if model.dragging && model.activeOverlay == Nothing then
+                        if model.mode == ME.Running then
+                            ( applyLeash dc model, Cmd.none )
+                        else
+                            ( applyOrbit dc model, Cmd.none )
                     else
                         ( model, Cmd.none )
             in
             ( { updatedModel | pointerLast = Just dc }, cmd )
 
         Finished _ ->
-            ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
+            ( { model | dragging = False }, Cmd.none )
 
         Cancelled _ ->
-            ( { model | pointerStart = Nothing, pointerLast = Nothing, orbiting = False }, Cmd.none )
+            ( { model | dragging = False }, Cmd.none )
 
         VisibilityChange BE.Hidden ->
-            ( { model | orbiting = False }, Cmd.none )
+            ( { model | dragging = False }, Cmd.none )
 
         VisibilityChange BE.Visible ->
             ( model, Cmd.none )
@@ -480,9 +487,9 @@ updateModel message model =
 
         ShowOverlay overlay ->
             if model.activeOverlay == Just overlay then
-                ( { model | activeOverlay = Nothing }, Cmd.none )
+                ( { model | activeOverlay = Nothing, dragging = False }, Cmd.none )
             else
-                ( { model | activeOverlay = Just overlay, orbiting = False, pointerStart = Nothing, keysDown = Set.empty }, Cmd.none )
+                ( { model | activeOverlay = Just overlay, dragging = False, keysDown = Set.empty }, Cmd.none )
 
         CloseOverlay ->
             case model.activeOverlay of
@@ -851,7 +858,7 @@ view model =
             , HE.on "pointercancel" <| DD.decodePrimary Cancelled
             ]
         watchNow =
-            if (model.mode == ME.Editing && model.orbiting) || model.mode == ME.Running then
+            if (model.mode == ME.Editing && model.dragging) || model.mode == ME.Running then
                 (HE.preventDefaultOn "pointermove" <| Decode.map (\m -> ( m, True )) (DD.decodePrimary Moved))
                     :: alwaysWatch
             else alwaysWatch
@@ -985,8 +992,8 @@ viewArrowKeys model =
 
 viewJoystick : Model -> H.Html Msg
 viewJoystick model =
-    case ( model.mode, model.pointerStart, model.pointerLast ) of
-        ( ME.Running, Just start, Just last ) ->
+    case ( model.pointerStart, model.pointerLast ) of
+        ( Just start, Just last ) ->
             let
                 dx = last.x - start.x
                 dy = last.y - start.y
@@ -998,7 +1005,10 @@ viewJoystick model =
                 ky = clampedDist * sin angle
             in
             H.div
-                [ HA.class "joystick-container"
+                [ HA.classList
+                    [ ( "joystick-container", True )
+                    , ( "visible", model.dragging && model.mode == ME.Running )
+                    ]
                 , HA.style "left" (String.fromFloat start.x ++ "px")
                 , HA.style "top" (String.fromFloat start.y ++ "px")
                 ]
