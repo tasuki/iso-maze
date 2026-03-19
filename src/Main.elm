@@ -15,6 +15,7 @@ import Duration exposing (Duration)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Http
 import Analyzer
 import Json.Decode as Decode
 import Maybe.Extra
@@ -136,6 +137,7 @@ type Msg
     | CloseOverlay
     | DprUpdated Float
     | RenderTimeUpdated RenderUpdate
+    | GotCompletionResponse (Result Http.Error ())
 
 type alias Flags =
     { dpr : Float
@@ -322,7 +324,12 @@ updateModel message model =
 
                 completionCmd =
                     case (model.activeOverlay, maybeFinishedLevel) of
-                        (Nothing, Just name) -> notifyMazeCompleted name
+                        (Nothing, Just name) ->
+                            Http.post
+                                { url = "/completed/" ++ name
+                                , body = Http.emptyBody
+                                , expect = Http.expectWhatever GotCompletionResponse
+                                }
                         _ -> Cmd.none
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
@@ -497,6 +504,9 @@ updateModel message model =
                         withinWindow
             in
             ( { model | renderHistory = finalHistory, lastRenderStats = Just renderUpdate }, Cmd.none )
+
+        GotCompletionResponse _ ->
+            ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -723,7 +733,6 @@ port updateRenderTime : (RenderUpdate -> msg) -> Sub msg
 port saveFinishedLevels : List String -> Cmd msg
 port savePerformance : String -> Cmd msg
 port saveLeashEnabled : Bool -> Cmd msg
-port notifyMazeCompleted : String -> Cmd msg
 
 
 -- View
