@@ -979,11 +979,20 @@ viewArrowKeys model =
         anyPressed = Set.foldl (\k acc -> acc || isArrow k) False model.keysDown
         keyView label area key =
             H.div
-                [ HA.classList [ ( "arrow-key", True ), ( area, True ), ( "pressed", Set.member key model.keysDown ) ] ]
+                [ HA.classList
+                    [ ( "arrow-key", True )
+                    , ( area, True )
+                    , ( "pressed", Set.member key model.keysDown )
+                    ]
+                ]
                 [ H.text label ]
     in
     H.div
-        [ HA.classList [ ( "arrow-keys-container", True ), ( "visible", anyPressed && model.mode == ME.Running ) ] ]
+        [ HA.classList
+            [ ( "arrow-keys-container", True )
+            , ( "visible", anyPressed && model.mode == ME.Running )
+            ]
+        ]
         [ keyView "↑" "arrow-up" "ArrowUp"
         , keyView "←" "arrow-left" "ArrowLeft"
         , keyView "↓" "arrow-down" "ArrowDown"
