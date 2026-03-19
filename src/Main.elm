@@ -15,6 +15,7 @@ import Duration exposing (Duration)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Http
 import Analyzer
 import Json.Decode as Decode
 import Maybe.Extra
@@ -136,6 +137,7 @@ type Msg
     | CloseOverlay
     | DprUpdated Float
     | RenderTimeUpdated RenderUpdate
+    | GotCompletionResponse (Result Http.Error ())
 
 type alias Flags =
     { dpr : Float
@@ -302,21 +304,35 @@ updateModel message model =
                     else
                         model.playerState
 
-                maybeFinishedLevelName =
-                    case (model.currentLevel, newPlayerState) of
-                        (Just level, M.Idle pos) ->
-                            if pos == M.endPosition model.maze
-                                then Just level.name
-                                else Nothing
+                maybeFinishedLevel =
+                    case newPlayerState of
+                        M.Idle pos ->
+                            if pos == M.endPosition model.maze then
+                                Just (model.currentLevel |> Maybe.map .name |> Maybe.withDefault "")
+                            else Nothing
                         _ -> Nothing
 
                 (newFinishedLevels, saveCmd) =
-                    case maybeFinishedLevelName of
-                        Just name ->
-                            let updated = Set.insert name model.finishedLevels in
-                            (updated, saveFinishedLevels (Set.toList updated))
-                        Nothing ->
-                            (model.finishedLevels, Cmd.none)
+                    case (model.activeOverlay, maybeFinishedLevel) of
+                        (Nothing, Just name) ->
+                            if name /= "" then
+                                let updated = Set.insert name model.finishedLevels in
+                                ( updated, saveFinishedLevels (Set.toList updated) )
+                            else ( model.finishedLevels, Cmd.none )
+                        _ ->
+                            ( model.finishedLevels, Cmd.none )
+
+                completionCmd =
+                    case (model.activeOverlay, maybeFinishedLevel) of
+                        (Nothing, Just name) ->
+                            Http.post
+                                { url = "/completed/" ++
+                                    if name /= "" then name
+                                    else Codec.encode model.maze
+                                , body = Http.emptyBody
+                                , expect = Http.expectWhatever GotCompletionResponse
+                                }
+                        _ -> Cmd.none
 
                 targets = Animate.getPlayerTargets newPlayerState model.maze
                 newAnimator = Animate.updateAnimator dt targets model.animator
@@ -334,11 +350,11 @@ updateModel message model =
                 , tickHistory = newTickHistory
                 , finishedLevels = newFinishedLevels
                 , activeOverlay =
-                    case maybeFinishedLevelName of
+                    case maybeFinishedLevel of
                         Just name -> Just (LevelComplete name)
                         Nothing -> model.activeOverlay
               }
-            , saveCmd
+            , Cmd.batch [ saveCmd, completionCmd ]
             )
 
         Started dc ->
@@ -471,7 +487,12 @@ updateModel message model =
                 ( { model | activeOverlay = Just overlay, orbiting = False, pointerStart = Nothing, keysDown = Set.empty }, Cmd.none )
 
         CloseOverlay ->
-            ( { model | activeOverlay = Nothing }, Cmd.none )
+            case model.activeOverlay of
+                Just (LevelComplete _) ->
+                    -- make LevelComplete overlay uncloseable
+                    ( model, Cmd.none )
+                _ ->
+                    ( { model | activeOverlay = Nothing }, Cmd.none )
 
         DprUpdated dpr ->
             ( { model | dpr = dpr }, Cmd.none )

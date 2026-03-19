@@ -15,6 +15,17 @@ export default defineConfig({
     server: {
         port: 8423,
         // hmr: false, // breaks elm reload
+        proxy: {
+            '^/completed/.*': {
+                bypass: (req, res) => {
+                    if (req.method === 'POST') {
+                        res.setHeader('Content-Type', 'application/json');
+                        res.end('{}');
+                        return false;
+                    }
+                }
+            },
+        },
     },
     build: {
         rollupOptions: {
