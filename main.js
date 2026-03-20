@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 
@@ -80,16 +81,33 @@ const geometryCache = new Map();
 
     function getUnitChamfer() {
         if (!geometryCache.has('unit_chamfer')) {
-            const shape = new THREE.Shape();
-            shape.moveTo(-0.5, -0.5);
-            shape.lineTo(0.5, -0.5);
-            shape.lineTo(0.5, 0.1);
-            shape.lineTo(0.1, 0.5);
-            shape.lineTo(-0.5, 0.5);
-            shape.lineTo(-0.5, -0.5);
+            // A 1x1x1 corner box (scaled later to 5x5x10) with a cut.
+            // The cut is 2 units in a 5-unit scale, so 2/5 = 0.4.
+            // Vertices of a 1x1x1 box centered at (0,0,0):
+            // Bottom: (-.5, -.5, -.5), (.5, -.5, -.5), (.5, .5, -.5), (-.5, .5, -.5)
+            // Top: (-.5, -.5, .5), (.5, -.5, .5), (.5, .5, .5), (-.5, .5, .5)
+            // The "outer" top corner is (.5, .5, .5).
+            // The cut connects points at:
+            // (.5 - 0.4, .5, .5) = (0.1, 0.5, 0.5)
+            // (.5, .5 - 0.4, .5) = (0.5, 0.1, 0.5)
+            // (.5, .5, .5 - 0.2) = (0.5, 0.5, 0.3)  <- 2 units in Z-scale 10 is 2/10 = 0.2
 
-            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
-            geometry.translate(0, 0, -0.5);
+            const vertices = [
+                new THREE.Vector3(-0.5, -0.5, -0.5),
+                new THREE.Vector3(0.5, -0.5, -0.5),
+                new THREE.Vector3(0.5, 0.5, -0.5),
+                new THREE.Vector3(-0.5, 0.5, -0.5),
+
+                new THREE.Vector3(-0.5, -0.5, 0.5),
+                new THREE.Vector3(0.5, -0.5, 0.5),
+                new THREE.Vector3(-0.5, 0.5, 0.5),
+
+                new THREE.Vector3(0.1, 0.5, 0.5),
+                new THREE.Vector3(0.5, 0.1, 0.5),
+                new THREE.Vector3(0.5, 0.5, 0.3)
+            ];
+
+            const geometry = new ConvexGeometry(vertices);
             geometryCache.set('unit_chamfer', geometry);
         }
         return geometryCache.get('unit_chamfer');
