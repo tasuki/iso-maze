@@ -89,6 +89,28 @@ function getUnitPlane() {
     return geometryCache.get('unit_plane');
 }
 
+function getUnitBridge() {
+    if (!geometryCache.has('unit_bridge')) {
+        const geometry = new THREE.BoxGeometry(1, 1, 1, 8, 8, 1);
+        const position = geometry.attributes.position;
+
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            const bump = 1.0 - Math.pow(2.0 * x, 2.0);
+            position.setZ(i, z + bump - 0.5);
+            const narrowing = 1.0 - 0.2 * bump;
+            position.setY(i, y * narrowing);
+        }
+
+        position.needsUpdate = true;
+        geometry.computeVertexNormals();
+        geometryCache.set('unit_bridge', geometry);
+    }
+    return geometryCache.get('unit_bridge');
+}
+
 const MAX_INSTANCES = 5000;
 
 class BatchManager {
@@ -113,6 +135,7 @@ class BatchManager {
             if (type === 'box') geometry = getUnitBox();
             else if (type === 'sphere') geometry = getUnitSphere();
             else if (type === 'plane') geometry = getUnitPlane();
+            else if (type === 'bridge') geometry = getUnitBridge();
 
             const mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
             mesh.count = 0;
@@ -156,6 +179,10 @@ class BatchManager {
             );
             this.tempQuaternion.setFromEuler(this.tempEuler);
             this.tempScale.set(r.sizeX, r.sizeY, 1);
+        } else if (r.type === 'bridge') {
+            const rot = (r.orientation === 'NWSE' ? 90 : 0) * Math.PI / 180;
+            this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
+            this.tempScale.set(10, 10, 1);
         }
 
         this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
