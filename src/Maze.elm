@@ -209,6 +209,12 @@ get ( x, y ) maze =
 getPosition : Pos2d -> Maze -> Maybe Position
 getPosition pos = get pos >> Maybe.map blockPosition
 
+getSurfaceHeight : Int -> Int -> Maze -> Int
+getSurfaceHeight x y maze =
+    getPosition ( x, y ) maze
+        |> Maybe.map (\( _, _, z ) -> z)
+        |> Maybe.withDefault -1
+
 startPosition : Maze -> Position
 startPosition m = getPosition m.start m |> Maybe.withDefault ( Tuple.first m.start, Tuple.second m.start, 0 )
 

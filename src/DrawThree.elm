@@ -50,6 +50,7 @@ type alias Box =
     , rotationX : Float
     , rotationY : Float
     , rotationZ : Float
+    , cutMask : Int
     }
 
 type alias Sphere =
@@ -91,9 +92,10 @@ sceneData : Model -> E.Value
 sceneData model =
     let
         config = computeCameraConfig model
-        mazeConfig = model.maze.config
+        maze = model.maze
+        mazeConfig = maze.config
 
-        limits = M.getLimits model.maze
+        limits = M.getLimits maze
         maxZ = M.toBlocks model.maze
             |> List.map (\b -> let ( _, _, z ) = M.blockPosition b in z)
             |> List.maximum |> Maybe.withDefault 0 |> toFloat
@@ -221,6 +223,7 @@ encodeRenderable r =
                 , ( "rotationX", E.float b.rotationX )
                 , ( "rotationY", E.float b.rotationY )
                 , ( "rotationZ", E.float b.rotationZ )
+                , ( "cutMask", E.int b.cutMask )
                 ]
 
         SphereRenderable s ->
@@ -269,26 +272,41 @@ encodeVec3 v =
 
 -- Drawing (Internal helpers)
 
-drawBase : String -> Float -> Float -> Float -> Box
-drawBase material x y z =
-    let bottom = 7 in
-    { x = x * 10
-    , y = y * 10
-    , z = z * 5 - bottom
+drawBase : M.Maze -> Bool -> String -> Int -> Int -> Int -> Box
+drawBase maze shouldChamfer material x y z =
+    let
+        bottom = 7
+        fz = toFloat z
+
+        hNE = M.getSurfaceHeight (x + 1) y maze
+        hNW = M.getSurfaceHeight x (y + 1) maze
+        hSW = M.getSurfaceHeight (x - 1) y maze
+        hSE = M.getSurfaceHeight x (y - 1) maze
+
+        cutNE = if hNE < z && hNW < z then 1 else 0
+        cutNW = if hNW < z && hSW < z then 2 else 0
+        cutSW = if hSW < z && hSE < z then 4 else 0
+        cutSE = if hSE < z && hNE < z then 8 else 0
+        cutMask = if shouldChamfer then cutNE + cutNW + cutSW + cutSE else 0
+    in
+    { x = toFloat x * 10
+    , y = toFloat y * 10
+    , z = fz * 5 - bottom
     , sizeX = 10
     , sizeY = 10
-    , sizeZ = z * 10 + 2 * bottom
+    , sizeZ = fz * 10 + 2 * bottom
     , material = material
     , rotationX = 0
     , rotationY = 0
     , rotationZ = 0
+    , cutMask = cutMask
     }
 
 drawBlock : M.Maze -> M.Block -> List Renderable
 drawBlock maze block =
     case block of
         M.Base ( x, y, z ) ->
-            [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            [ BoxRenderable <| drawBase maze True "base" x y z ]
 
         M.Bridge ( x, y, z ) ->
             let
@@ -323,14 +341,15 @@ drawBlock maze block =
                                 , rotationX = 0
                                 , rotationY = 0
                                 , rotationZ = 0
+                                , cutMask = 0
                                 }
             in
             [ bridgePart
-            , BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
+            , BoxRenderable <| drawBase maze False "base" x y (z - 1)
             ]
 
         M.Greenery ( x, y, z ) ->
-            BoxRenderable (drawBase "base" (toFloat x) (toFloat y) (toFloat z)) :: drawGreenery x y z
+            BoxRenderable (drawBase maze True "base" x y z) :: drawGreenery x y z
 
         M.Stairs ( x, y, z ) dir ->
             let
@@ -349,6 +368,7 @@ drawBlock maze block =
                     , rotationX = 0
                     , rotationY = 0
                     , rotationZ = 0
+                    , cutMask = 0
                     }
 
                 ( centerFun, dimsFun ) = case dir of
@@ -371,7 +391,7 @@ drawBlock maze block =
 
                 oneBox i = BoxRenderable (stepBox (centerFun i) (dimsFun i))
             in
-            List.map oneBox (List.range 0 9) ++ [ BoxRenderable <| drawBase "stairs" fx fy (fz - 1) ]
+            List.map oneBox (List.range 0 9) ++ [ BoxRenderable <| drawBase maze False "stairs" x y (z - 1) ]
 
 
 drawGreenery : Int -> Int -> Int -> List Renderable
@@ -415,6 +435,7 @@ drawEnd maze playerState ( _, _, head ) timer initialFall =
             , rotationX = 0
             , rotationY = 0
             , rotationZ = rotation
+            , cutMask = 0
             }
     in
     [ hatPart 0, hatPart 30, hatPart 60 ]
@@ -513,13 +534,13 @@ drawFocus mode ( x, y, z ) =
 
                 -- 4 along X
                 cx xpos ypos zpos =
-                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = 10, sizeY = r, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = 10, sizeY = r, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0, cutMask = 0 }
                 -- 4 along Y
                 cy xpos ypos zpos =
-                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = 10, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = 10, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0, cutMask = 0 }
                 -- 4 along Z
                 cz xpos ypos zpos =
-                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = r, sizeZ = 10, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = r, sizeZ = 10, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0, cutMask = 0 }
             in
             [ s xmin ymin zmin, s xmax ymin zmin, s xmin ymax zmin, s xmax ymax zmin
             , s xmin ymin zmax, s xmax ymin zmax, s xmin ymax zmax, s xmax ymax zmax
