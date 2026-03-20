@@ -149,3 +149,11 @@ ziggurat2 = """sz:11,11;st:4,4;end:8,8;mz:
     x x x x x x x o1o1Z1o0
     """
         |> Codec.decode |> Maybe.withDefault M.emptyMaze
+
+
+chamferTestMaze = """sz:3,3;st:1,1;end:1,1;mz:
+    x S1x
+    z1o1s1
+    x Z1x
+    """
+        |> Codec.decode |> Maybe.withDefault M.emptyMaze

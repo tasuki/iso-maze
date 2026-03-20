@@ -278,15 +278,32 @@ drawBase maze shouldChamfer material x y z =
         bottom = 7
         fz = toFloat z
 
-        hNE = M.getSurfaceHeight (x + 1) y maze
-        hNW = M.getSurfaceHeight x (y + 1) maze
-        hSW = M.getSurfaceHeight (x - 1) y maze
-        hSE = M.getSurfaceHeight x (y - 1) maze
+        -- Each neighbor can be "low" for two of the four corners of the current block.
+        -- E neighbor (x+1, y) can be low for NE and SE corners.
+        -- W neighbor (x-1, y) can be low for NW and SW corners.
+        -- N neighbor (x, y+1) can be low for NE and NW corners.
+        -- S neighbor (x, y-1) can be low for SE and SW corners.
 
-        cutNE = if hNE < z && hNW < z then 1 else 0
-        cutNW = if hNW < z && hSW < z then 2 else 0
-        cutSW = if hSW < z && hSE < z then 4 else 0
-        cutSE = if hSE < z && hNE < z then 8 else 0
+        checkLow nx ny cornerCheck1 cornerCheck2 =
+            case M.get ( nx, ny ) maze of
+                Nothing -> ( True, True )
+                Just (M.Base ( _, _, bz )) -> ( bz < z, bz < z )
+                Just (M.Greenery ( _, _, bz )) -> ( bz < z, bz < z )
+                Just (M.Bridge ( _, _, bz )) -> ( bz < z, bz < z )
+                Just (M.Stairs ( _, _, bz ) dir) ->
+                    ( bz < z || (bz == z && cornerCheck1 dir)
+                    , bz < z || (bz == z && cornerCheck2 dir)
+                    )
+
+        ( isLowE_NE, isLowE_SE ) = checkLow (x + 1) y (\d -> d == M.NW || d == M.SW) (\d -> d == M.SE || d == M.SW)
+        ( isLowW_NW, isLowW_SW ) = checkLow (x - 1) y (\d -> d == M.NE || d == M.NW) (\d -> d == M.NE || d == M.SE)
+        ( isLowN_NE, isLowN_NW ) = checkLow x (y + 1) (\d -> d == M.SE || d == M.NE) (\d -> d == M.SW || d == M.SE)
+        ( isLowS_SE, isLowS_SW ) = checkLow x (y - 1) (\d -> d == M.NW || d == M.NE) (\d -> d == M.NW || d == M.SW)
+
+        cutNE = if isLowE_NE && isLowN_NE then 1 else 0
+        cutNW = if isLowN_NW && isLowW_NW then 2 else 0
+        cutSW = if isLowW_SW && isLowS_SW then 4 else 0
+        cutSE = if isLowS_SE && isLowE_SE then 8 else 0
         cutMask = if shouldChamfer then cutNE + cutNW + cutSW + cutSE else 0
     in
     { x = toFloat x * 10
