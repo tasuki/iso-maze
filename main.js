@@ -89,6 +89,39 @@ function getUnitPlane() {
     return geometryCache.get('unit_plane');
 }
 
+function getUnitBridge() {
+    if (!geometryCache.has('unit_bridge')) {
+        // 10x10 block, 1 unit thick.
+        // x and y from -0.5 to 0.5. z from -0.5 to 0.5.
+        const geometry = new THREE.BoxGeometry(1, 1, 1, 16, 16, 1);
+        const position = geometry.attributes.position;
+
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+
+            // Base geometry is for EW orientation (along Y axis).
+            // Path axis: u = 2*y. Range [-1, 1].
+            // Bump is 0 at ends (y=±0.5), 1 at center (y=0)
+            const u = 2.0 * y;
+            const bump = 1.0 - Math.pow(u, 4.0);
+
+            // Arch: Shift Z by bump.
+            position.setZ(i, z + bump - 0.5);
+
+            // Narrowing: Scale X by narrowing factor.
+            // Narrowing factor 0.8 in middle (bump=1), 1.0 at ends (bump=0).
+            const narrowing = 1.0 - 0.2 * bump;
+            position.setX(i, x * narrowing);
+        }
+        position.needsUpdate = true;
+        geometry.computeVertexNormals();
+        geometryCache.set('unit_bridge', geometry);
+    }
+    return geometryCache.get('unit_bridge');
+}
+
 const MAX_INSTANCES = 5000;
 
 class BatchManager {
@@ -113,6 +146,7 @@ class BatchManager {
             if (type === 'box') geometry = getUnitBox();
             else if (type === 'sphere') geometry = getUnitSphere();
             else if (type === 'plane') geometry = getUnitPlane();
+            else if (type === 'custom_bridge') geometry = getUnitBridge();
 
             const mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
             mesh.count = 0;
@@ -156,6 +190,10 @@ class BatchManager {
             );
             this.tempQuaternion.setFromEuler(this.tempEuler);
             this.tempScale.set(r.sizeX, r.sizeY, 1);
+        } else if (r.type === 'custom_bridge') {
+            const rot = (r.orientation === 'NS' ? 90 : 0) * Math.PI / 180;
+            this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
+            this.tempScale.set(10, 10, 1);
         }
 
         this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);

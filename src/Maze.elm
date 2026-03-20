@@ -439,6 +439,27 @@ mapAllCoords fun =
     mapCoords (List.range -10 20) (List.range -10 20) fun
 
 
+-- Bridge Orientation
+
+type BridgeOrientation = NS | EW | None
+
+getBridgeOrientation : Position -> Maze -> BridgeOrientation
+getBridgeOrientation ( x, y, z ) maze =
+    let
+        canMove dir = move ( x, y, z ) dir maze /= Nothing
+        se = canMove SE
+        nw = canMove NW
+        sw = canMove SW
+        ne = canMove NE
+    in
+    if se && nw && not sw && not ne then
+        NS
+    else if sw && ne && not se && not nw then
+        EW
+    else
+        None
+
+
 -- Direction
 
 nextDirection : Direction -> Direction

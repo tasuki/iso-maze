@@ -271,11 +271,37 @@ fixHelper maze ( ix, iy ) iz =
     case M.get ( ix, iy ) maze of
         Just (M.Stairs _ _) -> -5
         Just (M.Bridge ( _, _, bz ) ) ->
-            if iz == bz then 1 else 0
+            if iz == bz then
+                case M.getBridgeOrientation ( ix, iy, bz ) maze of
+                    M.None -> 1
+                    _ -> 0
+            else 0
         _ -> 0
 
 getFix : M.Maze -> Triple Float -> Float
-getFix = interpolate fixHelper
+getFix maze ( x, y, z ) =
+    let
+        baseFix = interpolate fixHelper maze ( x, y, z )
+        ix = round x
+        iy = round y
+        iz = round z
+    in
+    case M.get ( ix, iy ) maze of
+        Just (M.Bridge ( _, _, bz )) ->
+            if iz == bz then
+                case M.getBridgeOrientation ( ix, iy, bz ) maze of
+                    M.NS ->
+                        let relX = x - toFloat ix in
+                        max baseFix (1.0 - (2.0 * relX) ^ 4)
+                    M.EW ->
+                        let relY = y - toFloat iy in
+                        max baseFix (1.0 - (2.0 * relY) ^ 4)
+                    M.None ->
+                        baseFix
+            else
+                baseFix
+        _ ->
+            baseFix
 
 isUnderBridge : M.Maze -> M.Position -> Bool
 isUnderBridge maze ( x, y, z ) =

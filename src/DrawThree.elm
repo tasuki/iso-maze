@@ -72,10 +72,19 @@ type alias Plane =
     , rotationZ : Float
     }
 
+type alias CustomBridge =
+    { x : Float
+    , y : Float
+    , z : Float
+    , orientation : String -- "NS" or "EW"
+    , material : String
+    }
+
 type Renderable
     = BoxRenderable Box
     | SphereRenderable Sphere
     | PlaneRenderable Plane
+    | BridgeRenderable CustomBridge
 
 
 sceneData : Model -> E.Value
@@ -133,7 +142,7 @@ sceneData model =
 
 staticRenderables : Model -> List Renderable
 staticRenderables model =
-    List.concatMap drawBlock (M.toBlocks model.maze)
+    List.concatMap (drawBlock model.maze) (M.toBlocks model.maze)
         ++ drawDebugSpheres model.analysis
 
 
@@ -224,6 +233,16 @@ encodeRenderable r =
                 , ( "material", E.string s.material )
                 ]
 
+        BridgeRenderable b ->
+            E.object
+                [ ( "type", E.string "custom_bridge" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                , ( "orientation", E.string b.orientation )
+                , ( "material", E.string b.material )
+                ]
+
         PlaneRenderable p ->
             E.object
                 [ ( "type", E.string "plane" )
@@ -265,25 +284,48 @@ drawBase material x y z =
     , rotationZ = 0
     }
 
-drawBlock : M.Block -> List Renderable
-drawBlock block =
+drawBlock : M.Maze -> M.Block -> List Renderable
+drawBlock maze block =
     case block of
         M.Base ( x, y, z ) ->
             [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
 
         M.Bridge ( x, y, z ) ->
-            [ BoxRenderable
-                { x = toFloat x * 10
-                , y = toFloat y * 10
-                , z = toFloat z * 10 + 0.5
-                , sizeX = 10
-                , sizeY = 10
-                , sizeZ = 1
-                , material = "bridge"
-                , rotationX = 0
-                , rotationY = 0
-                , rotationZ = 0
-                }
+            let
+                orientation = M.getBridgeOrientation ( x, y, z ) maze
+                bridgePart =
+                    case orientation of
+                        M.NS ->
+                            BridgeRenderable
+                                { x = toFloat x * 10
+                                , y = toFloat y * 10
+                                , z = toFloat z * 10
+                                , orientation = "NS"
+                                , material = "bridge"
+                                }
+                        M.EW ->
+                            BridgeRenderable
+                                { x = toFloat x * 10
+                                , y = toFloat y * 10
+                                , z = toFloat z * 10
+                                , orientation = "EW"
+                                , material = "bridge"
+                                }
+                        M.None ->
+                            BoxRenderable
+                                { x = toFloat x * 10
+                                , y = toFloat y * 10
+                                , z = toFloat z * 10 + 0.5
+                                , sizeX = 10
+                                , sizeY = 10
+                                , sizeZ = 1
+                                , material = "bridge"
+                                , rotationX = 0
+                                , rotationY = 0
+                                , rotationZ = 0
+                                }
+            in
+            [ bridgePart
             , BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
             ]
 
