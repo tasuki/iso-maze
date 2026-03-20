@@ -77,79 +77,71 @@ const geometryCache = new Map();
         const indices = [];
         let offset = 0;
 
-        function addFace(pts, nx, ny, nz, bits, dirs) {
-            const start = offset;
-            for (let i = 0; i < pts.length; i++) {
-                positions.push(...pts[i]);
-                normals.push(nx, ny, nz);
-                cornerBits.push(bits[i]);
-                offsetDirs.push(...dirs[i]);
+        const L = 0.2; // Bevel size (2.0 units)
+        const segments = 6;
+
+        function getVertexData(x, y, z) {
+            let bit = 0;
+            let vx = 0, vy = 0, vz = 0;
+            if (z > 0.5 - L + 0.0001) {
+                vz = z - (0.5 - L);
+                const isN = y > 0.5 - L + 0.0001;
+                const isS = y < -0.5 + L - 0.0001;
+                const isE = x > 0.5 - L + 0.0001;
+                const isW = x < -0.5 + L - 0.0001;
+
+                if (isN && isE) { bit = 1 | 16 | 128; vx = x - (0.5 - L); vy = y - (0.5 - L); }
+                else if (isN && isW) { bit = 2 | 16 | 32; vx = x - (-0.5 + L); vy = y - (0.5 - L); }
+                else if (isS && isW) { bit = 4 | 32 | 64; vx = x - (-0.5 + L); vy = y - (-0.5 + L); }
+                else if (isS && isE) { bit = 8 | 64 | 128; vx = x - (0.5 - L); vy = y - (-0.5 + L); }
+                else if (isN) { bit = 16; vy = y - (0.5 - L); }
+                else if (isW) { bit = 32; vx = x - (-0.5 + L); }
+                else if (isS) { bit = 64; vy = y - (-0.5 + L); }
+                else if (isE) { bit = 128; vx = x - (0.5 - L); }
             }
-            for (let i = 1; i < pts.length - 1; i++) {
-                indices.push(start, start + i, start + i + 1);
-            }
-            offset += pts.length;
+            return { bit, v: [vx, vy, vz] };
         }
 
-        const C0 = [-0.5, -0.5, 0.5], C1 = [0.5, -0.5, 0.5], C2 = [0.5, 0.5, 0.5], C3 = [-0.5, 0.5, 0.5];
-        const B0 = [-0.5, -0.5, -0.5], B1 = [0.5, -0.5, -0.5], B2 = [0.5, 0.5, -0.5], B3 = [-0.5, 0.5, -0.5];
-        const NONE = [0, 0, 0];
+        function addQuad(p1, p2, p3, p4, nx, ny, nz) {
+            const start = offset;
+            [p1, p2, p3, p4].forEach(p => {
+                positions.push(...p);
+                const data = getVertexData(...p);
+                normals.push(nx, ny, nz);
+                cornerBits.push(data.bit);
+                offsetDirs.push(...data.v);
+            });
+            indices.push(start, start + 1, start + 2, start, start + 2, start + 3);
+            offset += 4;
+        }
 
-        // Top face octagon (CCW)
-        // NE=1 (C2), NW=2 (C3), SW=4 (C0), SE=8 (C1)
-        addFace(
-            [C2, C2, C3, C3, C0, C0, C1, C1],
-            0, 0, 1,
-            [1, 1, 2, 2, 4, 4, 8, 8],
-            [
-                [0, -1, 0], [-1, 0, 0], // C2 (NE): moves South, moves West
-                [1, 0, 0], [0, -1, 0],  // C3 (NW): moves East, moves South
-                [0, 1, 0], [1, 0, 0],   // C0 (SW): moves North, moves East
-                [-1, 0, 0], [0, 1, 0]   // C1 (SE): moves West, moves North
-            ]
-        );
+        const uniqueXs = [];
+        for (let i = 0; i <= segments; i++) uniqueXs.push(-0.5 + (L * i / segments));
+        for (let i = 0; i <= segments; i++) uniqueXs.push(0.5 - L + (L * i / segments));
+        const xs = [...new Set(uniqueXs.map(x => x.toFixed(6)))].map(Number).sort((a, b) => a - b);
+        const ys = [...xs];
+        const uniqueZs = [-0.5, 0.5 - L];
+        for (let i = 1; i <= segments; i++) uniqueZs.push(0.5 - L + (L * i / segments));
+        const zs = [...new Set(uniqueZs.map(z => z.toFixed(6)))].map(Number).sort((a, b) => a - b);
 
-        // Bottom face (remain square, CCW from outside)
-        addFace([B0, B3, B2, B1], 0, 0, -1, [0, 0, 0, 0], [NONE, NONE, NONE, NONE]);
-
-        // North face (y = 0.5): C3 (NW, bit 2) and C2 (NE, bit 1)
-        addFace(
-            [B2, B3, C3, C3, C2, C2],
-            0, 1, 0,
-            [0, 0, 2, 2, 1, 1],
-            [NONE, NONE, [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 0, -1]]
-        );
-
-        // South face (y = -0.5): C0 (SW, bit 4) and C1 (SE, bit 8)
-        addFace(
-            [B0, B1, C1, C1, C0, C0],
-            0, -1, 0,
-            [0, 0, 8, 8, 4, 4],
-            [NONE, NONE, [0, 0, -1], [-1, 0, 0], [1, 0, 0], [0, 0, -1]]
-        );
-
-        // East face (x = 0.5): C1 (SE, bit 8) and C2 (NE, bit 1)
-        addFace(
-            [B1, B2, C2, C2, C1, C1],
-            1, 0, 0,
-            [0, 0, 1, 1, 8, 8],
-            [NONE, NONE, [0, 0, -1], [0, -1, 0], [0, 1, 0], [0, 0, -1]]
-        );
-
-        // West face (x = -0.5): C0 (SW, bit 4) and C3 (NW, bit 2)
-        addFace(
-            [B3, B0, C0, C0, C3, C3],
-            -1, 0, 0,
-            [0, 0, 4, 4, 2, 2],
-            [NONE, NONE, [0, 0, -1], [0, 1, 0], [0, -1, 0], [0, 0, -1]]
-        );
-
-        // Chamfer triangles
-        const n = 0.577;
-        addFace([C2, C2, C2], n, n, n, [1, 1, 1], [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]);
-        addFace([C3, C3, C3], -n, n, n, [2, 2, 2], [[1, 0, 0], [0, 0, -1], [0, -1, 0]]);
-        addFace([C0, C0, C0], -n, -n, n, [4, 4, 4], [[1, 0, 0], [0, 1, 0], [0, 0, -1]]);
-        addFace([C1, C1, C1], n, -n, n, [8, 8, 8], [[-1, 0, 0], [0, 0, -1], [0, 1, 0]]);
+        for (let i = 0; i < xs.length - 1; i++) {
+            for (let j = 0; j < ys.length - 1; j++) {
+                addQuad([xs[i], ys[j], 0.5], [xs[i + 1], ys[j], 0.5], [xs[i + 1], ys[j + 1], 0.5], [xs[i], ys[j + 1], 0.5], 0, 0, 1);
+            }
+        }
+        addQuad([-0.5, -0.5, -0.5], [-0.5, 0.5, -0.5], [0.5, 0.5, -0.5], [0.5, -0.5, -0.5], 0, 0, -1);
+        for (let i = 0; i < xs.length - 1; i++) {
+            for (let k = 0; k < zs.length - 1; k++) {
+                addQuad([xs[i + 1], 0.5, zs[k]], [xs[i], 0.5, zs[k]], [xs[i], 0.5, zs[k + 1]], [xs[i + 1], 0.5, zs[k + 1]], 0, 1, 0);
+                addQuad([xs[i], -0.5, zs[k]], [xs[i + 1], -0.5, zs[k]], [xs[i + 1], -0.5, zs[k + 1]], [xs[i], -0.5, zs[k + 1]], 0, -1, 0);
+            }
+        }
+        for (let j = 0; j < ys.length - 1; j++) {
+            for (let k = 0; k < zs.length - 1; k++) {
+                addQuad([0.5, ys[j], zs[k]], [0.5, ys[j + 1], zs[k]], [0.5, ys[j + 1], zs[k + 1]], [0.5, ys[j], zs[k + 1]], 1, 0, 0);
+                addQuad([-0.5, ys[j + 1], zs[k]], [-0.5, ys[j], zs[k]], [-0.5, ys[j], zs[k + 1]], [-0.5, ys[j + 1], zs[k + 1]], -1, 0, 0);
+            }
+        }
 
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -232,19 +224,39 @@ class BatchManager {
                         attribute float aCutMask;
                         ${shader.vertexShader}
                     `.replace(
-                        '#include <begin_vertex>',
+                        '#include <beginnormal_vertex>',
                         `
-                        #include <begin_vertex>
-
+                        #include <beginnormal_vertex>
                         if ((int(aCutMask) & int(aCornerBit)) != 0) {
-                            float amount = 2.0;
+                            float L = 2.0;
                             mat4 m = instanceMatrix;
                             vec3 scale = vec3(
                                 length(vec3(m[0][0], m[0][1], m[0][2])),
                                 length(vec3(m[1][0], m[1][1], m[1][2])),
                                 length(vec3(m[2][0], m[2][1], m[2][2]))
                             );
-                            transformed += aOffsetDir * (amount / scale);
+                            vec3 V = aOffsetDir * scale;
+                            if (length(V) > 0.0001) {
+                                objectNormal = normalize(V);
+                            }
+                        }
+                        `
+                    ).replace(
+                        '#include <begin_vertex>',
+                        `
+                        #include <begin_vertex>
+                        if ((int(aCutMask) & int(aCornerBit)) != 0) {
+                            float L = 2.0;
+                            mat4 m = instanceMatrix;
+                            vec3 scale = vec3(
+                                length(vec3(m[0][0], m[0][1], m[0][2])),
+                                length(vec3(m[1][0], m[1][1], m[1][2])),
+                                length(vec3(m[2][0], m[2][1], m[2][2]))
+                            );
+                            vec3 V = aOffsetDir * scale;
+                            if (length(V) > 0.0001) {
+                                transformed += (normalize(V) * L - V) / scale;
+                            }
                         }
                         `
                     );

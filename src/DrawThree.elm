@@ -304,7 +304,13 @@ drawBase maze shouldChamfer material x y z =
         cutNW = if isLowN_NW && isLowW_NW then 2 else 0
         cutSW = if isLowW_SW && isLowS_SW then 4 else 0
         cutSE = if isLowS_SE && isLowE_SE then 8 else 0
-        cutMask = if shouldChamfer then cutNE + cutNW + cutSW + cutSE else 0
+
+        cutN = if isLowN_NE && isLowN_NW then 16 else 0
+        cutW = if isLowW_NW && isLowW_SW then 32 else 0
+        cutS = if isLowS_SW && isLowS_SE then 64 else 0
+        cutE = if isLowE_SE && isLowE_NE then 128 else 0
+
+        cutMask = if shouldChamfer then cutNE + cutNW + cutSW + cutSE + cutN + cutW + cutS + cutE else 0
     in
     { x = toFloat x * 10
     , y = toFloat y * 10
