@@ -1,0 +1,9 @@
+
+> iso-maze@0.0.1 dev
+> vite --port 8424 --host
+
+
+  VITE v7.3.1  ready in 451 ms
+
+  ➜  Local:   http://localhost:8424/
+  ➜  Network: http://192.168.0.2:8424/

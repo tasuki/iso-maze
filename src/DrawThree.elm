@@ -339,21 +339,25 @@ drawBase maze shouldChamfer material x y z =
         baseHeight = baseTop + bottom
         baseZ = (baseTop - bottom) / 2
 
-        checkLow nx ny cornerCheck1 cornerCheck2 =
+        checkLow nx ny dir =
             case M.get ( nx, ny ) maze of
-                Nothing -> ( True, True )
-                Just (M.Base ( _, _, bz )) -> ( bz < z, bz < z )
-                Just (M.Greenery ( _, _, bz )) -> ( bz < z, bz < z )
-                Just (M.Bridge ( _, _, bz )) -> ( bz < z, bz < z )
-                Just (M.Stairs ( _, _, bz ) dir) ->
-                    ( bz < z || (bz == z && cornerCheck1 dir)
-                    , bz < z || (bz == z && cornerCheck2 dir)
-                    )
+                Nothing -> True
+                Just block ->
+                    let bz = M.positionZ (M.blockPosition block) in
+                    if bz < z then True
+                    else if bz > z then False
+                    else
+                        case block of
+                            M.Stairs _ _ ->
+                                case M.exitHeight (M.oppositeDirection dir) z block of
+                                    Just _ -> False
+                                    Nothing -> True
+                            _ -> False
 
-        ( isLowE_NE, isLowE_SE ) = checkLow (x + 1) y (\d -> d == M.NW || d == M.SW) (\d -> d == M.SE || d == M.SW)
-        ( isLowW_NW, isLowW_SW ) = checkLow (x - 1) y (\d -> d == M.NE || d == M.NW) (\d -> d == M.NE || d == M.SE)
-        ( isLowN_NE, isLowN_NW ) = checkLow x (y + 1) (\d -> d == M.SE || d == M.NE) (\d -> d == M.SW || d == M.SE)
-        ( isLowS_SE, isLowS_SW ) = checkLow x (y - 1) (\d -> d == M.NW || d == M.NE) (\d -> d == M.NW || d == M.SW)
+        isLowE = checkLow (x + 1) y M.NE
+        isLowW = checkLow (x - 1) y M.SW
+        isLowN = checkLow x (y + 1) M.NW
+        isLowS = checkLow x (y - 1) M.SE
 
         corner ( dx, dy ) rot isChamfered =
             let
@@ -364,10 +368,10 @@ drawBase maze shouldChamfer material x y z =
         mainBase = BoxRenderable { x = fx, y = fy, z = baseZ, sizeX = 10, sizeY = 10, sizeZ = baseHeight, material = material, rotationX = 0, rotationY = 0, rotationZ = 0 }
     in
     [ mainBase
-    , corner ( 2.5, 2.5 ) 0 (isLowE_NE && isLowN_NE)    -- NE
-    , corner ( -2.5, 2.5 ) 90 (isLowN_NW && isLowW_NW) -- NW
-    , corner ( -2.5, -2.5 ) 180 (isLowW_SW && isLowS_SW) -- SW
-    , corner ( 2.5, -2.5 ) 270 (isLowS_SE && isLowE_SE)  -- SE
+    , corner ( 2.5, 2.5 ) 0 (isLowE && isLowN)    -- NE
+    , corner ( -2.5, 2.5 ) 90 (isLowN && isLowW)  -- NW
+    , corner ( -2.5, -2.5 ) 180 (isLowW && isLowS) -- SW
+    , corner ( 2.5, -2.5 ) 270 (isLowS && isLowE)  -- SE
     ]
 
 drawBlock : M.Maze -> M.Block -> List Renderable
