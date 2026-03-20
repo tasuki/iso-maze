@@ -50,7 +50,32 @@ type alias Box =
     , rotationX : Float
     , rotationY : Float
     , rotationZ : Float
-    , cutMask : Int
+    }
+
+type alias Corner =
+    { x : Float
+    , y : Float
+    , z : Float
+    , sizeX : Float
+    , sizeY : Float
+    , sizeZ : Float
+    , material : String
+    , rotationX : Float
+    , rotationY : Float
+    , rotationZ : Float
+    }
+
+type alias Chamfer =
+    { x : Float
+    , y : Float
+    , z : Float
+    , sizeX : Float
+    , sizeY : Float
+    , sizeZ : Float
+    , material : String
+    , rotationX : Float
+    , rotationY : Float
+    , rotationZ : Float
     }
 
 type alias Sphere =
@@ -83,6 +108,8 @@ type alias Bridge =
 
 type Renderable
     = BoxRenderable Box
+    | CornerRenderable Corner
+    | ChamferRenderable Chamfer
     | SphereRenderable Sphere
     | PlaneRenderable Plane
     | BridgeRenderable Bridge
@@ -223,7 +250,36 @@ encodeRenderable r =
                 , ( "rotationX", E.float b.rotationX )
                 , ( "rotationY", E.float b.rotationY )
                 , ( "rotationZ", E.float b.rotationZ )
-                , ( "cutMask", E.int b.cutMask )
+                ]
+
+        CornerRenderable b ->
+            E.object
+                [ ( "type", E.string "corner" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                , ( "sizeX", E.float b.sizeX )
+                , ( "sizeY", E.float b.sizeY )
+                , ( "sizeZ", E.float b.sizeZ )
+                , ( "material", E.string b.material )
+                , ( "rotationX", E.float b.rotationX )
+                , ( "rotationY", E.float b.rotationY )
+                , ( "rotationZ", E.float b.rotationZ )
+                ]
+
+        ChamferRenderable b ->
+            E.object
+                [ ( "type", E.string "chamfer" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                , ( "sizeX", E.float b.sizeX )
+                , ( "sizeY", E.float b.sizeY )
+                , ( "sizeZ", E.float b.sizeZ )
+                , ( "material", E.string b.material )
+                , ( "rotationX", E.float b.rotationX )
+                , ( "rotationY", E.float b.rotationY )
+                , ( "rotationZ", E.float b.rotationZ )
                 ]
 
         SphereRenderable s ->
@@ -272,17 +328,16 @@ encodeVec3 v =
 
 -- Drawing (Internal helpers)
 
-drawBase : M.Maze -> Bool -> String -> Int -> Int -> Int -> Box
+drawBase : M.Maze -> Bool -> String -> Int -> Int -> Int -> List Renderable
 drawBase maze shouldChamfer material x y z =
     let
-        bottom = 7
+        bottom = 14
         fz = toFloat z
-
-        -- Each neighbor can be "low" for two of the four corners of the current block.
-        -- E neighbor (x+1, y) can be low for NE and SE corners.
-        -- W neighbor (x-1, y) can be low for NW and SW corners.
-        -- N neighbor (x, y+1) can be low for NE and NW corners.
-        -- S neighbor (x, y-1) can be low for SE and SW corners.
+        fx = toFloat x * 10
+        fy = toFloat y * 10
+        baseTop = (fz - 1) * 10
+        baseHeight = baseTop + bottom
+        baseZ = (baseTop - bottom) / 2
 
         checkLow nx ny cornerCheck1 cornerCheck2 =
             case M.get ( nx, ny ) maze of
@@ -300,30 +355,26 @@ drawBase maze shouldChamfer material x y z =
         ( isLowN_NE, isLowN_NW ) = checkLow x (y + 1) (\d -> d == M.SE || d == M.NE) (\d -> d == M.SW || d == M.SE)
         ( isLowS_SE, isLowS_SW ) = checkLow x (y - 1) (\d -> d == M.NW || d == M.NE) (\d -> d == M.NW || d == M.SW)
 
-        cutNE = if isLowE_NE && isLowN_NE then 1 else 0
-        cutNW = if isLowN_NW && isLowW_NW then 2 else 0
-        cutSW = if isLowW_SW && isLowS_SW then 4 else 0
-        cutSE = if isLowS_SE && isLowE_SE then 8 else 0
-        cutMask = if shouldChamfer then cutNE + cutNW + cutSW + cutSE else 0
+        corner ( dx, dy ) rot isChamfered =
+            let
+                conf = { x = fx + dx, y = fy + dy, z = fz * 10 - 5, sizeX = 5, sizeY = 5, sizeZ = 10, material = material, rotationX = 0, rotationY = 0, rotationZ = rot }
+            in
+            if shouldChamfer && isChamfered then ChamferRenderable conf else CornerRenderable conf
+
+        mainBase = BoxRenderable { x = fx, y = fy, z = baseZ, sizeX = 10, sizeY = 10, sizeZ = baseHeight, material = material, rotationX = 0, rotationY = 0, rotationZ = 0 }
     in
-    { x = toFloat x * 10
-    , y = toFloat y * 10
-    , z = fz * 5 - bottom
-    , sizeX = 10
-    , sizeY = 10
-    , sizeZ = fz * 10 + 2 * bottom
-    , material = material
-    , rotationX = 0
-    , rotationY = 0
-    , rotationZ = 0
-    , cutMask = cutMask
-    }
+    [ mainBase
+    , corner ( 2.5, 2.5 ) 0 (isLowE_NE && isLowN_NE)    -- NE
+    , corner ( -2.5, 2.5 ) 90 (isLowN_NW && isLowW_NW) -- NW
+    , corner ( -2.5, -2.5 ) 180 (isLowW_SW && isLowS_SW) -- SW
+    , corner ( 2.5, -2.5 ) 270 (isLowS_SE && isLowE_SE)  -- SE
+    ]
 
 drawBlock : M.Maze -> M.Block -> List Renderable
 drawBlock maze block =
     case block of
         M.Base ( x, y, z ) ->
-            [ BoxRenderable <| drawBase maze True "base" x y z ]
+            drawBase maze True "base" x y z
 
         M.Bridge ( x, y, z ) ->
             let
@@ -358,15 +409,12 @@ drawBlock maze block =
                                 , rotationX = 0
                                 , rotationY = 0
                                 , rotationZ = 0
-                                , cutMask = 0
                                 }
             in
-            [ bridgePart
-            , BoxRenderable <| drawBase maze False "base" x y (z - 1)
-            ]
+            bridgePart :: drawBase maze False "base" x y (z - 1)
 
         M.Greenery ( x, y, z ) ->
-            BoxRenderable (drawBase maze True "base" x y z) :: drawGreenery x y z
+            drawBase maze True "base" x y z ++ drawGreenery x y z
 
         M.Stairs ( x, y, z ) dir ->
             let
@@ -385,7 +433,6 @@ drawBlock maze block =
                     , rotationX = 0
                     , rotationY = 0
                     , rotationZ = 0
-                    , cutMask = 0
                     }
 
                 ( centerFun, dimsFun ) = case dir of
@@ -408,7 +455,7 @@ drawBlock maze block =
 
                 oneBox i = BoxRenderable (stepBox (centerFun i) (dimsFun i))
             in
-            List.map oneBox (List.range 0 9) ++ [ BoxRenderable <| drawBase maze False "stairs" x y (z - 1) ]
+            List.map oneBox (List.range 0 9) ++ drawBase maze False "stairs" x y (z - 1)
 
 
 drawGreenery : Int -> Int -> Int -> List Renderable
@@ -452,7 +499,6 @@ drawEnd maze playerState ( _, _, head ) timer initialFall =
             , rotationX = 0
             , rotationY = 0
             , rotationZ = rotation
-            , cutMask = 0
             }
     in
     [ hatPart 0, hatPart 30, hatPart 60 ]
@@ -551,13 +597,13 @@ drawFocus mode ( x, y, z ) =
 
                 -- 4 along X
                 cx xpos ypos zpos =
-                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = 10, sizeY = r, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0, cutMask = 0 }
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = 10, sizeY = r, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
                 -- 4 along Y
                 cy xpos ypos zpos =
-                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = 10, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0, cutMask = 0 }
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = 10, sizeZ = r, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
                 -- 4 along Z
                 cz xpos ypos zpos =
-                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = r, sizeZ = 10, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0, cutMask = 0 }
+                    BoxRenderable { x = xpos, y = ypos, z = zpos, sizeX = r, sizeY = r, sizeZ = 10, material = "focus", rotationX = 0, rotationY = 0, rotationZ = 0 }
             in
             [ s xmin ymin zmin, s xmax ymin zmin, s xmin ymax zmin, s xmax ymax zmin
             , s xmin ymin zmax, s xmax ymin zmax, s xmin ymax zmax, s xmax ymax zmax

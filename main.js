@@ -69,102 +69,30 @@ const materials = {
 
 const geometryCache = new Map();
 
-    function createChamferedBoxGeometry() {
-        const positions = [];
-        const normals = [];
-        const offsetDirs = [];
-        const cornerBits = [];
-        const indices = [];
-        let offset = 0;
-
-        function addFace(pts, nx, ny, nz, bits, dirs) {
-            const start = offset;
-            for (let i = 0; i < pts.length; i++) {
-                positions.push(...pts[i]);
-                normals.push(nx, ny, nz);
-                cornerBits.push(bits[i]);
-                offsetDirs.push(...dirs[i]);
-            }
-            for (let i = 1; i < pts.length - 1; i++) {
-                indices.push(start, start + i, start + i + 1);
-            }
-            offset += pts.length;
-        }
-
-        const C0 = [-0.5, -0.5, 0.5], C1 = [0.5, -0.5, 0.5], C2 = [0.5, 0.5, 0.5], C3 = [-0.5, 0.5, 0.5];
-        const B0 = [-0.5, -0.5, -0.5], B1 = [0.5, -0.5, -0.5], B2 = [0.5, 0.5, -0.5], B3 = [-0.5, 0.5, -0.5];
-        const NONE = [0, 0, 0];
-
-        // Top face octagon (CCW)
-        // NE=1 (C2), NW=2 (C3), SW=4 (C0), SE=8 (C1)
-        addFace(
-            [C2, C2, C3, C3, C0, C0, C1, C1],
-            0, 0, 1,
-            [1, 1, 2, 2, 4, 4, 8, 8],
-            [
-                [0, -1, 0], [-1, 0, 0], // C2 (NE): moves South, moves West
-                [1, 0, 0], [0, -1, 0],  // C3 (NW): moves East, moves South
-                [0, 1, 0], [1, 0, 0],   // C0 (SW): moves North, moves East
-                [-1, 0, 0], [0, 1, 0]   // C1 (SE): moves West, moves North
-            ]
-        );
-
-        // Bottom face (remain square, CCW from outside)
-        addFace([B0, B3, B2, B1], 0, 0, -1, [0, 0, 0, 0], [NONE, NONE, NONE, NONE]);
-
-        // North face (y = 0.5): C3 (NW, bit 2) and C2 (NE, bit 1)
-        addFace(
-            [B2, B3, C3, C3, C2, C2],
-            0, 1, 0,
-            [0, 0, 2, 2, 1, 1],
-            [NONE, NONE, [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 0, -1]]
-        );
-
-        // South face (y = -0.5): C0 (SW, bit 4) and C1 (SE, bit 8)
-        addFace(
-            [B0, B1, C1, C1, C0, C0],
-            0, -1, 0,
-            [0, 0, 8, 8, 4, 4],
-            [NONE, NONE, [0, 0, -1], [-1, 0, 0], [1, 0, 0], [0, 0, -1]]
-        );
-
-        // East face (x = 0.5): C1 (SE, bit 8) and C2 (NE, bit 1)
-        addFace(
-            [B1, B2, C2, C2, C1, C1],
-            1, 0, 0,
-            [0, 0, 1, 1, 8, 8],
-            [NONE, NONE, [0, 0, -1], [0, -1, 0], [0, 1, 0], [0, 0, -1]]
-        );
-
-        // West face (x = -0.5): C0 (SW, bit 4) and C3 (NW, bit 2)
-        addFace(
-            [B3, B0, C0, C0, C3, C3],
-            -1, 0, 0,
-            [0, 0, 4, 4, 2, 2],
-            [NONE, NONE, [0, 0, -1], [0, 1, 0], [0, -1, 0], [0, 0, -1]]
-        );
-
-        // Chamfer triangles
-        const n = 0.577;
-        addFace([C2, C2, C2], n, n, n, [1, 1, 1], [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]);
-        addFace([C3, C3, C3], -n, n, n, [2, 2, 2], [[1, 0, 0], [0, 0, -1], [0, -1, 0]]);
-        addFace([C0, C0, C0], -n, -n, n, [4, 4, 4], [[1, 0, 0], [0, 1, 0], [0, 0, -1]]);
-        addFace([C1, C1, C1], n, -n, n, [8, 8, 8], [[-1, 0, 0], [0, 0, -1], [0, 1, 0]]);
-
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-        geo.setAttribute('aOffsetDir', new THREE.Float32BufferAttribute(offsetDirs, 3));
-        geo.setAttribute('aCornerBit', new THREE.Float32BufferAttribute(cornerBits, 1));
-        geo.setIndex(indices);
-        return geo;
-    }
-
     function getUnitBox() {
         if (!geometryCache.has('unit_box')) {
-            geometryCache.set('unit_box', createChamferedBoxGeometry());
+            geometryCache.set('unit_box', new THREE.BoxGeometry(1, 1, 1));
         }
         return geometryCache.get('unit_box');
+    }
+
+    const getUnitCorner = getUnitBox;
+
+    function getUnitChamfer() {
+        if (!geometryCache.has('unit_chamfer')) {
+            const shape = new THREE.Shape();
+            shape.moveTo(-0.5, -0.5);
+            shape.lineTo(0.5, -0.5);
+            shape.lineTo(0.5, 0.1);
+            shape.lineTo(0.1, 0.5);
+            shape.lineTo(-0.5, 0.5);
+            shape.lineTo(-0.5, -0.5);
+
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+            geometry.translate(0, 0, -0.5);
+            geometryCache.set('unit_chamfer', geometry);
+        }
+        return geometryCache.get('unit_chamfer');
     }
 
 function getUnitSphere() {
@@ -222,45 +150,12 @@ class BatchManager {
     getBatch(type, materialName) {
         const key = `${type}_${materialName}`;
         if (!this.batches.has(key)) {
-            let material = this.materials[materialName];
-            if (type === 'box' && materialName !== 'occlusion' && materialName !== 'focus') {
-                material = material.clone();
-                const onBeforeCompile = (shader) => {
-                    shader.vertexShader = `
-                        attribute vec3 aOffsetDir;
-                        attribute float aCornerBit;
-                        attribute float aCutMask;
-                        ${shader.vertexShader}
-                    `.replace(
-                        '#include <begin_vertex>',
-                        `
-                        #include <begin_vertex>
-
-                        if ((int(aCutMask) & int(aCornerBit)) != 0) {
-                            float amount = 2.0;
-                            mat4 m = instanceMatrix;
-                            vec3 scale = vec3(
-                                length(vec3(m[0][0], m[0][1], m[0][2])),
-                                length(vec3(m[1][0], m[1][1], m[1][2])),
-                                length(vec3(m[2][0], m[2][1], m[2][2]))
-                            );
-                            transformed += aOffsetDir * (amount / scale);
-                        }
-                        `
-                    );
-                };
-                material.onBeforeCompile = onBeforeCompile;
-
-                // For N8AO to see the chamfers, we need customDepthMaterial
-                const depthMaterial = new THREE.MeshDepthMaterial({
-                    depthPacking: THREE.RGBADepthPacking,
-                });
-                depthMaterial.onBeforeCompile = onBeforeCompile;
-                material.customDepthMaterial = depthMaterial;
-            }
+            const material = this.materials[materialName];
 
             let geometry;
-            if (type === 'box') geometry = getUnitBox().clone();
+            if (type === 'box') geometry = getUnitBox();
+            else if (type === 'corner') geometry = getUnitCorner();
+            else if (type === 'chamfer') geometry = getUnitChamfer();
             else if (type === 'sphere') geometry = getUnitSphere();
             else if (type === 'plane') geometry = getUnitPlane();
             else if (type === 'bridge') geometry = getUnitBridge();
@@ -274,11 +169,6 @@ class BatchManager {
             if (materialName === 'joystickDot') mesh.renderOrder += 25;
 
             mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-
-            if (type === 'box') {
-                const cutMasks = new Float32Array(MAX_INSTANCES);
-                mesh.geometry.setAttribute('aCutMask', new THREE.InstancedBufferAttribute(cutMasks, 1));
-            }
 
             this.scene.add(mesh);
             this.batches.set(key, mesh);
@@ -298,15 +188,14 @@ class BatchManager {
 
         this.tempPosition.set(r.x, r.y, r.z);
 
-        if (r.type === 'box') {
-            const rot = (r.rotationZ || 0) * Math.PI / 180;
-            this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
+        if (r.type === 'box' || r.type === 'corner' || r.type === 'chamfer') {
+            this.tempEuler.set(
+                (r.rotationX || 0) * Math.PI / 180,
+                (r.rotationY || 0) * Math.PI / 180,
+                (r.rotationZ || 0) * Math.PI / 180
+            );
+            this.tempQuaternion.setFromEuler(this.tempEuler);
             this.tempScale.set(r.sizeX, r.sizeY, r.sizeZ);
-
-            const attr = batch.geometry.getAttribute('aCutMask');
-            if (attr) {
-                attr.setX(batch.count, r.cutMask || 0);
-            }
         } else if (r.type === 'sphere') {
             this.tempQuaternion.set(0, 0, 0, 1);
             this.tempScale.set(r.radius, r.radius, r.radius);
@@ -332,8 +221,6 @@ class BatchManager {
     update() {
         for (const mesh of this.batches.values()) {
             mesh.instanceMatrix.needsUpdate = true;
-            const attr = mesh.geometry.getAttribute('aCutMask');
-            if (attr) attr.needsUpdate = true;
             mesh.computeBoundingSphere();
         }
     }
@@ -372,7 +259,7 @@ groundPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(3000, 3000),
     new THREE.MeshLambertMaterial({ color: defaultBg })
 );
-groundPlane.position.z = -14;
+groundPlane.position.z = -14.1;
 
 dynamicScene = new THREE.Scene();
 const dynamicLights = createLights();
