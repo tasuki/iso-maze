@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import * as PP from 'postprocessing';
 import { N8AOPostPass } from 'n8ao';
 
@@ -68,11 +69,40 @@ const materials = {
 };
 
 const geometryCache = new Map();
+
 function getUnitBox() {
     if (!geometryCache.has('unit_box')) {
         geometryCache.set('unit_box', new THREE.BoxGeometry(1, 1, 1));
     }
     return geometryCache.get('unit_box');
+}
+
+const getUnitCorner = getUnitBox;
+
+function getUnitChamfer() {
+    if (!geometryCache.has('unit_chamfer')) {
+        const vertices = [
+            // bottom
+            new THREE.Vector3(-0.5, -0.5, -0.5),
+            new THREE.Vector3(0.5, -0.5, -0.5),
+            new THREE.Vector3(0.5, 0.5, -0.5),
+            new THREE.Vector3(-0.5, 0.5, -0.5),
+
+            // top
+            new THREE.Vector3(-0.5, -0.5, 0.5),
+            new THREE.Vector3(0.5, -0.5, 0.5),
+            new THREE.Vector3(-0.5, 0.5, 0.5),
+
+            // cut
+            new THREE.Vector3(0.2, 0.5, 0.5),
+            new THREE.Vector3(0.5, 0.2, 0.5),
+            new THREE.Vector3(0.5, 0.5, 0.2),
+        ];
+
+        const geometry = new ConvexGeometry(vertices);
+        geometryCache.set('unit_chamfer', geometry);
+    }
+    return geometryCache.get('unit_chamfer');
 }
 
 function getUnitSphere() {
@@ -133,6 +163,8 @@ class BatchManager {
             const material = this.materials[materialName];
             let geometry;
             if (type === 'box') geometry = getUnitBox();
+            else if (type === 'corner') geometry = getUnitCorner();
+            else if (type === 'chamfer') geometry = getUnitChamfer();
             else if (type === 'sphere') geometry = getUnitSphere();
             else if (type === 'plane') geometry = getUnitPlane();
             else if (type === 'bridge') geometry = getUnitBridge();
@@ -164,9 +196,13 @@ class BatchManager {
 
         this.tempPosition.set(r.x, r.y, r.z);
 
-        if (r.type === 'box') {
-            const rot = (r.rotationZ || 0) * Math.PI / 180;
-            this.tempQuaternion.setFromAxisAngle(this.upVector, rot);
+        if (r.type === 'box' || r.type === 'corner' || r.type === 'chamfer') {
+            this.tempEuler.set(
+                (r.rotationX || 0) * Math.PI / 180,
+                (r.rotationY || 0) * Math.PI / 180,
+                (r.rotationZ || 0) * Math.PI / 180,
+            );
+            this.tempQuaternion.setFromEuler(this.tempEuler);
             this.tempScale.set(r.sizeX, r.sizeY, r.sizeZ);
         } else if (r.type === 'sphere') {
             this.tempQuaternion.set(0, 0, 0, 1);
@@ -175,7 +211,7 @@ class BatchManager {
             this.tempEuler.set(
                 (r.rotationX || 0) * Math.PI / 180,
                 (r.rotationY || 0) * Math.PI / 180,
-                (r.rotationZ || 0) * Math.PI / 180
+                (r.rotationZ || 0) * Math.PI / 180,
             );
             this.tempQuaternion.setFromEuler(this.tempEuler);
             this.tempScale.set(r.sizeX, r.sizeY, 1);
@@ -444,9 +480,12 @@ app.ports.renderThreeJS.subscribe(data => {
 });
 
 function parseHex(hex) {
-    return new THREE.Color(
-        '#' + hex.split('').map(char => char + char).join('')
-    );
+    if (hex.length === 3) {
+        return new THREE.Color(
+            '#' + hex.split('').map(char => char + char).join('')
+        );
+    }
+    return new THREE.Color('#' + hex);
 }
 
 function updateScene(data) {

@@ -52,6 +52,32 @@ type alias Box =
     , rotationZ : Float
     }
 
+type alias Corner =
+    { x : Float
+    , y : Float
+    , z : Float
+    , sizeX : Float
+    , sizeY : Float
+    , sizeZ : Float
+    , material : String
+    , rotationX : Float
+    , rotationY : Float
+    , rotationZ : Float
+    }
+
+type alias Chamfer =
+    { x : Float
+    , y : Float
+    , z : Float
+    , sizeX : Float
+    , sizeY : Float
+    , sizeZ : Float
+    , material : String
+    , rotationX : Float
+    , rotationY : Float
+    , rotationZ : Float
+    }
+
 type alias Sphere =
     { x : Float
     , y : Float
@@ -82,6 +108,8 @@ type alias Bridge =
 
 type Renderable
     = BoxRenderable Box
+    | CornerRenderable Corner
+    | ChamferRenderable Chamfer
     | SphereRenderable Sphere
     | PlaneRenderable Plane
     | BridgeRenderable Bridge
@@ -91,9 +119,10 @@ sceneData : Model -> E.Value
 sceneData model =
     let
         config = computeCameraConfig model
-        mazeConfig = model.maze.config
+        maze = model.maze
+        mazeConfig = maze.config
 
-        limits = M.getLimits model.maze
+        limits = M.getLimits maze
         maxZ = M.toBlocks model.maze
             |> List.map (\b -> let ( _, _, z ) = M.blockPosition b in z)
             |> List.maximum |> Maybe.withDefault 0 |> toFloat
@@ -223,6 +252,36 @@ encodeRenderable r =
                 , ( "rotationZ", E.float b.rotationZ )
                 ]
 
+        CornerRenderable b ->
+            E.object
+                [ ( "type", E.string "corner" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                , ( "sizeX", E.float b.sizeX )
+                , ( "sizeY", E.float b.sizeY )
+                , ( "sizeZ", E.float b.sizeZ )
+                , ( "material", E.string b.material )
+                , ( "rotationX", E.float b.rotationX )
+                , ( "rotationY", E.float b.rotationY )
+                , ( "rotationZ", E.float b.rotationZ )
+                ]
+
+        ChamferRenderable b ->
+            E.object
+                [ ( "type", E.string "chamfer" )
+                , ( "x", E.float b.x )
+                , ( "y", E.float b.y )
+                , ( "z", E.float b.z )
+                , ( "sizeX", E.float b.sizeX )
+                , ( "sizeY", E.float b.sizeY )
+                , ( "sizeZ", E.float b.sizeZ )
+                , ( "material", E.string b.material )
+                , ( "rotationX", E.float b.rotationX )
+                , ( "rotationY", E.float b.rotationY )
+                , ( "rotationZ", E.float b.rotationZ )
+                ]
+
         SphereRenderable s ->
             E.object
                 [ ( "type", E.string "sphere" )
@@ -269,26 +328,79 @@ encodeVec3 v =
 
 -- Drawing (Internal helpers)
 
-drawBase : String -> Float -> Float -> Float -> Box
-drawBase material x y z =
-    let bottom = 7 in
-    { x = x * 10
-    , y = y * 10
-    , z = z * 5 - bottom
-    , sizeX = 10
-    , sizeY = 10
-    , sizeZ = z * 10 + 2 * bottom
-    , material = material
-    , rotationX = 0
-    , rotationY = 0
-    , rotationZ = 0
-    }
+drawBase : M.Maze -> Bool -> String -> Int -> Int -> Int -> List Renderable
+drawBase maze shouldChamfer material x y z =
+    let
+        bottom = 14
+        fz = toFloat z
+        fx = toFloat x * 10
+        fy = toFloat y * 10
+        baseTop = (fz - 1) * 10
+        baseHeight = baseTop + bottom
+        baseZ = (baseTop - bottom) / 2
+
+        checkLow nx ny dir =
+            case M.get ( nx, ny ) maze of
+                Nothing -> True
+                Just block ->
+                    let bz = M.positionZ (M.blockPosition block) in
+                    if bz < z then True
+                    else if bz > z then False
+                    else
+                        case block of
+                            M.Stairs _ _ ->
+                                case M.exitHeight (M.oppositeDirection dir) z block of
+                                    Just _ -> False
+                                    Nothing -> True
+                            _ -> False
+
+        isLowE = checkLow (x + 1) y M.NE
+        isLowW = checkLow (x - 1) y M.SW
+        isLowN = checkLow x (y + 1) M.NW
+        isLowS = checkLow x (y - 1) M.SE
+
+        corner ( dx, dy ) rot isChamfered =
+            let
+                conf =
+                    { x = fx + dx
+                    , y = fy + dy
+                    , z = fz * 10 - 5
+                    , sizeX = 5
+                    , sizeY = 5
+                    , sizeZ = 10
+                    , material = material
+                    , rotationX = 0
+                    , rotationY = 0
+                    , rotationZ = rot
+                    }
+            in
+            if shouldChamfer && isChamfered then ChamferRenderable conf else CornerRenderable conf
+
+        mainBase = BoxRenderable
+            { x = fx
+            , y = fy
+            , z = baseZ
+            , sizeX = 10
+            , sizeY = 10
+            , sizeZ = baseHeight
+            , material = material
+            , rotationX = 0
+            , rotationY = 0
+            , rotationZ = 0
+            }
+    in
+    [ mainBase
+    , corner ( 2.5, 2.5 ) 0 (isLowN && isLowE)
+    , corner ( -2.5, 2.5 ) 90 (isLowN && isLowW)
+    , corner ( -2.5, -2.5 ) 180 (isLowS && isLowW)
+    , corner ( 2.5, -2.5 ) 270 (isLowS && isLowE)
+    ]
 
 drawBlock : M.Maze -> M.Block -> List Renderable
 drawBlock maze block =
     case block of
         M.Base ( x, y, z ) ->
-            [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            drawBase maze True "base" x y z
 
         M.Bridge ( x, y, z ) ->
             let
@@ -325,12 +437,10 @@ drawBlock maze block =
                                 , rotationZ = 0
                                 }
             in
-            [ bridgePart
-            , BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z - 1)
-            ]
+            bridgePart :: drawBase maze False "base" x y (z - 1)
 
         M.Greenery ( x, y, z ) ->
-            BoxRenderable (drawBase "base" (toFloat x) (toFloat y) (toFloat z)) :: drawGreenery x y z
+            drawBase maze True "base" x y z ++ drawGreenery x y z
 
         M.Stairs ( x, y, z ) dir ->
             let
@@ -371,7 +481,7 @@ drawBlock maze block =
 
                 oneBox i = BoxRenderable (stepBox (centerFun i) (dimsFun i))
             in
-            List.map oneBox (List.range 0 9) ++ [ BoxRenderable <| drawBase "stairs" fx fy (fz - 1) ]
+            List.map oneBox (List.range 0 9) ++ drawBase maze False "stairs" x y (z - 1)
 
 
 drawGreenery : Int -> Int -> Int -> List Renderable
