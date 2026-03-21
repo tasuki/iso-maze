@@ -88,16 +88,26 @@ function getUnitChamfer() {
             new THREE.Vector3(0.5, 0.5, -0.5),
             new THREE.Vector3(-0.5, 0.5, -0.5),
 
-            // top
+            // top (remaining 3)
             new THREE.Vector3(-0.5, -0.5, 0.5),
             new THREE.Vector3(0.5, -0.5, 0.5),
             new THREE.Vector3(-0.5, 0.5, 0.5),
-
-            // cut
-            new THREE.Vector3(0.2, 0.5, 0.5),
-            new THREE.Vector3(0.5, 0.2, 0.5),
-            new THREE.Vector3(0.5, 0.5, 0.2),
         ];
+
+        const n = 3;
+        for (let i = 0; i <= n; i++) {
+            for (let j = 0; j <= n - i; j++) {
+                const k = n - i - j;
+                const u = i / n;
+                const v = j / n;
+                const w = k / n;
+                const mag = Math.sqrt(u * u + v * v + w * w);
+                const dx = (u / mag) * 0.3;
+                const dy = (v / mag) * 0.3;
+                const dz = (w / mag) * 0.3;
+                vertices.push(new THREE.Vector3(0.5 - dx, 0.5 - dy, 0.5 - dz));
+            }
+        }
 
         const geometry = new ConvexGeometry(vertices);
         geometryCache.set('unit_chamfer', geometry);
