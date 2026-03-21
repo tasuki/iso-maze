@@ -88,16 +88,28 @@ function getUnitChamfer() {
             new THREE.Vector3(0.5, 0.5, -0.5),
             new THREE.Vector3(-0.5, 0.5, -0.5),
 
-            // top
+            // top (remaining 3)
             new THREE.Vector3(-0.5, -0.5, 0.5),
             new THREE.Vector3(0.5, -0.5, 0.5),
             new THREE.Vector3(-0.5, 0.5, 0.5),
-
-            // cut
-            new THREE.Vector3(0.2, 0.5, 0.5),
-            new THREE.Vector3(0.5, 0.2, 0.5),
-            new THREE.Vector3(0.5, 0.5, 0.2),
         ];
+
+        const n = 3;
+        for (let i = 0; i <= n; i++) {
+            for (let j = 0; j <= n - i; j++) {
+                const k = n - i - j;
+                const u = i / n;
+                const v = j / n;
+                const w = k / n;
+
+                const p = 2;
+                const dx = Math.pow(u, p);
+                const dy = Math.pow(v, p);
+                const dz = Math.pow(w, p);
+
+                vertices.push(new THREE.Vector3(0.5 - dx, 0.5 - dy, 0.5 - dz));
+            }
+        }
 
         const geometry = new ConvexGeometry(vertices);
         geometryCache.set('unit_chamfer', geometry);
@@ -121,7 +133,7 @@ function getUnitPlane() {
 
 function getUnitBridge() {
     if (!geometryCache.has('unit_bridge')) {
-        const geometry = new THREE.BoxGeometry(1, 1, 1, 8, 8, 1);
+        const geometry = new THREE.BoxGeometry(1, 1, 1, 5, 1, 1);
         const position = geometry.attributes.position;
 
         for (let i = 0; i < position.count; i++) {
