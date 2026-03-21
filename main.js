@@ -101,10 +101,16 @@ function getUnitChamfer() {
                 const u = i / n;
                 const v = j / n;
                 const w = k / n;
-                const mag = Math.sqrt(u * u + v * v + w * w);
-                const dx = (u / mag) * 0.3;
-                const dy = (v / mag) * 0.3;
-                const dz = (w / mag) * 0.3;
+
+                // We use a power > 1 to make the surface "bulge" towards the corner
+                // (i.e., making dx+dy+dz smaller in the middle than at the edges).
+                // This ensures the points are outside the flat cut plane,
+                // so ConvexGeometry will include them as facets.
+                const p = 2;
+                const dx = Math.pow(u, p) * 0.3;
+                const dy = Math.pow(v, p) * 0.3;
+                const dz = Math.pow(w, p) * 0.3;
+
                 vertices.push(new THREE.Vector3(0.5 - dx, 0.5 - dy, 0.5 - dz));
             }
         }
