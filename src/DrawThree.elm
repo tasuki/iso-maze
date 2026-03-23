@@ -108,6 +108,8 @@ sceneData model =
                     [ ( "viewSize", E.float config.viewSize )
                     , ( "focalPoint", encodeVec3 config.focalPoint )
                     , ( "position", encodeVec3 config.cameraPosition )
+                    , ( "azimuth", E.float (Angle.inDegrees model.azimuth) )
+                    , ( "elevation", E.float (Angle.inDegrees model.elevation) )
                     ]
               )
             , ( "dynamic", E.list encodeRenderable (dynamicRenderables model) )
