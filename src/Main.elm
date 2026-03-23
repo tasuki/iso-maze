@@ -178,7 +178,7 @@ init flags url navKey =
             , azimuth = Angle.degrees D.initialAzimuth
             , mode = ME.Running
             , maze = defaultMaze
-            , playerState = M.Idle ( 999, 999, 999 )
+            , playerState = M.Idle initialPos
             , animator = Animate.initAnimator initialTargets
             , focus = M.snapFocus ( 0, 0, 1 ) defaultMaze
             , dpr = flags.dpr
@@ -579,14 +579,15 @@ changeRouteTo url model =
     in
     case route of
         Home maybeMaze ->
-            if url.path == "/" && url.query == Nothing then
-                case Campaign.getNextUnsolvedLevel model.finishedLevels of
-                    Just nextLevelName ->
-                        ( model, Nav.replaceUrl model.navKey ("/level/" ++ nextLevelName) )
-                    Nothing ->
-                        ( loadMaze (maybeMaze |> Maybe.withDefault defaultMaze) Nothing model, Cmd.none )
-            else
-                ( loadMaze (maybeMaze |> Maybe.withDefault defaultMaze) Nothing model, Cmd.none )
+            case maybeMaze of
+                Just maze ->
+                    ( loadMaze maze Nothing model, Cmd.none )
+                Nothing ->
+                    case Campaign.getNextUnsolvedLevel model.finishedLevels of
+                        Just nextLevelName ->
+                            ( model, Nav.replaceUrl model.navKey ("/level/" ++ nextLevelName) )
+                        Nothing ->
+                            ( { model | activeOverlay = Just Campaign }, Cmd.none )
 
         Level name ->
             case List.filter (\m -> m.name == name) Campaign.mazeDefs |> List.head of
