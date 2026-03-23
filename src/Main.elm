@@ -355,9 +355,12 @@ updateModel message model =
                 , tickHistory = newTickHistory
                 , finishedLevels = newFinishedLevels
                 , activeOverlay =
-                    case maybeFinishedLevel of
-                        Just name -> Just (LevelComplete name)
-                        Nothing -> model.activeOverlay
+                    case ( model.activeOverlay, maybeFinishedLevel ) of
+                        ( Nothing, Just name ) ->
+                            Just (LevelComplete name)
+
+                        _ ->
+                            model.activeOverlay
               }
             , Cmd.batch [ saveCmd, completionCmd ]
             )
@@ -589,7 +592,7 @@ changeRouteTo url model =
                             ( model, Nav.replaceUrl model.navKey ("/level/" ++ nextLevelName) )
 
                         Nothing ->
-                            ( { model | activeOverlay = Just Campaign }, Cmd.none )
+                            ( { model | activeOverlay = Just Campaign, currentLevel = Nothing }, Cmd.none )
 
         Level name ->
             case List.filter (\m -> m.name == name) Campaign.mazeDefs |> List.head of
@@ -823,7 +826,7 @@ viewOverlay model overlay =
                             Just nextName ->
                                 H.a [ HA.class "icon", HA.href ("/level/" ++ nextName) ] [ H.text "🚀" ]
                             Nothing ->
-                                H.a [ HA.class "icon", HE.onClick (ShowOverlay Campaign) ] [ H.text "🚀" ]
+                                H.a [ HA.class "icon", HA.href "/" ] [ H.text "🚀" ]
                         ]
                     ]
     in
