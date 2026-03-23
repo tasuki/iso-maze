@@ -763,9 +763,6 @@ viewOverlay model overlay =
 
                 Settings ->
                     [ H.div [ HA.class "modal-row" ]
-                        [ H.div [ HA.class "icon", HE.onClick ResetProgress ] [ H.text "⚠️⏮️⚠️" ]
-                        ]
-                    , H.div [ HA.class "modal-row" ]
                         [ H.div
                             [ HA.class ("icon" ++ if model.performance == Potato then " active" else "")
                             , HE.onClick (SetPerformance Potato)
@@ -809,9 +806,18 @@ viewOverlay model overlay =
                     ]
 
                 Campaign ->
-                    [ H.div [ HA.class "campaign-grid" ]
-                        (Campaign.levels model.finishedLevels |> List.map viewCampaignLevel)
-                    ]
+                    let
+                        reset = if Campaign.getNextUnsolvedLevel model.finishedLevels == Nothing
+                            then
+                                [ H.div [ HA.class "modal-row" ]
+                                    [ H.div [ HA.class "icon", HE.onClick ResetProgress ] [ H.text "⚠️⏮️⚠️" ] ]
+                                ]
+                            else []
+                    in
+                    reset ++
+                        [ H.div [ HA.class "campaign-grid" ]
+                            (Campaign.levels model.finishedLevels |> List.map viewCampaignLevel)
+                        ]
 
                 LevelComplete name ->
                     [ H.div [ HA.class "modal-row center" ] [ H.text "🏆👑😎" ]
