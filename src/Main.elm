@@ -763,55 +763,27 @@ viewOverlay model overlay =
 
                 Settings ->
                     [ H.div [ HA.class "modal-row" ]
-                        [ H.div [ HA.class "icon", HE.onClick ResetProgress ] [ H.text "⚠️⏮️⚠️" ]
+                        [ H.div [ HA.class ("icon" ++ if model.performance == Potato then " active" else ""), HE.onClick (SetPerformance Potato) ] [ H.text "🥔" ]
+                        , H.div [ HA.class ("icon" ++ if model.performance == Normal then " active" else ""), HE.onClick (SetPerformance Normal) ] [ H.text "💻" ]
+                        , H.div [ HA.class ("icon" ++ if model.performance == Rocket then " active" else ""), HE.onClick (SetPerformance Rocket) ] [ H.text "🚀" ]
                         ]
                     , H.div [ HA.class "modal-row" ]
-                        [ H.div
-                            [ HA.class ("icon" ++ if model.performance == Potato then " active" else "")
-                            , HE.onClick (SetPerformance Potato)
-                            ]
-                            [ H.text "🥔" ]
-                        , H.div
-                            [ HA.class ("icon" ++ if model.performance == Normal then " active" else "")
-                            , HE.onClick (SetPerformance Normal)
-                            ]
-                            [ H.text "💻" ]
-                        , H.div
-                            [ HA.class ("icon" ++ if model.performance == Rocket then " active" else "")
-                            , HE.onClick (SetPerformance Rocket)
-                            ]
-                            [ H.text "🚀" ]
+                        [ H.div [ HA.class ("icon" ++ if not model.leashEnabled then " active" else ""), HE.onClick (SetLeashEnabled False) ] [ H.text "🎯📌" ]
+                        , H.div [ HA.class ("icon" ++ if model.leashEnabled then " active" else ""), HE.onClick (SetLeashEnabled True) ] [ H.text "🎯🏃" ]
                         ]
                     , H.div [ HA.class "modal-row" ]
-                        [ H.div
-                            [ HA.class ("icon" ++ if not model.leashEnabled then " active" else "")
-                            , HE.onClick (SetLeashEnabled False)
-                            ]
-                            [ H.text "🎯📌" ]
-                        , H.div
-                            [ HA.class ("icon" ++ if model.leashEnabled then " active" else "")
-                            , HE.onClick (SetLeashEnabled True)
-                            ]
-                            [ H.text "🎯🏃" ]
-                        ]
-                    , H.div [ HA.class "modal-row" ]
-                        [ H.div
-                            [ HA.class ("icon" ++ if model.debugLevel == DebugOff then " active" else "")
-                            , HE.onClick (SetDebugLevel DebugOff)
-                            ]
-                            [ H.text "🧪❌" ]
-                        , H.div
-                            [ HA.class ("icon" ++ if model.debugLevel /= DebugOff then " active" else "")
-                            , HE.onClick (SetDebugLevel DebugTechnical)
-                            ]
-                            [ H.text "🧪✔️" ]
+                        [ H.div [ HA.class ("icon" ++ if model.debugLevel == DebugOff then " active" else ""), HE.onClick (SetDebugLevel DebugOff) ] [ H.text "🧪❌" ]
+                        , H.div [ HA.class ("icon" ++ if model.debugLevel /= DebugOff then " active" else ""), HE.onClick (SetDebugLevel DebugTechnical) ] [ H.text "🧪✔️" ]
                         ]
                     ]
 
                 Campaign ->
-                    [ H.div [ HA.class "campaign-grid" ]
-                        (Campaign.levels model.finishedLevels |> List.map viewCampaignLevel)
-                    ]
+                    let
+                        reset = if Campaign.getNextUnsolvedLevel model.finishedLevels == Nothing
+                            then [ H.div [ HA.class "modal-row" ] [ H.div [ HA.class "icon", HE.onClick ResetProgress ] [ H.text "⚠️⏩⚠️" ] ] ]
+                            else []
+                    in
+                    reset ++ [ H.div [ HA.class "campaign-grid" ] (Campaign.levels model.finishedLevels |> List.map viewCampaignLevel) ] ++ reset
 
                 LevelComplete name ->
                     [ H.div [ HA.class "modal-row center" ] [ H.text "🏆👑😎" ]
