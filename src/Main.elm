@@ -312,14 +312,14 @@ updateModel message model =
                 maybeFinishedLevel =
                     case newPlayerState of
                         M.Idle pos ->
-                            if pos == M.endPosition model.maze then
+                            if pos == M.endPosition model.maze && model.activeOverlay == Nothing then
                                 Just (model.currentLevel |> Maybe.map .name |> Maybe.withDefault "")
                             else Nothing
                         _ -> Nothing
 
                 (newFinishedLevels, saveCmd) =
-                    case (model.activeOverlay, maybeFinishedLevel) of
-                        (Nothing, Just name) ->
+                    case maybeFinishedLevel of
+                        Just name ->
                             if name /= "" then
                                 let updated = Set.insert name model.finishedLevels in
                                 ( updated, saveFinishedLevels (Set.toList updated) )
@@ -328,8 +328,8 @@ updateModel message model =
                             ( model.finishedLevels, Cmd.none )
 
                 completionCmd =
-                    case (model.activeOverlay, maybeFinishedLevel) of
-                        (Nothing, Just name) ->
+                    case maybeFinishedLevel of
+                        Just name ->
                             Http.post
                                 { url = "/completed/" ++
                                     if name /= "" then name
@@ -357,7 +357,7 @@ updateModel message model =
                 , activeOverlay =
                     case maybeFinishedLevel of
                         Just name -> Just (LevelComplete name)
-                        Nothing -> model.activeOverlay
+                        _ -> model.activeOverlay
               }
             , Cmd.batch [ saveCmd, completionCmd ]
             )
@@ -821,7 +821,7 @@ viewOverlay model overlay =
                             Just nextName ->
                                 H.a [ HA.class "icon", HA.href ("/level/" ++ nextName) ] [ H.text "🚀" ]
                             Nothing ->
-                                H.a [ HA.class "icon", HE.onClick (ShowOverlay Campaign) ] [ H.text "🚀" ]
+                                H.div [ HA.class "icon", HE.onClick (ShowOverlay Campaign) ] [ H.text "🚀🚀🚀" ]
                         ]
                     ]
     in
