@@ -9,100 +9,13 @@
 
     <link rel="icon" href="/favicon.svg">
     <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/style.css">
+
     <script>
     if (window.location.port !== '8423' && 'serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js');
     }
     </script>
-
-    <style>
-        body { background-color: #689; margin: 0; padding: 0; overflow: hidden; font-family: monospace; font-size: 32px; user-select: none; }
-        a { text-decoration: none; }
-        #three-container { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; position: relative; touch-action: none; }
-
-        .overlay { background: #0003; color: #FFF; border-radius: 8px; padding: 10px; white-space: pre; }
-
-        #menu { position: absolute; left: 0px; top: 0px; z-index: 9; }
-        #menu .item { float: left; padding: 1px 0 0 1px; }
-        @media screen and (min-aspect-ratio: 1/1) { #menu .item { float: none; } }
-
-        #menu .icon {
-            display: block; cursor: pointer; border-radius: 40px; font-size: 24px;
-            line-height: 40px; width: 40px; height: 40px; text-align: center;
-        }
-        #menu .icon:active { background: #FFF3; }
-
-        .modal-backdrop {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1000; display: flex; align-items: center; justify-content: center;
-        }
-        .modal-dimmer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0006;
-        }
-        .modal-content {
-            position: relative; background: #000C;
-            pointer-events: auto; line-height: 1.5; padding: 25px;
-            max-height: 90vh; overflow-y: auto;
-        }
-
-        .modal-row { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 50px; }
-        .modal-row:last-child { margin-bottom: 0; }
-        .center { text-align: center; }
-        .modal-content .icon {
-            display: inline-block; cursor: pointer; border-radius: 8px;
-            padding: 5px 20px; background: #9993;
-        }
-        .modal-content .icon.active { background: #FFF6; }
-        .modal-content .icon:active { background: #FFF9; }
-
-        #debug-info {
-            position: absolute; top: 10px; right: 10px;
-            pointer-events: none; z-index: 10; font-size: 16px;
-        }
-
-        .joystick-container {
-            position: absolute; width: 0; height: 0; pointer-events: none; z-index: 100;
-            opacity: 0; transition: opacity .5s;
-        }
-        .joystick-container.visible { opacity: 1; transition: opacity 0s; }
-        .joystick-base {
-            position: absolute; left: -40px; top: -40px; width: 80px; height: 80px;
-            border: 2px solid #FFF4; border-radius: 50%;
-            transition: border-color 0.3s, background 0.3s;
-        }
-        .joystick-base.too-far { background: #F993; border-color: #F999; }
-        .joystick-crosshair-1 { position: absolute; left: -38px; top: -38px; width: 80px; height: 80px; background: linear-gradient(to top right, #0000 calc(50% - 2px), #FFF3, #0000 calc(50% + 2px)); }
-        .joystick-crosshair-2 { position: absolute; left: -38px; top: -38px; width: 80px; height: 80px; background: linear-gradient(to bottom right, #0000 calc(50% - 2px), #FFF3, #0000 calc(50% + 2px)); }
-        .joystick-knob { position: absolute; width: 30px; height: 30px; background: #FFF6; border-radius: 50%; }
-
-        .arrow-keys-container {
-            position: absolute; right: 20px; bottom: 20px; z-index: 10;
-            display: grid; grid-template-areas: ". up ." "left down right"; gap: 10px;
-            transform: rotate(-10deg); transition: opacity 1s; pointer-events: none;
-            opacity: 0;
-        }
-        .arrow-keys-container.visible { opacity: 1; transition: opacity 0s; }
-        .arrow-key {
-            width: 60px; height: 60px; border-radius: 12px; border: 2px solid #FFF6;
-            display: flex; align-items: center; justify-content: center;
-            color: #FFF6; font-size: 32px; box-sizing: border-box;
-        }
-        .arrow-key.pressed { background: #FFF4; border-color: transparent; color: #FFF; }
-        .arrow-up { grid-area: up; }
-        .arrow-down { grid-area: down; }
-        .arrow-left { grid-area: left; }
-        .arrow-right { grid-area: right; }
-
-        .campaign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; min-width: 200px; max-width: 420px; }
-        .campaign-level {
-            display: flex; align-items: center; justify-content: center;
-            font-size: 40px; cursor: pointer; text-decoration: none;
-            border-radius: 8px; background: #9993; aspect-ratio: 1;
-        }
-        .campaign-level:active { background: #FFF3; }
-        .campaign-level.finished { background: #0F03; position: relative; }
-        .campaign-level.finished::after { content: '✅'; position: absolute; font-size: 16px; bottom: 0; right: 0; }
-    </style>
 </head>
 <body>
     <div id="app"></div>
