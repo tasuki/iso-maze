@@ -549,7 +549,8 @@ mazeDefs =
 
     , { emoji = "🦇"
       , name = "bat"
-      , maze = """bg:234;left:6bf,15;right:234,25;above:def,40;
+      , maze = """
+        bg:234;left:6bf,15;right:234,25;above:def,40;
         sz:17,17;st:6,15;end:5,5;mz:
         x x o4o4z5o5x x x x x x x x x x x
         x o3s4o4o4o5o5x x x x x x x x x x
@@ -560,7 +561,7 @@ mazeDefs =
         x s1o1o1o2o2o3o3o5o4x x x x x x x
         x o0o0o1o1o2o2o3o5l5o5o5o5x x x x
         x x o0o0o1o1o2o3o3o4o4o4o5o5x x x
-        x x x o0o0o1o2o2o2s4o3o4o4o5x x x
+        x x o0z1z2l2o2o2o2s4o3o4o4o5x x x
         x x x x x s1o0o0s2s3o3o3o4l5o4x x
         x x x x x o0o0o1o1o2z3o3o5o5o4x x
         x x x x x x o0o0o0o0o1o3o3o3o4o4x
