@@ -5,7 +5,6 @@
     "scope": "/",
     "display": "fullscreen",
     "background_color": "#689",
-    "theme_color": "#689",
     "icons": [
         {
             "src": "/favicon.svg",
