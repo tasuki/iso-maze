@@ -25,19 +25,6 @@
 
 ## Development notes...
 
-### Apache completion POST support
-
-To handle the completion POST requests in production with Apache, you can add this to your `.htaccess` or server config:
-
-```apache
-RewriteEngine On
-RewriteCond %{REQUEST_METHOD} POST
-RewriteRule ^completed/.*$ /completed/index.json [L,T=application/json]
-```
-
-This will serve the static `index.json` file for any POST request to `/completed/`.
-
-
 ### Emoji
 
 https://emojipedia.org/nature has a good overview
