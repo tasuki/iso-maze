@@ -620,17 +620,55 @@ mazeDefs =
 
     -- -- --
 
-    -- , { emoji = "🐑"
-    --   , name = "sheep"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🐑"
+      , name = "sheep"
+      , maze ="""
+        sz:18,18;st:6,17;end:11,0;mz:
+        x x x x o3z4o4o4Z4o3x x x x x x x x
+        x x x o1s3o2s4o2o2s3x x x x x x x x
+        x x o2l2o2o2o3o2o2o2o2x x x x x x x
+        x o2o2o1s2o2o3l3o3o3o2x x x x x x x
+        o2o2o1o1o1o2o3o2o2o3o2z3o3x x x x x
+        o2Z2o1o0o0o2o3o3o2o3s2o3o3o3o3x x x
+        x x o1o0S1o2o2o2s2s3o1o3o2z3o3o2o2x
+        x x o1o0o1o1o1o2l2o2o1z2o2o1o1o1l2o1
+        x x x o0o0o0o1o1o1o2o2o1o1o1o2o2o2o1
+        x x x x x o0o0o0o1o1o1o1o0o0z1z2o2o1
+        x x x x x x x o0o1o0o0o0o0o1o1o1l2o1
+        x x x x x x x o0l1o0o1o1o1o1o2o2o2x
+        x x x x x x x o0o1o1o1o0o0o0z1l2o1x
+        x x x x x x x o0o0o0o0o0o1o1z2o2o1x
+        x x x x x x x x o1o1o1o1o1o0z1o1o1x
+        x x x x x x x x x o0o0o0l1o0o1o1x x
+        x x x x x x x x x x o1o1o1o1Z1o0x x
+        x x x x x x x x x x x o0o0o0o0o0x x
+         """
+       }
 
-    -- , { emoji = "🐷"
-    --   , name = "pig"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🐷"
+      , name = "pig"
+      , maze ="""
+        sz:16,18;st:5,17;end:12,1;mz:
+        x x x o3o3o3o3o3o3x x x x x x x
+        x x o1s3o2o3o2o2l3o2x x x x x x
+        o1o1o1o2o2l3o2o1s3o2o1o1o1x x x
+        o1z2z3o3o3o3o1o1o2o2l2o2o1x x x
+        o1o1o1o1o1o1o1o2o2o1o1o2o1o2x x
+        S2o2o2o2o2o2o1o1o1o1o2o2o1S3x x
+        o2o2o1o1o1o2o2o2l2o2o1o1o1o3Z3o2
+        o1o1o1o2o1o1o1o1o1s2o1o2o3o3x s2
+        o1z2o2o2o2o2o2l2o2o1o1o2o1s3o1o1
+        x x s2o1Z1o0o0o1o2o2o2o2o1o2o1o0
+        x x o1o1o0o1o0o1o1o1o1o1o1o2o1o0
+        x x x s1o0o1o0l1o0o0o0o0o0o2o1o0
+        x x x o0o0o1o1o1o0o1o1o1z2o2o1o0
+        x x x x x x o0o0o0o1o0o0o0o1o1o0
+        x x x x x x S1o1o1o1o0o1o0l1o0o0
+        x x x x x x o1o1Z1o0o0o1o1o1o0x
+        x x x x x x x x x x x x o0s1x x
+        x x x x x x x x x x x x o0o0x x
+        """
+      }
 
     , { emoji = "🦙"
       , name = "llama"
