@@ -17,9 +17,11 @@ type alias MazeDef =
     , maze: String
     }
 
+-- https://emojipedia.org/nature has an overview of emoji
+
 mazeDefs : List MazeDef
 mazeDefs =
-    [ { emoji = "🐞"
+    [ { emoji = "🐞" -- 1
       , name = "ladybug"
       , maze = """sz:3,5;st:0,0;end:2,4;mz:
         o0x o0
@@ -30,7 +32,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐛"
+    , { emoji = "🐛" -- 2
       , name = "bug"
       , maze = """bg:560;left:df0,25;right:df0,5;
         sz:4,4;st:0,0;end:3,0;mz:
@@ -41,7 +43,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐜"
+    , { emoji = "🐜" -- 3
       , name = "ant"
       , maze = """
         sz:5,4;st:1,1;end:4,3;mz:
@@ -52,7 +54,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐝"
+    , { emoji = "🐝" -- 4
       , name = "bee"
       , maze = """sz:5,5;st:0,0;end:4,3;mz:
         x o0z1o1o1
@@ -63,7 +65,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦋"
+    , { emoji = "🦋" -- 5
       , name = "butterfly"
       , maze = """above:fff,70;
         sz:9,9;st:3,3;end:7,7;mz:
@@ -79,7 +81,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐌"
+    , { emoji = "🐌" -- 6
       , name = "snail"
       , maze = """bg:770;right:366,20;above:fff,60;
         sz:8,9;st:7,8;end:1,1;mz:
@@ -95,9 +97,7 @@ mazeDefs =
         """
       }
 
-    -- -- --
-
-    , { emoji = "🐸"
+    , { emoji = "🐸" -- 7
       , name = "frog"
       , maze = """bg:134;left:bf0,25;right:2bf,8;above:bf0,30;
         sz:11,11;st:8,9;end:1,1;mz:
@@ -115,7 +115,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐭"
+    , { emoji = "🐭" -- 8
       , name = "mouse"
       , maze = """bg:a47;left:a47,40;right:749,40;above:fff,90;
         sz:10,10;st:0,0;end:9,4;mz:
@@ -132,7 +132,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐹"
+    , { emoji = "🐹" -- 9
       , name = "hamster"
       , maze = """bg:863;above:fff,60;
         sz:11,11;st:1,2;end:9,10;mz:
@@ -150,7 +150,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐥"
+    , { emoji = "🐥" -- 10
       , name = "chick"
       , maze = """bg:990;left:cc0,50;right:cc0,7;above:fff,60;
         sz:9,11;st:0,0;end:8,10;mz:
@@ -168,7 +168,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐿️"
+    , { emoji = "🐿️" -- 11
       , name = "squirrel"
       , maze = """above:fff,60;
         sz:10,10;st:2,0;end:8,9;mz:
@@ -185,7 +185,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦎"
+    , { emoji = "🦎" -- 12
       , name = "lizard"
       , maze = """bg:cb9;left:884,35;right:853,15;above:dfd,90;
         sz:11,10;st:1,1;end:8,6;mz:
@@ -202,9 +202,7 @@ mazeDefs =
         """
       }
 
-    -- -- --
-
-    , { emoji = "🦔"
+    , { emoji = "🦔" -- 13
       , name = "hedgehog"
       , maze = """sz:10,11;st:0,0;end:8,9;mz:
         x x x x o4o4o4o4o4x
@@ -221,7 +219,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐰"
+    , { emoji = "🐰" -- 14
       , name = "rabbit"
       , maze = """sz:11,11;st:0,2;end:10,5;mz:
         x x x x o0o1o1o1o0o0x
@@ -238,7 +236,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐦"
+    , { emoji = "🐦" -- 15
       , name = "bird"
       , maze = """
         sz:13,7;st:2,0;end:11,6;mz:
@@ -252,7 +250,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦆"
+    , { emoji = "🦆" -- 16
       , name = "duck"
       , maze = """
         bg:0cf;
@@ -276,7 +274,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐓"
+    , { emoji = "🐓" -- 17
       , name = "rooster"
       , maze = """
         left:ff0,30;right:0ff,30;above:f0f,90;
@@ -299,7 +297,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦚"
+    , { emoji = "🦚" -- 18
       , name = "peacock"
       , maze = """
         left:fc0,40;right:0cf,40;above:fff,55;
@@ -325,9 +323,7 @@ mazeDefs =
         """
       }
 
-    -- -- --
-
-    , { emoji = "🦢"
+    , { emoji = "🦢" -- 19
       , name = "swan"
       , maze = """
         bg:0cf;left:fc9,40;right:0cf,10;above:fff,65;
@@ -351,7 +347,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦩"
+    , { emoji = "🦩" -- 20
       , name = "flamingo"
       , maze = """
         bg:e6e;left:e6e,30;right:93f,10;above:fff,66;
@@ -378,7 +374,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦜"
+    , { emoji = "🦜" -- 21
       , name = "parrot"
       , maze = """
         bg:0cc;left:ff0,30;right:f09,30;above:6ff,100;
@@ -401,7 +397,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐧"
+    , { emoji = "🐧" -- 22
       , name = "penguin"
       , maze = """
         bg:069;right:069,20;
@@ -426,7 +422,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦥"
+    , { emoji = "🦥" -- 23
       , name = "sloth"
       , maze ="""
         bg:896;right:cfc,20;
@@ -447,7 +443,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐱"
+    , { emoji = "🐱" -- 24
       , name = "cat"
       , maze ="""
         sz:19,16;st:0,0;end:18,15;mz:
@@ -470,9 +466,7 @@ mazeDefs =
         """
       }
 
-    -- -- --
-
-    , { emoji = "🦊"
+    , { emoji = "🦊" -- 25
       , name = "fox"
       , maze ="""
         bg:c60;left:c60,40;right:cfc,10;above:fff,90;
@@ -494,7 +488,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐕"
+    , { emoji = "🐕" -- 26
       , name = "dog"
       , maze ="""
         sz:14,19;st:1,1;end:10,15;mz:
@@ -520,7 +514,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐒"
+    , { emoji = "🐒" -- 27
       , name = "monkey"
       , maze ="""
         bg:7a0;left:9c3,33;right:c93,12;above:fff,90;
@@ -545,7 +539,7 @@ mazeDefs =
       """
       }
 
-    , { emoji = "🦉"
+    , { emoji = "🦉" -- 28
       , name = "owl"
       , maze = """
         bg:234;left:6bf,15;right:234,25;above:def,40;
@@ -567,7 +561,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦇"
+    , { emoji = "🦇" -- 29
       , name = "bat"
       , maze = """
         bg:234;left:6bf,15;right:600,7;above:def,40;
@@ -592,7 +586,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐐"
+    , { emoji = "🐐" -- 30
       , name = "goat"
       , maze = """above:fff,80;
         sz:21,19;st:6,18;end:13,1;mz:
@@ -618,9 +612,7 @@ mazeDefs =
         """
       }
 
-    -- -- --
-
-    , { emoji = "🐑"
+    , { emoji = "🐑" -- 31
       , name = "sheep"
       , maze ="""
         sz:18,18;st:6,17;end:11,0;mz:
@@ -645,7 +637,7 @@ mazeDefs =
          """
        }
 
-    , { emoji = "🐷"
+    , { emoji = "🐷" -- 32
       , name = "pig"
       , maze ="""
         sz:16,18;st:5,17;end:12,1;mz:
@@ -670,7 +662,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦙"
+    , { emoji = "🦙" -- 33
       , name = "llama"
       , maze = """bg:960;left:ff9,25;right:9ff,10;above:fef,70;
         sz:19,20;st:7,19;end:14,0;mz:
@@ -697,7 +689,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🦘"
+    , { emoji = "🦘" -- 34
       , name = "kangaroo"
       , maze ="""
         sz:17,16;st:6,15;end:8,0;mz:
@@ -720,7 +712,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐨"
+    , { emoji = "🐨" -- 35
       , name = "koala"
       , maze ="""
         sz:19,20;st:3,19;end:17,0;mz:
@@ -747,7 +739,7 @@ mazeDefs =
         """
       }
 
-    , { emoji = "🐼"
+    , { emoji = "🐼" -- 36
       , name = "panda"
       , maze ="""
         sz:20,23;st:5,21;end:14,0;mz:
@@ -777,6 +769,149 @@ mazeDefs =
         """
       }
 
+    , { emoji = "🦌" -- 37
+      , name = "deer"
+      , maze ="""
+        """
+      }
+
+    , { emoji = "🐄" -- 38
+      , name = "cow"
+      , maze ="""
+        """
+      }
+
+    , { emoji = "🐂" -- 39
+      , name = "ox"
+      , maze ="""
+        """
+      }
+
+    , { emoji = "🐎" -- 40
+      , name = "horse"
+      , maze ="""
+        """
+      }
+
+    , { emoji = "🦓" -- 41
+      , name = "zebra"
+      , maze ="""
+        """
+      }
+
+    , { emoji = "🦬" -- 42
+      , name = "bison"
+      , maze ="""
+        """
+      }
+
+    -- , { emoji = "🦅" -- 43
+    --   , name = "eagle"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐊" -- 44
+    --   , name = "croco"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐺" -- 45
+    --   , name = "wolf"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐯" -- 46
+    --   , name = "tiger"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦁" -- 47
+    --   , name = "lion"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐻" -- 48
+    --   , name = "bear"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐫" -- 49
+    --   , name = "camel"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦏" -- 50
+    --   , name = "rhino"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦛" -- 51
+    --   , name = "hippo"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦒" -- 52
+    --   , name = "giraffe"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐘" -- 53
+    --   , name = "elephant"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦣" -- 54
+    --   , name = "mammoth"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐬" -- 55
+    --   , name = "dolphin"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐳" -- 56
+    --   , name = "whale"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦈" -- 57
+    --   , name = "shark"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦖" -- 58
+    --   , name = "t-rex"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🐉" -- 59
+    --   , name = "dragon"
+    --   , maze ="""
+    --     """
+    --   }
+
+    -- , { emoji = "🦄" -- 60
+    --   , name = "unicorn"
+    --   , maze ="""
+    --     """
+    --   }
     ]
 
 levels : Set String -> List Level
