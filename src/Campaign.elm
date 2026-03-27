@@ -772,6 +772,31 @@ mazeDefs =
     , { emoji = "🦌" -- 37
       , name = "deer"
       , maze ="""
+        sz:24,24;st:8,23;end:19,0;mz:
+        x x x x x o6z7z8o8x x x x x x x x x x x x x x x
+        x x x x o7l7o7o7s8x x x x x x x x x x x x x x x
+        x x o6z7o7o6o6o7o7z8o8x x x x x x x x x x x x x
+        x o4s6o5o5o5o6o6o6o6s8x x x x x x x x x x x x x
+        x o4o5o5o6o5o5o5o5o6l7o6x x x x x x x x x x x x
+        x o4o4o4s6o4o4o4o5o5o7o6z7o7x x x x x x x x x x
+        o2z3o3o4l5o4o5o4o4o5o7o7o7o7o5o5o5x x x x x x x
+        o2o2o3o3o5o5o5o5o4o5z6o6l7o6o5o4l5o4x x x x x x
+        x o2o2o3o3o3o3s5o4s5o4o7o7o6o5o4o5o4x x x x x x
+        x x o2o2o2o3z4o4o4o4o4o4o4s6s5o4o5o4z5o5x x x x
+        x x x x o2o3o3o3o3l4o3o3o3s5o4o4o5o4o5o5o5x x x
+        x x x x o2o2o2o2s3o4o4o4l4o4s4o4s5o3o5s5o5x x x
+        x x x x x o1o1o2o2o2o2o2o3o3o3z4o4o3o5o4o5o5o5x
+        x x x x x x o1o1o1o1o1s2o3o2o2z3o3o3s5o4l5o4o5x
+        x x x x x x x x o2o2o1o1s3s2o1o1o3z4o4s4o5o4o5o5
+        x x x x x x x x x o2o2o2o2o1o1o2o2o2z3o3o5o4o3o5
+        x x x x x x x x x x s2o1o2o1o2o2o1o1o1o3o3s4o3s5
+        x x x x x x x x x x o1o1o2o1o2o1o1o2o1o1o3o3o3o4
+        x x x x x x x x x x x x o2o1l2o1o2o2s1o1o1o1o1s4
+        x x x x x x x x x x x x x o1o2o2o2o1o0o1o0l1o0o3
+        x x x x x x x x x x x x x o1o1o1o1o1o0o1o0o1o0s3
+        x x x x x x x x x x x x x x x o0o0o0o0o0o0o1o0s2
+        x x x x x x x x x x x x x x x x x o1o1o1o1o1o0o1
+        x x x x x x x x x x x x x x x x x x x o0o0o0o0x
         """
       }
 
