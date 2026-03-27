@@ -20,6 +20,7 @@ type alias Analysis =
     , hanging : Set M.Position
     , holes : Int
     , squares : Int
+    , focusDistances : Dict M.Position Int
     }
 
 
@@ -33,8 +34,8 @@ getAllCells =
             M.Greenery pos -> [ pos ]
     )
 
-analyze : M.Maze -> Analysis
-analyze maze =
+analyze : M.Position -> M.Maze -> Analysis
+analyze ( fx, fy, fz ) maze =
     let
         blocks = M.toBlocks maze
         isGreenery b = case b of
@@ -60,6 +61,16 @@ analyze maze =
         start = M.startPosition maze
         end = M.endPosition maze
         bfsDistances = bfs start getNeighbors
+
+        focusStart =
+            case M.get ( fx, fy ) maze of
+                Just (M.Bridge ( bx, by, bz )) ->
+                    if abs (fz - 1) >= bz then ( bx, by, bz )
+                    else ( bx, by, bz - 1 )
+                Just block -> M.blockPosition block
+                Nothing -> ( fx, fy, fz )
+
+        focusDistances = bfs focusStart getNeighbors
         reachableSet = Dict.keys bfsDistances |> Set.fromList
         isReachable = Set.member end reachableSet
         unreachableSet = Set.diff (Set.fromList allCellsList) reachableSet
@@ -247,6 +258,7 @@ analyze maze =
     , hanging = hanging
     , holes = holes
     , squares = numSquares
+    , focusDistances = focusDistances
     }
 
 
