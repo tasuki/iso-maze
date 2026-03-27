@@ -696,6 +696,44 @@ mazeDefs =
         x x x x x x x x x x x x o0o0o1x x x x
         """
       }
+
+    , { emoji = "🦘"
+      , name = "kangaroo"
+      , maze ="""
+        sz:17,16;st:6,15;end:8,0;mz:
+        x o5o5z6o6z7o7x x x x x x x x x x
+        x o5o6o6o6o6l7o6x x x x x x x x x
+        x s5o6z7l7o7o7o6x x x x x x x x x
+        x o4o4o4o6o6Z6l6o5o5o5x x x x x x
+        x o4o3l4o3z4o4o6o6o6l6Z6o5x x x x
+        o2o4o3o4o3o3o4s6o5o5o5x s5o3Z3o2x
+        o2o4o3o4o4o3o4s5o5o3o3o3l4o3o2o2x
+        o2o4o3x o4o3o4o4o3o3o4o4o4o3o2z3o3
+        o2o4l4o4o4o3o2z3o3o4o4o3l4o3o2o3o3
+        o2z3o3Z3o2l3o2o3z4o4o3o3o4o3o2o3o2
+        x o1o1o1s2o3o2l3o2s4s3x s4s3s2o3o2
+        x x x o1o1o3o2o3o2o3l3o3o3o2o1o3o2
+        x x x x x o3o2o3l3o3s2o2o2o2o2o3o2
+        x x x x x o1o2o2o2o1o1o1o1o1z2l3o2
+        x x x x x o1o1o1o1o1o2o2o2z3o3o3o2
+        x x x x x x x x o0o0o0z1o1o1o1z2o2
+        """
+      }
+
+    , { emoji = "🐨"
+      , name = "koala"
+      , maze ="""
+
+        """
+      }
+
+    , { emoji = "🐼"
+      , name = "panda"
+      , maze ="""
+
+        """
+      }
+
     ]
 
 levels : Set String -> List Level
