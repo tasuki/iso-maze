@@ -751,29 +751,29 @@ mazeDefs =
       , name = "panda"
       , maze ="""
         sz:20,23;st:5,21;end:14,0;mz:
-        x x o4o4z5o5o5o5o5x x x x x x x x x x x
-        x x o4o5z6o6o6o6o5x x x x x x x x x x x
-        x o4o4o5o5l6o5o6o5z6o6x x x x x x x x x
-        o3o4z5z6o6o6o5o6o5o6o6x x x x x x x x x
-        o3o4o4o4o5l6o5o6o5o6s6x x x x x x x x x
-        o3o3z4o4o5s6o6o6o5o6o5x x x x x x x x x
-        s3o3o3o4o5o5o6o5o5s6o5o5x x x x x x x x
-        o2o4z5z6o6o6o6o5o4l5o4o5z6o6x x x x x x
-        o2o2o4z5o5o5o5o5o4o5o4o5o6o6o6x x x x x
-        x x o4o4l5o4o4o4o4o5o4o5l6o5o6o6o6o6x x
-        x x o2o2o5o5o5o5Z5l5o4o5o6o5o4z5o5o6x x
-        x x x o2o2z3z4o4z5o5o4o5o6o5o4o5o5o5x x
-        x x x x o2o2o2s4o4o4o4o5o5o5o4o5o4o5z6o6
-        x x x x x x o2o3o3o2z3z4o4o4o4o5o4o5o6o6
-        x x x x x x o2o2l3o2o3o3o3o3o3s5o4o5o6s6
-        x x x x x x x x o3o3o3Z3o2o2o4o4o4o5o6o5
-        x x x x x x x x x o2o2o2o2o3s4o3z4l5o4o5
-        x x x x x x x x x x x o3o3o3o3o3o5o5o4o5
-        x x x x x x x x x x x x o2o4o4o4s5o5o4o5
-        x x x x x x x x x x x x o2o2s4o4o4o5o4o5
-        x x x x x x x x x x x x o2z3o3l4o3o3o4o5
-        x x x x x x x x x x x x x x o4o4Z4o3o4o5
-        x x x x x x x x x x x x x x o1z2z3z4o4x
+        x x o3o3z4o4o4o4o4x x x x x x x x x x x
+        x x o3o4z5o5o5o5o4x x x x x x x x x x x
+        x o3o3o4o4l5o4o5o4z5o5x x x x x x x x x
+        o2o3z4z5o5o5o4o5o4o5o5x x x x x x x x x
+        o2o3o3o3o4l5o4o5o4o5s5x x x x x x x x x
+        o2o2z3o3o4s5o5o5o4o5o4x x x x x x x x x
+        s2o2o2o3o4o4o5o4o4s5o4o4x x x x x x x x
+        o1o3z4z5o5o5o5o4o3l4o3o4z5o5x x x x x x
+        o1o1o3z4o4o4o4o4o3o4o3o4o5o5o5x x x x x
+        x x o3o3l4o3o3o3o3o4o3o4l5o4o5o5o5o5x x
+        x x o1o1o4o4o4o4Z4l4o3o4o5o4o3z4o4o5x x
+        x x x o1o1z2z3o3z4o4o3o4o5o4o3o4o4o4x x
+        x x x x o1o1o1s3o3o3o3o4o4o4o3o4o3o4z5o5
+        x x x x x x o1o2o2o1z2z3o3o3o3o4o3o4o5o5
+        x x x x x x o1o1l2o1o2o2o2o2o2s4o3o4o5s5
+        x x x x x x x x o2o2o2Z2o1o1o3o3o3o4o5o4
+        x x x x x x x x x o1o1o1o1o2s3o2z3l4o3o4
+        x x x x x x x x x x x o2o2o2o2o2o4o4o3o4
+        x x x x x x x x x x x x o1o3o3o3s4o4o3o4
+        x x x x x x x x x x x x o1o1s3o3o3o4o3o4
+        x x x x x x x x x x x x o1z2o2l3o2o2o3o4
+        x x x x x x x x x x x x x x o3o3Z3o2o3o4
+        x x x x x x x x x x x x x x o0z1z2z3o3x
         """
       }
 
