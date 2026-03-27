@@ -257,7 +257,7 @@ update message model =
                     , performance = performanceToString preModel.performance
                     , analysis =
                         if preModel.debugLevel == DebugOff && preModel.mode == ME.Editing then
-                            Just (Analyzer.analyze preModel.maze)
+                            Just (Analyzer.analyze preModel.focus preModel.maze)
                         else
                             Nothing
                     , joystick =
@@ -909,7 +909,7 @@ view model =
 
             DebugOff ->
                 if model.mode == ME.Editing then
-                    viewAnalyzer (Analyzer.analyze model.maze)
+                    viewAnalyzer (Analyzer.analyze model.focus model.maze)
                 else
                     H.text ""
         ]

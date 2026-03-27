@@ -65,6 +65,7 @@ const materials = {
     debugUnreachable: new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 }),
     debugOccluding: new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.8, metalness: 0.2 }),
     debugHanging: new THREE.MeshStandardMaterial({ color: 0xffff00, roughness: 0.8, metalness: 0.2 }),
+    stripe: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false }),
 };
 
 const geometryCache = new Map();

@@ -2,6 +2,7 @@ port module DrawThree exposing (initialAzimuth, initialElevation, renderThreeJS,
 
 import Analyzer
 import Angle
+import Dict exposing (Dict)
 import Animate
 import Json.Encode as E
 import Maze as M
@@ -133,7 +134,13 @@ sceneData model =
 
 staticRenderables : Model -> List Renderable
 staticRenderables model =
-    List.concatMap drawBlock (M.toBlocks model.maze)
+    let
+        distances =
+            case model.analysis of
+                Just a -> a.focusDistances
+                Nothing -> Dict.empty
+    in
+    List.concatMap (drawBlock model.mode distances) (M.toBlocks model.maze)
         ++ drawDebugSpheres model.analysis
 
 
@@ -265,11 +272,12 @@ drawBase material x y z =
     , rotationZ = 0
     }
 
-drawBlock : M.Block -> List Renderable
-drawBlock block =
+drawBlock : ME.Mode -> Dict M.Position Int -> M.Block -> List Renderable
+drawBlock mode distances block =
     case block of
         M.Base ( x, y, z ) ->
-            [ BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z) ]
+            (BoxRenderable <| drawBase "base" (toFloat x) (toFloat y) (toFloat z))
+                :: (if mode == ME.Editing then drawStripes distances ( x, y, z ) else [])
 
         M.Bridge ( x, y, z ) ->
             [ BoxRenderable
@@ -330,6 +338,60 @@ drawBlock block =
                 oneBox i = BoxRenderable (stepBox (centerFun i) (dimsFun i))
             in
             List.map oneBox (List.range 0 9) ++ [ BoxRenderable <| drawBase "stairs" fx fy (fz - 1) ]
+
+
+drawStripes : Dict M.Position Int -> M.Position -> List Renderable
+drawStripes distances pos =
+    case Dict.get pos distances of
+        Nothing ->
+            []
+
+        Just dist ->
+            if dist == 0 then
+                []
+            else
+                let
+                    ( x, y, z ) = pos
+                    fx = toFloat x * 10
+                    fy = toFloat y * 10
+                    fz = toFloat z * 10 + 0.05
+                    numStripes1 = min 5 (dist // 4)
+                    numStripes2 = min 5 (dist // 8)
+
+                    stripe1 i n =
+                        let
+                            offset = (toFloat i + 1) / (toFloat n + 1) * 10 - 5
+                        in
+                        PlaneRenderable
+                            { x = fx + offset
+                            , y = fy - offset
+                            , z = fz
+                            , sizeX = 0.2
+                            , sizeY = 14.14 -- 10 * sqrt(2)
+                            , material = "stripe"
+                            , rotationX = 0
+                            , rotationY = 0
+                            , rotationZ = 45
+                            }
+
+                    stripe2 i n =
+                        let
+                            offset = (toFloat i + 1) / (toFloat n + 1) * 10 - 5
+                        in
+                        PlaneRenderable
+                            { x = fx + offset
+                            , y = fy + offset
+                            , z = fz + 0.01 -- slightly higher to avoid Z-fighting
+                            , sizeX = 0.2
+                            , sizeY = 14.14
+                            , material = "stripe"
+                            , rotationX = 0
+                            , rotationY = 0
+                            , rotationZ = -45
+                            }
+                in
+                List.map (\i -> stripe1 i numStripes1) (List.range 0 (numStripes1 - 1))
+                    ++ List.map (\i -> stripe2 i numStripes2) (List.range 0 (numStripes2 - 1))
 
 
 drawGreenery : Int -> Int -> Int -> List Renderable
