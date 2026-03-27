@@ -768,8 +768,8 @@ mazeDefs =
         x x x x x x o1o1l2o1o2o2o2o2o2s4o3o4o5s5
         x x x x x x x x o2o2o2Z2o1o1o3o3o3o4o5o4
         x x x x x x x x x o1o1o1o1o2s3o2z3l4o3o4
-        x x x x x x x x x x x o2o2o2o2o2o4o4o3o4
-        x x x x x x x x x x x x o1o3o3o3s4o4o3o4
+        x x x x x x x x x o0o0o2o2o2o2o2o4o4o3o4
+        x x x x x x x x x x o0z1o1o3o3o3s4o4o3o4
         x x x x x x x x x x x x o1o1s3o3o3o4o3o4
         x x x x x x x x x x x x o1z2o2l3o2o2o3o4
         x x x x x x x x x x x x x x o3o3Z3o2o3o4
