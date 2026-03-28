@@ -354,9 +354,10 @@ drawStripes distances pos =
                     ( x, y, z ) = pos
                     fx = toFloat x * 10
                     fy = toFloat y * 10
-                    fz = toFloat z * 10 + 0.05
-                    numStripes1 = min 5 (dist // 4)
-                    numStripes2 = min 5 (dist // 8)
+                    fz = toFloat z * 10 + 5.05
+                    total = dist // 5
+                    numStripes2 = min 5 (total // 2)
+                    numStripes1 = min 5 (total - numStripes2)
 
                     stripe1 i n =
                         let

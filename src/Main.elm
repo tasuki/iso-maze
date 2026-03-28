@@ -102,6 +102,7 @@ type alias Model =
     , activeOverlay : Maybe Overlay
     , performance : Performance
     , leashEnabled : Bool
+    , analysis : Maybe Analyzer.Analysis
     }
 
 type Msg
@@ -189,9 +190,11 @@ init flags url navKey =
             , activeOverlay = Nothing
             , performance = performanceFromString flags.performance
             , leashEnabled = flags.leashEnabled
+            , analysis = Nothing
             }
 
-        ( routedModel, routeCmd ) = changeRouteTo url model
+        ( preRoutedModel, routeCmd ) = changeRouteTo url model
+        routedModel = { preRoutedModel | analysis = updateAnalysis preRoutedModel }
     in
     ( routedModel
     , Cmd.batch
@@ -211,7 +214,8 @@ init flags url navKey =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     let
-        ( preModel, cmd ) = updateModel message model
+        ( intermediateModel, cmd ) = updateModel message model
+        preModel = { intermediateModel | analysis = updateAnalysis intermediateModel }
         targets = Animate.getPlayerTargets preModel.playerState preModel.maze
         wasMoving =
             case model.playerState of
@@ -255,11 +259,7 @@ update message model =
                     , heightPx = preModel.heightPx
                     , staticUpdate = preModel.staticUpdate
                     , performance = performanceToString preModel.performance
-                    , analysis =
-                        if preModel.debugLevel == DebugOff && preModel.mode == ME.Editing then
-                            Just (Analyzer.analyze preModel.focus preModel.maze)
-                        else
-                            Nothing
+                    , analysis = preModel.analysis
                     , joystick =
                         if preModel.dragging && preModel.mode == ME.Running then
                             case ( preModel.pointerStart, preModel.pointerLast ) of
@@ -908,12 +908,24 @@ view model =
                     ]
 
             DebugOff ->
-                if model.mode == ME.Editing then
-                    viewAnalyzer (Analyzer.analyze model.focus model.maze)
-                else
-                    H.text ""
+                case (model.activeOverlay, model.analysis) of
+                    (Nothing, Just a) ->
+                        if model.mode == ME.Editing then
+                            viewAnalyzer a
+                        else
+                            H.text ""
+
+                    _ ->
+                        H.text ""
         ]
     }
+
+updateAnalysis : Model -> Maybe Analyzer.Analysis
+updateAnalysis model =
+    if model.debugLevel == DebugOff && model.mode == ME.Editing then
+        Just (Analyzer.analyze model.focus model.maze)
+    else
+        Nothing
 
 fpsFromPeriod : Float -> Float
 fpsFromPeriod ms =
