@@ -454,9 +454,7 @@ updateModel message model =
                         (_, "c") -> updateModel CameraReset newModel
                         (_, "`") -> updateModel CycleDebug newModel
                         (ME.Editing, _) ->
-                            let
-                                msg = keydown model.mode key
-                            in
+                            let msg = keydown key in
                             if msg == Noop then (newModel, Cmd.none)
                             else updateModel msg newModel
                         _ -> (newModel, Cmd.none)
@@ -704,26 +702,23 @@ pushUrl navKey maze =
 
 -- Subscriptions
 
-keydown : ME.Mode -> String -> Msg
-keydown mode keycode =
-    case mode of
-        ME.Running -> Noop
-        ME.Editing ->
-            case keycode of
-                "h" -> FocusShift ( -1,  0,  0 )
-                "l" -> FocusShift (  1,  0,  0 )
-                "k" -> FocusShift (  0,  1,  0 )
-                "j" -> FocusShift (  0, -1,  0 )
-                "i" -> FocusShift (  0,  0,  1 )
-                "u" -> FocusShift (  0,  0, -1 )
-                " " -> ToggleBlock
-                "s" -> ToggleStairs
-                "b" -> ToggleBridge
-                "g" -> ToggleGreenery
-                "q" -> ClearTile
-                "a" -> PlaceStart
-                "z" -> PlaceEnd
-                _   -> Noop
+keydown : String -> Msg
+keydown keycode =
+    case keycode of
+        "h" -> FocusShift ( -1,  0,  0 )
+        "l" -> FocusShift (  1,  0,  0 )
+        "k" -> FocusShift (  0,  1,  0 )
+        "j" -> FocusShift (  0, -1,  0 )
+        "i" -> FocusShift (  0,  0,  1 )
+        "u" -> FocusShift (  0,  0, -1 )
+        " " -> ToggleBlock
+        "s" -> ToggleStairs
+        "b" -> ToggleBridge
+        "g" -> ToggleGreenery
+        "q" -> ClearTile
+        "a" -> PlaceStart
+        "z" -> PlaceEnd
+        _   -> Noop
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
