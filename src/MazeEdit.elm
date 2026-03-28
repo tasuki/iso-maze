@@ -27,7 +27,23 @@ toggleStairs ( x, y, z ) maze =
             else
                 M.set (M.Stairs ( x, y, z ) dir) maze
         _ ->
-            M.set (M.Stairs ( x, y, z ) M.SE) maze
+            let
+                bestDir = M.allDirections
+                    |> List.map (\d -> ( d, countConnections ( x, y, z ) d maze ))
+                    |> List.sortBy (Tuple.second >> negate)
+                    |> List.head |> Maybe.map Tuple.first |> Maybe.withDefault M.SE
+            in
+            M.set (M.Stairs ( x, y, z ) bestDir) maze
+
+countConnections : M.Position -> M.Direction -> M.Maze -> Int
+countConnections ( x, y, z ) dir maze =
+    let
+        bottomNeighbor = M.get (M.shiftPos2d ( x, y ) dir) maze
+        topNeighbor = M.get (M.shiftPos2d ( x, y ) (M.oppositeDirection dir)) maze
+        bottomConnect = bottomNeighbor |> Maybe.andThen (M.exitHeight (M.oppositeDirection dir) (z - 1)) |> Maybe.map (always 1) |> Maybe.withDefault 0
+        topConnect = topNeighbor |> Maybe.andThen (M.exitHeight dir z) |> Maybe.map (always 1) |> Maybe.withDefault 0
+    in
+    bottomConnect + topConnect
 
 toggleBridge : M.Position -> M.Maze -> M.Maze
 toggleBridge ( x, y, z ) maze =
