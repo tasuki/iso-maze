@@ -184,7 +184,7 @@ computeHatTransform maze playerState head timer initialFall =
                     M.Moving m -> ( m.from, m.to, m.progress )
 
             canMoveTo fromPos targetPos =
-                List.any (\dir -> M.move fromPos dir maze == Just targetPos) [ M.SE, M.SW, M.NE, M.NW ]
+                List.any (\dir -> M.move fromPos dir maze == Just targetPos) M.allDirections
 
             ( currentBaseZ, squashFactor ) =
                 if M.positionTo2d to == goal2d then

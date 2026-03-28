@@ -441,6 +441,9 @@ mapAllCoords fun =
 
 -- Direction
 
+allDirections : List Direction
+allDirections = [ SE, SW, NW, NE ]
+
 nextDirection : Direction -> Direction
 nextDirection dir = case dir of
     SE -> SW

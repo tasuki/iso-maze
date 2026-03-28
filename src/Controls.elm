@@ -58,7 +58,6 @@ getIntentFromJoystick pointerStart pointerLast =
 resolveIntent : M.Position -> MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
 resolveIntent pos (Intent angle _) maze =
     let
-        allDirs = [ M.NW, M.NE, M.SW, M.SE ]
         diff d = angleDiff angle (directionToAngle d)
 
         validMoves = List.filterMap
@@ -69,7 +68,7 @@ resolveIntent pos (Intent angle _) maze =
                     then M.move pos d maze |> Maybe.map (Tuple.pair d)
                     else Nothing
             )
-            allDirs
+            M.allDirections
 
         sortByDiff ( d1, _ ) ( d2, _ ) =
             let

@@ -49,8 +49,7 @@ analyze ( fx, fy, fz ) maze =
             allCellsList
                 |> List.map (\pos ->
                     ( pos
-                    , [ M.SE, M.SW, M.NE, M.NW ]
-                        |> List.filterMap (\dir -> M.move pos dir maze)
+                    , List.filterMap (\dir -> M.move pos dir maze) M.allDirections
                     )
                 )
                 |> Dict.fromList
@@ -139,11 +138,11 @@ analyze ( fx, fy, fz ) maze =
                 M.Bridge ( x, y, z ) ->
                     let
                         topExits =
-                            [ M.SE, M.SW, M.NE, M.NW ]
+                            M.allDirections
                                 |> List.filter (\dir -> M.move ( x, y, z ) dir maze /= Nothing)
 
                         bottomExits =
-                            [ M.SE, M.SW, M.NE, M.NW ]
+                            M.allDirections
                                 |> List.filter (\dir -> M.move ( x, y, z - 1 ) dir maze /= Nothing)
 
                         hasAll list sub =
