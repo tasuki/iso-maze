@@ -162,7 +162,7 @@ computeHatTransform maze playerState head timer initialFall =
     if initialFall && timer <= fallDuration then
         let
             startPos = M.startPosition maze
-            ( _, _, startHead ) = getPlayerTargets (M.Idle startPos) maze
+            ( _, _, startHead ) = getPlayerTargets (M.Idle startPos Nothing) maze
             t = clamp 0 1 (timer / fallDuration)
             jumpHeight = 40.0
             startZ = startHead.z + 30.0 + 1.4
@@ -180,7 +180,7 @@ computeHatTransform maze playerState head timer initialFall =
             goal2d = M.positionTo2d goal
             ( from, to, progress ) =
                 case playerState of
-                    M.Idle p -> ( p, p, 1.0 )
+                    M.Idle p _ -> ( p, p, 1.0 )
                     M.Moving m -> ( m.from, m.to, m.progress )
 
             canMoveTo fromPos targetPos =
@@ -227,7 +227,7 @@ computeHatTransform maze playerState head timer initialFall =
 interpolatedPosition : M.PlayerState -> (Float, Float, Float)
 interpolatedPosition playerState =
     case playerState of
-        M.Idle ( x, y, z ) -> ( toFloat x, toFloat y, toFloat z )
+        M.Idle ( x, y, z ) _ -> ( toFloat x, toFloat y, toFloat z )
         M.Moving m ->
             let
                 ( x1, y1, z1 ) = m.from
@@ -291,7 +291,7 @@ getPlayerTargets playerState maze =
 
         squish =
             case playerState of
-                M.Idle pos ->
+                M.Idle pos _ ->
                     if isUnderBridge maze pos then 1.0 else 0.0
                 M.Moving m ->
                     let

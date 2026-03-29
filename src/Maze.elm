@@ -56,7 +56,7 @@ type QueuedIntent
     | QueuedMove MovementIntent
 
 type PlayerState
-    = Idle Position
+    = Idle Position (Maybe MovementIntent)
     | Moving
         { from : Position
         , to : Position
@@ -64,6 +64,7 @@ type PlayerState
         , progress : Float
         , speedFactor : Float
         , queuedIntent : QueuedIntent
+        , lastIntent : Maybe MovementIntent
         }
 
 
