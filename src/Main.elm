@@ -527,13 +527,14 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
         maybeMove pos progress queuedIntent lastIntent =
             let intentToUse = case queuedIntent of
                     M.QueuedMove i -> Just i
-                    _ -> Nothing -- only junctions use queued intents
+                    _ -> maybeIntent
             in
             case intentToUse of
-                Just ((M.Intent _ s) as intent) ->
-                    case Controls.resolveIntent pos intent maze of
+                Just (M.Intent angle _) ->
+                    let intentAtCurrentSpeed = M.Intent angle intentSpeed in
+                    case Controls.resolveIntent pos intentAtCurrentSpeed maze of
                         Just ( dir, nextTo ) ->
-                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress, speedFactor = s, queuedIntent = M.QueuedNone, lastIntent = lastIntent }
+                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress, speedFactor = intentSpeed, queuedIntent = M.QueuedNone, lastIntent = lastIntent }
                         Nothing ->
                             M.Idle pos maybeIntent
                 Nothing ->
