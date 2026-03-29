@@ -901,6 +901,31 @@ mazeDefs =
     , { emoji = "🦓" -- 41
       , name = "zebra"
       , maze ="""
+        sz:24,24;st:6,23;end:16,0;mz:
+        x x x x o5z6o6x x x x x x x x x x x x x x x x x
+        x x x x o5o5l6o5o5x x x x x x x x x x x x x x x
+        x x o6o6l6o6o6o6o6x x x x x x x x x x x x x x x
+        x o5o5o5o5o5o5o5l6o5o5x x x x x x x x x x x x x
+        o6l6o6o6o6o6o6o6o6o6s5x x x x x x x x x x x x x
+        o4l5o4o4o4o4o4o4o4o4o4o5o5o5x x x x x x x x x x
+        s4s5o3o3o3o3o3o3o3o3o3z4o4l5o4x x x x x x x x x
+        o3l4o3o4l4o4o4o4o4o4o4z5o5o5o4x x x x x x x x x
+        o2o4o4o4o3o3o3o3o3o3o3o3o3o3l4o3x x x x x x x x
+        o2o2o3z4o4o4o4o4o4o4o4o4o4o4o4o3x x x x x x x x
+        x o2l3o2z3o3o3o3o3o3o3o3o3o3o3o3x x x x x x x x
+        x x o3o3z4o4o4o4o4o4o4o4o4o4o4o3o5o5o5o5x x x x
+        x x x o2o2o2z3o3o3o3o3o3o3o3o3o3o3z4z5o5x x x x
+        x x x x o3l3z4o4o4o4o4o4o4o4o4o4o4o4o4s5x x x x
+        x x x x x o2o2z3o3o3o3o3o3o3l4o3o3o3o4o4o4o4o4x
+        x x x x x x o1o1z2l3o2o2z3z4o4Z4Z3l3o2o2o2o2o4o4
+        x x x x x x x o2z3o3o3l3o3o3o3o3o3o3o3o3o3o2o2o4
+        x x x x x x x x o2o2o2o2o2o2o2o2o2o2o2o2o2z3l3o3
+        x x x x x x x x x o1o1o1o1o1o1o1o1o1o1o1o1z2o2o3
+        x x x x x x x x x x o2o2l2o2o2o2o2o2o2o2o2o2z3o3
+        x x x x x x x x x x x x o1o1o1o1o1o1o1o1o1o1o1x
+        x x x x x x x x x x x x x s1o0o0o0o0o0l1o0x x x
+        x x x x x x x x x x x x x o0o0o1o1o1o1o1o0x x x
+        x x x x x x x x x x x x x x x x o0o0o0o0o0x x x
         """
       }
 
