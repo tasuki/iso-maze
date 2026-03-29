@@ -561,42 +561,49 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
 
         M.Moving m ->
             let
-                lastDir = m.lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
-                currentDir = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
-                isNewIntent = maybeIntent /= Nothing && currentDir /= lastDir
+                lastDirAtDest = m.lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
+                currentDirAtDest = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
+                isNewIntentAtDest = maybeIntent /= Nothing && currentDirAtDest /= lastDirAtDest
 
-                isOpposite = case currentDir of
+                -- Check for immediate reversal relative to current tile
+                currentDirFromHere = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.from i maze) |> Maybe.map Tuple.first
+                isOpposite = case currentDirFromHere of
                     Just d -> d == M.oppositeDirection m.dir
                     Nothing -> False
 
-                newQueuedIntent =
-                    if isNewIntent then
-                        if isOpposite then M.QueuedStop
-                        else maybeIntent |> Maybe.map M.QueuedMove |> Maybe.withDefault m.queuedIntent
-                    else m.queuedIntent
+                ( activeM, newQueuedIntent ) =
+                    if isOpposite then
+                        ( { from = m.to, to = m.from, dir = M.oppositeDirection m.dir, progress = max 0 (1.0 - m.progress), speedFactor = intentSpeed, queuedIntent = M.QueuedStop, lastIntent = maybeIntent }
+                        , M.QueuedStop
+                        )
+                    else if isNewIntentAtDest then
+                        let q = maybeIntent |> Maybe.map M.QueuedMove |> Maybe.withDefault m.queuedIntent in
+                        ( { m | lastIntent = maybeIntent, queuedIntent = q }, q )
+                    else
+                        ( { m | lastIntent = maybeIntent }, m.queuedIntent )
 
                 speedFactor = if maybeIntent == Nothing then 1.0 else intentSpeed
-                maxProgress = if m.to == M.endPosition maze then 4.0 else 1.0
-                newProgress = m.progress + (dt * speedFactor / secondsPerStep)
+                maxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
+                newProgress = activeM.progress + (dt * speedFactor / secondsPerStep)
             in
             if newProgress >= maxProgress then
                 let
                     excess = newProgress - maxProgress
-                    pos = m.to
+                    pos = activeM.to
                 in
                 if pos == M.endPosition maze || newQueuedIntent == M.QueuedStop then M.Idle pos maybeIntent
                 else if M.isJunction pos maze then
                     maybeMove pos excess newQueuedIntent maybeIntent
                 else
                     -- auto-follow path
-                    case List.filter (\d -> d /= M.oppositeDirection m.dir) (M.getExits pos maze) of
+                    case List.filter (\d -> d /= M.oppositeDirection activeM.dir) (M.getExits pos maze) of
                         [ nextDir ] ->
                             case M.move pos nextDir maze of
                                 Just nextTo ->
                                     M.Moving { from = pos, to = nextTo, dir = nextDir, progress = excess, speedFactor = speedFactor, queuedIntent = newQueuedIntent, lastIntent = maybeIntent }
                                 Nothing -> M.Idle pos maybeIntent
                         _ -> M.Idle pos maybeIntent
-            else M.Moving { m | progress = newProgress, speedFactor = speedFactor, queuedIntent = newQueuedIntent, lastIntent = maybeIntent }
+            else M.Moving { activeM | progress = newProgress, speedFactor = speedFactor, queuedIntent = newQueuedIntent, lastIntent = maybeIntent }
 
 type Route
     = Home (Maybe M.Maze)
