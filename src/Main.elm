@@ -520,15 +520,14 @@ updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.D
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
-        resolvedIntent = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent (M.Idle ( 0, 0, 0 ) Nothing |> M.playerPos) i maze)
-        isOpposite intent dir =
-            case intent of
-                M.Intent angle _ -> (Controls.angleDiff angle (Controls.directionToAngle (M.oppositeDirection dir))) < 0.1
+        intentSpeed = case maybeIntent of
+            Just (M.Intent _ s) -> s
+            Nothing -> 1.0
 
         maybeMove pos progress queuedIntent lastIntent =
-            let ( intentToUse, isQueued ) = case queuedIntent of
-                    M.QueuedMove i -> ( Just i, True )
-                    _ -> ( maybeIntent, False )
+            let intentToUse = case queuedIntent of
+                    M.QueuedMove i -> Just i
+                    _ -> Nothing -- only junctions use queued intents
             in
             case intentToUse of
                 Just ((M.Intent _ s) as intent) ->
@@ -542,25 +541,40 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     in
     case playerState of
         M.Idle pos lastIntent ->
-            let isNewIntent = maybeIntent /= Nothing && maybeIntent /= lastIntent in
-            if isNewIntent then maybeMove pos 0 M.QueuedNone maybeIntent
+            let
+                lastDir = lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent pos i maze) |> Maybe.map Tuple.first
+                currentDir = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent pos i maze) |> Maybe.map Tuple.first
+                isNewIntent = maybeIntent /= Nothing && currentDir /= lastDir
+            in
+            if isNewIntent then
+                case maybeIntent of
+                    Just ((M.Intent _ s) as intent) ->
+                        case Controls.resolveIntent pos intent maze of
+                            Just ( dir, nextTo ) ->
+                                M.Moving { from = pos, to = nextTo, dir = dir, progress = 0, speedFactor = s, queuedIntent = M.QueuedNone, lastIntent = maybeIntent }
+                            Nothing ->
+                                M.Idle pos maybeIntent
+                    Nothing ->
+                        M.Idle pos maybeIntent
             else M.Idle pos maybeIntent
 
         M.Moving m ->
             let
-                lastDir = m.lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.from i maze) |> Maybe.map Tuple.first
-                currentDir = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.from i maze) |> Maybe.map Tuple.first
+                lastDir = m.lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
+                currentDir = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
                 isNewIntent = maybeIntent /= Nothing && currentDir /= lastDir
+
+                isOpposite = case currentDir of
+                    Just d -> d == M.oppositeDirection m.dir
+                    Nothing -> False
+
                 newQueuedIntent =
                     if isNewIntent then
-                        case maybeIntent of
-                            Just intent ->
-                                if isOpposite intent m.dir then M.QueuedStop
-                                else M.QueuedMove intent
-                            Nothing -> m.queuedIntent
+                        if isOpposite then M.QueuedStop
+                        else maybeIntent |> Maybe.map M.QueuedMove |> Maybe.withDefault m.queuedIntent
                     else m.queuedIntent
 
-                speedFactor = if maybeIntent == Nothing then 1.0 else m.speedFactor
+                speedFactor = if maybeIntent == Nothing then 1.0 else intentSpeed
                 maxProgress = if m.to == M.endPosition maze then 4.0 else 1.0
                 newProgress = m.progress + (dt * speedFactor / secondsPerStep)
             in
