@@ -7,9 +7,7 @@ import DocumentDecoders as DD
 joystickDeadzone = 20
 joystickMaxDist = 80
 
-type MovementIntent = Intent Float Float
-
-getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
+getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
 getIntent keysDown pointerStart pointerLast =
     let
         joyIntent = getIntentFromJoystick pointerStart pointerLast
@@ -19,27 +17,22 @@ getIntent keysDown pointerStart pointerLast =
         Just _ -> joyIntent
         Nothing -> kbdIntent
 
-getIntentFromKeyboard : Set String -> Maybe MovementIntent
+getIntentFromKeyboard : Set String -> Maybe M.MovementIntent
 getIntentFromKeyboard keys =
     let
         up = Set.member "ArrowUp" keys
         down = Set.member "ArrowDown" keys
         left = Set.member "ArrowLeft" keys
         right = Set.member "ArrowRight" keys
-        eps = 0.01
     in
     case ( ( up, down ), ( left, right ) ) of
-        ( ( True, False ), ( True, False ) ) -> Just (Intent (directionToAngle M.NW) 1.0)
-        ( ( True, False ), ( False, True ) ) -> Just (Intent (directionToAngle M.NE) 1.0)
-        ( ( False, True ), ( True, False ) ) -> Just (Intent (directionToAngle M.SW) 1.0)
-        ( ( False, True ), ( False, True ) ) -> Just (Intent (directionToAngle M.SE) 1.0)
-        ( ( True, False ), _ ) -> Just (Intent (-pi/2 - eps) 1.0)
-        ( ( False, True ), _ ) -> Just (Intent (pi/2 - eps) 1.0)
-        ( _, ( True, False ) ) -> Just (Intent (pi - eps) 1.0)
-        ( _, ( False, True ) ) -> Just (Intent (0 - eps) 1.0)
+        ( ( True, False ), _ ) -> Just (M.Intent (directionToAngle M.NW) 1.0)
+        ( ( False, True ), _ ) -> Just (M.Intent (directionToAngle M.SE) 1.0)
+        ( _, ( True, False ) ) -> Just (M.Intent (directionToAngle M.SW) 1.0)
+        ( _, ( False, True ) ) -> Just (M.Intent (directionToAngle M.NE) 1.0)
         _ -> Nothing
 
-getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
+getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
 getIntentFromJoystick pointerStart pointerLast =
     case (pointerStart, pointerLast) of
         (Just start, Just last) ->
@@ -50,12 +43,25 @@ getIntentFromJoystick pointerStart pointerLast =
                 speedFactor = min 1 (dist / joystickMaxDist)
             in
             if dist > joystickDeadzone
-                then Just (Intent (atan2 dy dx) speedFactor)
+                then Just (M.Intent (atan2 dy dx) speedFactor)
                 else Nothing
         _ -> Nothing
 
-resolveIntent : M.Position -> MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
-resolveIntent pos (Intent angle _) maze =
+resolveDirection : Float -> M.Direction
+resolveDirection angle =
+    let
+        diff d = angleDiff angle (directionToAngle d)
+    in
+    M.allDirections
+        |> List.map (\d -> ( d, diff d ))
+        |> List.sortBy Tuple.second
+        |> List.head
+        |> Maybe.map Tuple.first
+        |> Maybe.withDefault M.SE
+
+
+resolveIntent : M.Position -> M.MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
+resolveIntent pos (M.Intent angle _) maze =
     let
         diff d = angleDiff angle (directionToAngle d)
 
