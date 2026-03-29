@@ -161,7 +161,7 @@ init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
         initialPos = M.startPosition defaultMaze
-        initialTargets = Animate.getPlayerTargets (M.Idle initialPos Nothing) defaultMaze
+        initialTargets = Animate.getPlayerTargets (M.Idle initialPos) defaultMaze
 
         model =
             { navKey = navKey
@@ -179,7 +179,7 @@ init flags url navKey =
             , azimuth = Angle.degrees D.initialAzimuth
             , mode = ME.Running
             , maze = defaultMaze
-            , playerState = M.Idle initialPos Nothing
+            , playerState = M.Idle initialPos
             , animator = Animate.initAnimator initialTargets
             , focus = M.snapFocus ( 0, 0, 1 ) defaultMaze
             , dpr = flags.dpr
@@ -217,12 +217,12 @@ update message model =
         targets = Animate.getPlayerTargets preModel.playerState preModel.maze
         wasMoving =
             case model.playerState of
-                M.Idle _ _ -> Animate.isAnimatorMoving (Animate.getPlayerTargets model.playerState model.maze) model.animator
+                M.Idle _ -> Animate.isAnimatorMoving (Animate.getPlayerTargets model.playerState model.maze) model.animator
                 M.Moving _ -> True
 
         isMoving =
             case preModel.playerState of
-                M.Idle _ _ -> Animate.isAnimatorMoving targets preModel.animator
+                M.Idle _ -> Animate.isAnimatorMoving targets preModel.animator
                 M.Moving _ -> True
 
         shouldRender =
@@ -309,7 +309,7 @@ updateModel message model =
 
                 maybeFinishedLevel =
                     case newPlayerState of
-                        M.Idle pos _ ->
+                        M.Idle pos ->
                             if pos == M.endPosition model.maze && model.activeOverlay == Nothing then
                                 Just (model.currentLevel |> Maybe.map .name |> Maybe.withDefault "")
                             else Nothing
@@ -520,90 +520,62 @@ updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.D
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
-        intentSpeed = case maybeIntent of
-            Just (M.Intent _ s) -> s
-            Nothing -> 1.0
+        intentSpeed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
+        resolvedDirAt pos = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent pos i maze |> Maybe.map Tuple.first)
 
-        maybeMove pos progress queuedIntent lastIntent =
-            let intentToUse = case queuedIntent of
-                    M.QueuedMove i -> Just i
-                    _ -> maybeIntent
+        maybeMove pos progress queuedIntent currentDir allowAuto =
+            let
+                activeDir = resolvedDirAt pos
+                intentToUse =
+                    activeDir
+                        |> Maybe.Extra.or
+                            (case queuedIntent of
+                                M.QueuedTurn d -> Just d
+                                _ -> Nothing
+                            )
             in
             case intentToUse of
-                Just (M.Intent angle _) ->
-                    let intentAtCurrentSpeed = M.Intent angle intentSpeed in
-                    case Controls.resolveIntent pos intentAtCurrentSpeed maze of
-                        Just ( dir, nextTo ) ->
-                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress, speedFactor = intentSpeed, queuedIntent = M.QueuedNone, lastIntent = lastIntent }
-                        Nothing ->
-                            M.Idle pos maybeIntent
+                Just d ->
+                    case M.move pos d maze of
+                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = intentSpeed, queuedIntent = M.QueuedNone }
+                        Nothing -> M.Idle pos
                 Nothing ->
-                    M.Idle pos maybeIntent
+                    if allowAuto && not (M.isJunction pos maze) then
+                        case List.filter (\d -> d /= M.oppositeDirection currentDir) (M.getExits pos maze) of
+                            [ nextDir ] ->
+                                case M.move pos nextDir maze of
+                                    Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
+                                    Nothing -> M.Idle pos
+                            _ -> M.Idle pos
+                    else M.Idle pos
     in
     case playerState of
-        M.Idle pos lastIntent ->
-            let
-                lastDir = lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent pos i maze) |> Maybe.map Tuple.first
-                currentDir = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent pos i maze) |> Maybe.map Tuple.first
-                isNewIntent = maybeIntent /= Nothing && currentDir /= lastDir
-            in
-            if isNewIntent then
-                case maybeIntent of
-                    Just ((M.Intent _ s) as intent) ->
-                        case Controls.resolveIntent pos intent maze of
-                            Just ( dir, nextTo ) ->
-                                M.Moving { from = pos, to = nextTo, dir = dir, progress = 0, speedFactor = s, queuedIntent = M.QueuedNone, lastIntent = maybeIntent }
-                            Nothing ->
-                                M.Idle pos maybeIntent
-                    Nothing ->
-                        M.Idle pos maybeIntent
-            else M.Idle pos maybeIntent
-
+        M.Idle pos -> maybeMove pos 0 M.QueuedNone M.SE False
         M.Moving m ->
             let
-                lastDirAtDest = m.lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
-                currentDirAtDest = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.to i maze) |> Maybe.map Tuple.first
-                isNewIntentAtDest = maybeIntent /= Nothing && currentDirAtDest /= lastDirAtDest
+                curDirAtDest = resolvedDirAt m.to
+                curDirFromHere = resolvedDirAt m.from
+                isOpposite = curDirFromHere == Just (M.oppositeDirection m.dir)
+                isDifferent = curDirAtDest /= Nothing && curDirAtDest /= Just m.dir
 
-                -- Check for immediate reversal relative to current tile
-                currentDirFromHere = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.from i maze) |> Maybe.map Tuple.first
-                isOpposite = case currentDirFromHere of
-                    Just d -> d == M.oppositeDirection m.dir
-                    Nothing -> False
+                newQueuedIntent =
+                    if isOpposite then M.QueuedStop
+                    else if isDifferent then curDirAtDest |> Maybe.map M.QueuedTurn |> Maybe.withDefault m.queuedIntent
+                    else if curDirFromHere == Just m.dir then M.QueuedNone
+                    else m.queuedIntent
 
-                ( activeM, newQueuedIntent ) =
-                    if isOpposite then
-                        ( { from = m.to, to = m.from, dir = M.oppositeDirection m.dir, progress = max 0 (1.0 - m.progress), speedFactor = intentSpeed, queuedIntent = M.QueuedStop, lastIntent = maybeIntent }
-                        , M.QueuedStop
-                        )
-                    else if isNewIntentAtDest then
-                        let q = maybeIntent |> Maybe.map M.QueuedMove |> Maybe.withDefault m.queuedIntent in
-                        ( { m | lastIntent = maybeIntent, queuedIntent = q }, q )
-                    else
-                        ( { m | lastIntent = maybeIntent }, m.queuedIntent )
+                activeM = if isOpposite
+                    then { from = m.to, to = m.from, dir = M.oppositeDirection m.dir, progress = max 0 (1.0 - m.progress), speedFactor = intentSpeed, queuedIntent = newQueuedIntent }
+                    else { m | speedFactor = intentSpeed, queuedIntent = newQueuedIntent }
 
-                speedFactor = if maybeIntent == Nothing then 1.0 else intentSpeed
                 maxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
-                newProgress = activeM.progress + (dt * speedFactor / secondsPerStep)
+                newProgress = activeM.progress + (dt * activeM.speedFactor / secondsPerStep)
             in
             if newProgress >= maxProgress then
-                let
-                    excess = newProgress - maxProgress
-                    pos = activeM.to
-                in
-                if pos == M.endPosition maze || newQueuedIntent == M.QueuedStop then M.Idle pos maybeIntent
-                else if M.isJunction pos maze then
-                    maybeMove pos excess newQueuedIntent maybeIntent
-                else
-                    -- auto-follow path
-                    case List.filter (\d -> d /= M.oppositeDirection activeM.dir) (M.getExits pos maze) of
-                        [ nextDir ] ->
-                            case M.move pos nextDir maze of
-                                Just nextTo ->
-                                    M.Moving { from = pos, to = nextTo, dir = nextDir, progress = excess, speedFactor = speedFactor, queuedIntent = newQueuedIntent, lastIntent = maybeIntent }
-                                Nothing -> M.Idle pos maybeIntent
-                        _ -> M.Idle pos maybeIntent
-            else M.Moving { activeM | progress = newProgress, speedFactor = speedFactor, queuedIntent = newQueuedIntent, lastIntent = maybeIntent }
+                let pos = activeM.to in
+                if pos == M.endPosition maze || (activeM.queuedIntent == M.QueuedStop && maybeIntent == Nothing) then M.Idle pos
+                else maybeMove pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir True
+            else M.Moving { activeM | progress = newProgress }
 
 type Route
     = Home (Maybe M.Maze)
@@ -644,9 +616,9 @@ loadMaze : M.Maze -> Maybe String -> Model -> Model
 loadMaze maze maybeName model =
     let
         startPos = M.startPosition maze
-        targets = Animate.getPlayerTargets (M.Idle startPos Nothing) maze
+        targets = Animate.getPlayerTargets (M.Idle startPos) maze
         ( oldX, oldY ) = case model.playerState of
-            M.Idle ( x, y, _ ) _ -> ( x, y )
+            M.Idle ( x, y, _ ) -> ( x, y )
             M.Moving m ->
                 let ( x, y, _ ) = m.from in ( x, y )
         ( newX, newY, _ ) = startPos
@@ -657,7 +629,7 @@ loadMaze maze maybeName model =
     in
     { model
         | maze = maze
-        , playerState = M.Idle startPos Nothing
+        , playerState = M.Idle startPos
         , animator = newAnimator
         , staticUpdate = True
         , currentLevel = maybeName |> Maybe.andThen Campaign.getLevel
@@ -719,13 +691,13 @@ updateMaze fun model =
 
         newPlayerState =
             case model.playerState of
-                M.Idle ( x, y, z ) last -> M.Idle ( x + dx, y + dy, z ) last
+                M.Idle ( x, y, z ) -> M.Idle ( x + dx, y + dy, z )
                 M.Moving m ->
                     let
                         ( fx, fy, fz ) = m.from
                         ( tx, ty, tz ) = m.to
                     in
-                    M.Moving { m | from = ( fx + dx, fy + dy, fz ), to = ( tx + dx, ty + dy, tz ), queuedIntent = m.queuedIntent }
+                    M.Moving { m | from = ( fx + dx, fy + dy, fz ), to = ( tx + dx, ty + dy, tz ) }
 
         newAnimator = model.animator
         updatedAnimator = { newAnimator | spheres = shiftSpheres newAnimator.spheres }

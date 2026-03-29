@@ -53,10 +53,10 @@ type MovementIntent = Intent Float Float
 type QueuedIntent
     = QueuedNone
     | QueuedStop
-    | QueuedMove MovementIntent
+    | QueuedTurn Direction
 
 type PlayerState
-    = Idle Position (Maybe MovementIntent)
+    = Idle Position
     | Moving
         { from : Position
         , to : Position
@@ -64,7 +64,6 @@ type PlayerState
         , progress : Float
         , speedFactor : Float
         , queuedIntent : QueuedIntent
-        , lastIntent : Maybe MovementIntent
         }
 
 
@@ -290,8 +289,14 @@ isJunction pos maze =
 playerPos : PlayerState -> Position
 playerPos state =
     case state of
-        Idle pos _ -> pos
+        Idle pos -> pos
         Moving m -> m.from
+
+playerDir : PlayerState -> Direction
+playerDir state =
+    case state of
+        Idle _ -> SE -- dummy
+        Moving m -> m.dir
 
 
 -- Block
