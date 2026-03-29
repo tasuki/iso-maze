@@ -102,6 +102,7 @@ type alias Model =
     , activeOverlay : Maybe Overlay
     , performance : Performance
     , leashEnabled : Bool
+    , analysis : Maybe Analyzer.Analysis
     }
 
 type Msg
@@ -189,11 +190,12 @@ init flags url navKey =
             , activeOverlay = Nothing
             , performance = performanceFromString flags.performance
             , leashEnabled = flags.leashEnabled
+            , analysis = Nothing
             }
 
         ( routedModel, routeCmd ) = changeRouteTo url model
     in
-    ( routedModel
+    ( recomputeAnalysis routedModel
     , Cmd.batch
         [ routeCmd
         , Task.perform
@@ -255,11 +257,7 @@ update message model =
                     , heightPx = preModel.heightPx
                     , staticUpdate = preModel.staticUpdate
                     , performance = performanceToString preModel.performance
-                    , analysis =
-                        if preModel.debugLevel == DebugOff && preModel.mode == ME.Editing then
-                            Just (Analyzer.analyze preModel.focus preModel.maze)
-                        else
-                            Nothing
+                    , analysis = preModel.analysis
                     , joystick =
                         if preModel.dragging && preModel.mode == ME.Running then
                             case ( preModel.pointerStart, preModel.pointerLast ) of
@@ -408,7 +406,7 @@ updateModel message model =
         FocusShift vector ->
             let newFocus = M.shiftPosition model.focus vector in
             if M.isFocusValid (M.positionTo2d newFocus) model.maze then
-                ( { model | focus = newFocus, staticUpdate = True }, Cmd.none )
+                ( { model | focus = newFocus, staticUpdate = True } |> recomputeAnalysis, Cmd.none )
             else
                 ( model, Cmd.none )
 
@@ -426,7 +424,7 @@ updateModel message model =
                     then M.snapFocus model.focus model.maze
                     else model.focus
             in
-            ( { model | mode = newMode, focus = newFocus, staticUpdate = True }, cmd )
+            ( { model | mode = newMode, focus = newFocus, staticUpdate = True } |> recomputeAnalysis, cmd )
 
         ToggleBlock -> updateMaze ME.toggleBlock { model | currentLevel = Nothing }
         ToggleStairs -> updateMaze ME.toggleStairs { model | currentLevel = Nothing }
@@ -463,7 +461,7 @@ updateModel message model =
             ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
 
         SetDebugLevel level ->
-            ( { model | debugLevel = level, staticUpdate = True }, Cmd.none )
+            ( { model | debugLevel = level, staticUpdate = True } |> recomputeAnalysis, Cmd.none )
 
         CycleDebug ->
             let
@@ -472,7 +470,7 @@ updateModel message model =
                         DebugOff -> DebugTechnical
                         DebugTechnical -> DebugOff
             in
-            ( { model | debugLevel = newLevel, staticUpdate = True }, Cmd.none )
+            ( { model | debugLevel = newLevel, staticUpdate = True } |> recomputeAnalysis, Cmd.none )
 
         SetPerformance perf ->
             ( { model | performance = perf, staticUpdate = True }, savePerformance (performanceToString perf) )
@@ -617,7 +615,7 @@ loadMaze maze maybeName model =
         , staticUpdate = True
         , currentLevel = maybeName |> Maybe.andThen Campaign.getLevel
         , activeOverlay = Nothing
-    }
+    } |> recomputeAnalysis
 
 applyLeash : DD.DocumentCoords -> Model -> Model
 applyLeash dc model =
@@ -691,13 +689,21 @@ updateMaze fun model =
         , playerState = newPlayerState
         , animator = updatedAnimator
         , staticUpdate = True
-      }
+      } |> recomputeAnalysis
     , pushUrl model.navKey newMaze
     )
 
 pushUrl : Nav.Key -> M.Maze -> Cmd msg
 pushUrl navKey maze =
     Nav.pushUrl navKey <| "/?" ++ Codec.encode maze
+
+
+recomputeAnalysis : Model -> Model
+recomputeAnalysis model =
+    if model.debugLevel == DebugOff && model.mode == ME.Editing then
+        { model | analysis = Just (Analyzer.analyze model.focus model.maze) }
+    else
+        { model | analysis = Nothing }
 
 
 -- Subscriptions
@@ -903,10 +909,9 @@ view model =
                     ]
 
             DebugOff ->
-                if model.mode == ME.Editing then
-                    viewAnalyzer (Analyzer.analyze model.focus model.maze)
-                else
-                    H.text ""
+                case model.analysis of
+                    Just a -> viewAnalyzer a
+                    Nothing -> H.text ""
         ]
     }
 
