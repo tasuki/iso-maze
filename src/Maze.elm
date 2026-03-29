@@ -1,6 +1,7 @@
 module Maze exposing (..)
 
 import Array exposing (Array)
+import Duration exposing (Duration)
 import Maybe.Extra
 
 minHeight = 0
@@ -48,15 +49,26 @@ type alias Vector = Position
 
 type Direction = SE | SW | NE | NW
 
+type MovementIntent = Intent Float Float
+
+type QueuedIntent
+    = QueuedNone
+    | QueuedStop
+    | QueuedTurn Direction
+
+type alias MovingData =
+    { from : Position
+    , to : Position
+    , dir : Direction
+    , progress : Float
+    , speedFactor : Float
+    , queuedIntent : QueuedIntent
+    , interactionStart : Maybe Duration
+    }
+
 type PlayerState
     = Idle Position
-    | Moving
-        { from : Position
-        , to : Position
-        , dir : Direction
-        , progress : Float
-        , speedFactor : Float
-        }
+    | Moving MovingData
 
 
 -- Maze
@@ -268,6 +280,27 @@ move ( x, y, z ) dir maze =
         |> Maybe.Extra.filter identity
         |> Maybe.andThen (\_ -> newHeight)
         |> Maybe.map (\nz -> ( posX newPos2d, posY newPos2d, nz ))
+
+getExits : Position -> Maze -> List Direction
+getExits pos maze =
+    List.filter (\d -> move pos d maze /= Nothing) allDirections
+
+isJunction : Position -> Maze -> Bool
+isJunction pos maze =
+    let exits = getExits pos maze in
+    pos == endPosition maze || List.length exits /= 2
+
+playerPos : PlayerState -> Position
+playerPos state =
+    case state of
+        Idle pos -> pos
+        Moving m -> m.from
+
+playerDir : PlayerState -> Direction
+playerDir state =
+    case state of
+        Idle _ -> SE -- dummy
+        Moving m -> m.dir
 
 
 -- Block

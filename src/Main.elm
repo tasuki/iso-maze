@@ -30,8 +30,6 @@ import Url exposing (Url)
 import Url.Parser as UP exposing ((</>))
 
 defaultMaze = SM.ziggurat2
-secondsPerStep = 0.2
-leashDistance = 80.0
 
 
 type Overlay
@@ -103,6 +101,7 @@ type alias Model =
     , performance : Performance
     , leashEnabled : Bool
     , analysis : Maybe Analyzer.Analysis
+    , interactionStart : Maybe Duration
     }
 
 type Msg
@@ -191,6 +190,7 @@ init flags url navKey =
             , performance = performanceFromString flags.performance
             , leashEnabled = flags.leashEnabled
             , analysis = Nothing
+            , interactionStart = Nothing
             }
 
         ( routedModel, routeCmd ) = changeRouteTo url model
@@ -300,9 +300,12 @@ updateModel message model =
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
                     if model.mode == ME.Running && model.activeOverlay == Nothing then
-                        updatePlayerState dt model.keysDown
+                        Controls.updatePlayerState dt model.keysDown
                             (if model.dragging then model.pointerStart else Nothing)
                             (if model.dragging then model.pointerLast else Nothing)
+                            model.interactionStart
+                            model.elapsedTime
+                            False
                             model.maze model.playerState
                     else
                         model.playerState
@@ -365,6 +368,7 @@ updateModel message model =
                 | dragging = True
                 , pointerStart = Just dc
                 , pointerLast = Just dc
+                , interactionStart = Just model.elapsedTime
               }
             , Cmd.none
             )
@@ -374,19 +378,37 @@ updateModel message model =
                 ( updatedModel, cmd ) =
                     if model.dragging && model.activeOverlay == Nothing then
                         if model.mode == ME.Running then
-                            ( applyLeash dc model, Cmd.none )
+                            case Controls.applyLeash model.leashEnabled model.pointerStart dc of
+                                Just ps -> ( { model | pointerStart = Just ps }, Cmd.none )
+                                _ -> ( model, Cmd.none )
                         else
-                            ( applyOrbit dc model, Cmd.none )
+                            case Controls.applyOrbit model.azimuth model.elevation model.pointerLast dc of
+                                Just (azimuth, elevation) -> ( { model | azimuth = azimuth, elevation = elevation, staticUpdate = True }, Cmd.none )
+                                _ -> ( model, Cmd.none )
                     else
                         ( model, Cmd.none )
             in
             ( { updatedModel | pointerLast = Just dc }, cmd )
 
-        Finished _ ->
-            ( { model | dragging = False }, Cmd.none )
+        Finished dc ->
+            let
+                dt = 0.0
+                newPlayerState =
+                    if model.mode == ME.Running && model.activeOverlay == Nothing then
+                        Controls.updatePlayerState dt model.keysDown
+                            model.pointerStart
+                            (Just dc)
+                            model.interactionStart
+                            model.elapsedTime
+                            True
+                            model.maze model.playerState
+                    else
+                        model.playerState
+            in
+            ( { model | dragging = False, playerState = newPlayerState, interactionStart = Nothing }, Cmd.none )
 
         Cancelled _ ->
-            ( { model | dragging = False }, Cmd.none )
+            ( { model | dragging = False, interactionStart = Nothing }, Cmd.none )
 
         VisibilityChange BE.Hidden ->
             ( { model | dragging = False }, Cmd.none )
@@ -445,7 +467,11 @@ updateModel message model =
                 Nothing ->
                     let
                         newKeysDown = Set.insert key model.keysDown
-                        newModel = { model | keysDown = newKeysDown }
+                        interactionStart =
+                            if Controls.isArrow key && model.interactionStart == Nothing
+                                then Just model.elapsedTime
+                                else model.interactionStart
+                        newModel = { model | keysDown = newKeysDown, interactionStart = interactionStart }
                     in
                     case (model.mode, key) of
                         (_, "e") -> updateModel ToggleMode newModel
@@ -458,7 +484,23 @@ updateModel message model =
                         _ -> (newModel, Cmd.none)
 
         KeyUp key ->
-            ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
+            let
+                newKeysDown = Set.remove key model.keysDown
+                anyArrows = Set.foldl (\k acc -> acc || Controls.isArrow k) False newKeysDown
+                ( newPlayerState, interactionStart ) =
+                    if Controls.isArrow key && not anyArrows && model.mode == ME.Running && model.activeOverlay == Nothing then
+                        ( Controls.updatePlayerState 0.0 model.keysDown
+                            Nothing
+                            Nothing
+                            model.interactionStart
+                            model.elapsedTime
+                            True
+                            model.maze model.playerState
+                        , Nothing
+                        )
+                    else ( model.playerState, model.interactionStart )
+            in
+            ( { model | keysDown = newKeysDown, playerState = newPlayerState, interactionStart = interactionStart }, Cmd.none )
 
         SetDebugLevel level ->
             ( { model | debugLevel = level, staticUpdate = True } |> recomputeAnalysis, Cmd.none )
@@ -515,48 +557,6 @@ updateModel message model =
 
         _ ->
             ( model, Cmd.none )
-
-updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> M.PlayerState -> M.PlayerState
-updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
-    let
-        maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
-        maybeMove pos progress =
-            case maybeIntent of
-                Just ((Controls.Intent _ s) as intent) ->
-                    case Controls.resolveIntent pos intent maze of
-                        Just ( dir, nextTo ) ->
-                            M.Moving { from = pos, to = nextTo, dir = dir, progress = progress, speedFactor = s }
-                        Nothing ->
-                            M.Idle pos
-                Nothing ->
-                    M.Idle pos
-
-        speedFactor =
-            case (playerState, maybeIntent) of
-                (_, Just (Controls.Intent _ s)) -> s
-                (M.Moving m, Nothing) -> m.speedFactor
-                _ -> 1.0
-    in
-    case playerState of
-        M.Idle pos -> maybeMove pos 0
-        M.Moving m ->
-            let
-                oldMaxProgress = if m.to == M.endPosition maze then 4.0 else 1.0
-                tryReverse ( revDir, revTo ) =
-                    if revTo == m.from && m.progress < oldMaxProgress then
-                        { from = m.to, to = m.from, dir = revDir, progress = max 0 (1.0 - m.progress), speedFactor = speedFactor }
-                    else
-                        m
-
-                activeM = maybeIntent
-                    |> Maybe.andThen (\intent -> Controls.resolveIntent m.to intent maze)
-                    |> Maybe.map tryReverse
-                    |> Maybe.withDefault m
-                activeMaxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
-                newProgress = activeM.progress + (dt * speedFactor / secondsPerStep)
-            in
-            if newProgress >= activeMaxProgress then maybeMove activeM.to (newProgress - activeMaxProgress)
-            else M.Moving { activeM | progress = newProgress, speedFactor = speedFactor }
 
 type Route
     = Home (Maybe M.Maze)
@@ -616,43 +616,6 @@ loadMaze maze maybeName model =
         , currentLevel = maybeName |> Maybe.andThen Campaign.getLevel
         , activeOverlay = Nothing
     } |> recomputeAnalysis
-
-applyLeash : DD.DocumentCoords -> Model -> Model
-applyLeash dc model =
-    case ( model.leashEnabled, model.pointerStart ) of
-        ( True, Just start ) ->
-            let
-                dx = dc.x - start.x
-                dy = dc.y - start.y
-                dist = sqrt (dx * dx + dy * dy)
-            in
-            if dist > leashDistance then
-                let
-                    angle = atan2 dy dx
-                    newStart = { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
-                in
-                { model | pointerStart = Just newStart }
-            else model
-        _ ->
-            model
-
-applyOrbit : DD.DocumentCoords -> Model -> Model
-applyOrbit dc model =
-    case model.pointerLast of
-        Just lastDc ->
-            let
-                rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
-                newAzimuth =
-                    model.azimuth
-                        |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
-                newElevation =
-                    model.elevation
-                        |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
-                        |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
-            in
-            { model | azimuth = newAzimuth, elevation = newElevation, staticUpdate = True }
-        Nothing ->
-            model
 
 updateMaze : (M.Position -> M.Maze -> M.Maze) -> Model -> ( Model, Cmd Msg )
 updateMaze fun model =
@@ -982,8 +945,7 @@ formatFloat val =
 viewArrowKeys : Model -> H.Html Msg
 viewArrowKeys model =
     let
-        isArrow k = k == "ArrowUp" || k == "ArrowDown" || k == "ArrowLeft" || k == "ArrowRight"
-        anyPressed = Set.foldl (\k acc -> acc || isArrow k) False model.keysDown
+        anyPressed = Set.foldl (\k acc -> acc || Controls.isArrow k) False model.keysDown
         keyView label area key =
             H.div
                 [ HA.classList
@@ -1014,7 +976,7 @@ viewJoystick model =
                 dx = last.x - start.x
                 dy = last.y - start.y
                 dist = sqrt (dx * dx + dy * dy)
-                maxDist = 40
+                maxDist = Controls.joystickMaxDist / 2.0
                 clampedDist = min dist maxDist
                 angle = atan2 dy dx
                 kx = clampedDist * cos angle
@@ -1031,7 +993,7 @@ viewJoystick model =
                 [ H.div
                     [ HA.classList
                         [ ( "joystick-base", True )
-                        , ( "too-far", dist > (leashDistance - 5) )
+                        , ( "too-far", dist > (Controls.leashDistance - 5) )
                         ]
                     ] []
                 , H.div [ HA.class "joystick-crosshair-1" ] []

@@ -1,15 +1,95 @@
 module Controls exposing (..)
 
-import Maze as M
-import Set exposing (Set)
+import Angle exposing (Angle)
 import DocumentDecoders as DD
+import Duration exposing (Duration)
+import Maze as M
+import Pixels
+import Quantity
+import Set exposing (Set)
 
-joystickDeadzone = 20
-joystickMaxDist = 80
 
-type MovementIntent = Intent Float Float
+-- CONSTANTS
 
-getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
+secondsPerStep = 0.2
+joystickDeadzone = 20.0
+joystickMaxDist = 80.0
+leashDistance = 80.0
+
+
+-- HIGH-LEVEL CONTROLS
+
+updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords
+    -> Maybe Duration -> Duration -> Bool -> M.Maze -> M.PlayerState -> M.PlayerState
+updatePlayerState dt keysDown pointerStart pointerLast interactionStart currentTime isRelease maze playerState =
+    let
+        intent = analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime
+    in
+    case playerState of
+        M.Idle pos -> updateIdle pos intent maze
+        M.Moving m -> updateMoving dt m intent isRelease maze
+
+applyLeash : Bool -> Maybe DD.DocumentCoords -> DD.DocumentCoords -> Maybe DD.DocumentCoords
+applyLeash leashEnabled pointerStart dc =
+    case ( leashEnabled, pointerStart ) of
+        ( True, Just start ) ->
+            let
+                dx = dc.x - start.x
+                dy = dc.y - start.y
+                dist = sqrt (dx*dx + dy*dy)
+            in
+            if dist > leashDistance then
+                let angle = atan2 dy dx in
+                Just { x = dc.x - leashDistance * cos angle, y = dc.y - leashDistance * sin angle }
+            else Nothing
+        _ ->
+            Nothing
+
+applyOrbit : Angle -> Angle -> Maybe DD.DocumentCoords -> DD.DocumentCoords -> Maybe (Angle, Angle)
+applyOrbit azimuth elevation pointerLast dc =
+    pointerLast |> Maybe.map (\lastDc ->
+        let
+            rotationRate = Angle.degrees 0.5 |> Quantity.per Pixels.pixel
+            newAzimuth =
+                azimuth
+                    |> Quantity.minus (dc.x - lastDc.x |> Pixels.pixels |> Quantity.at rotationRate)
+            newElevation =
+                elevation
+                    |> Quantity.plus (dc.y - lastDc.y |> Pixels.pixels |> Quantity.at rotationRate)
+                    |> Quantity.clamp (Angle.degrees 5) (Angle.degrees 85)
+        in
+        (newAzimuth, newElevation)
+    )
+
+
+-- INTENT ANALYSIS
+
+type alias IntentInfo =
+    { intent : Maybe M.MovementIntent
+    , dir : Maybe M.Direction
+    , speed : Float
+    , isLong : Bool
+    , isDeadzone : Bool
+    , interactionStart : Maybe Duration
+    }
+
+analyzeIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe Duration -> Duration -> IntentInfo
+analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
+    let
+        maybeIntent = getIntent keysDown pointerStart pointerLast
+        intentDuration = interactionStart
+            |> Maybe.map (\i -> currentTime |> Quantity.minus i |> Duration.inSeconds)
+            |> Maybe.withDefault 0.0
+    in
+    { intent = maybeIntent
+    , dir = maybeIntent |> Maybe.map (\(M.Intent a _) -> resolveDirection a)
+    , speed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
+    , isLong = intentDuration >= 0.4
+    , isDeadzone = maybeIntent == Nothing && pointerStart /= Nothing
+    , interactionStart = interactionStart
+    }
+
+getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
 getIntent keysDown pointerStart pointerLast =
     let
         joyIntent = getIntentFromJoystick pointerStart pointerLast
@@ -19,78 +99,206 @@ getIntent keysDown pointerStart pointerLast =
         Just _ -> joyIntent
         Nothing -> kbdIntent
 
-getIntentFromKeyboard : Set String -> Maybe MovementIntent
+getIntentFromKeyboard : Set String -> Maybe M.MovementIntent
 getIntentFromKeyboard keys =
     let
-        up = Set.member "ArrowUp" keys
-        down = Set.member "ArrowDown" keys
-        left = Set.member "ArrowLeft" keys
-        right = Set.member "ArrowRight" keys
-        eps = 0.01
+        up = if Set.member "ArrowUp" keys then -1.0 else 0.0
+        down = if Set.member "ArrowDown" keys then 1.0 else 0.0
+        left = if Set.member "ArrowLeft" keys then -1.0 else 0.0
+        right = if Set.member "ArrowRight" keys then 1.0 else 0.0
+        dx = left + right
+        dy = up + down
     in
-    case ( ( up, down ), ( left, right ) ) of
-        ( ( True, False ), ( True, False ) ) -> Just (Intent (directionToAngle M.NW) 1.0)
-        ( ( True, False ), ( False, True ) ) -> Just (Intent (directionToAngle M.NE) 1.0)
-        ( ( False, True ), ( True, False ) ) -> Just (Intent (directionToAngle M.SW) 1.0)
-        ( ( False, True ), ( False, True ) ) -> Just (Intent (directionToAngle M.SE) 1.0)
-        ( ( True, False ), _ ) -> Just (Intent (-pi/2 - eps) 1.0)
-        ( ( False, True ), _ ) -> Just (Intent (pi/2 - eps) 1.0)
-        ( _, ( True, False ) ) -> Just (Intent (pi - eps) 1.0)
-        ( _, ( False, True ) ) -> Just (Intent (0 - eps) 1.0)
-        _ -> Nothing
+    if dx == 0 && dy == 0 then Nothing
+    else Just (M.Intent (atan2 dy dx - 0.0001) 1.0)
 
-getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
+getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
 getIntentFromJoystick pointerStart pointerLast =
-    case (pointerStart, pointerLast) of
-        (Just start, Just last) ->
+    case ( pointerStart, pointerLast ) of
+        ( Just start, Just last ) ->
             let
                 dx = last.x - start.x
                 dy = last.y - start.y
-                dist = sqrt (dx*dx + dy*dy)
+                dist = sqrt (dx * dx + dy * dy)
                 speedFactor = min 1 (dist / joystickMaxDist)
             in
             if dist > joystickDeadzone
-                then Just (Intent (atan2 dy dx) speedFactor)
+                then Just (M.Intent (atan2 dy dx) speedFactor)
                 else Nothing
         _ -> Nothing
 
-resolveIntent : M.Position -> MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
-resolveIntent pos (Intent angle _) maze =
+
+-- MOVEMENT STATE MACHINE
+
+updateIdle : M.Position -> IntentInfo -> M.Maze -> M.PlayerState
+updateIdle pos intent maze =
+    let
+        exits = M.getExits pos maze
+        chosenDir =
+            Maybe.andThen (\(M.Intent a _) ->
+                if intent.isLong then findBestExit a exits
+                else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+            ) intent.intent
+    in
+    case chosenDir of
+        Just d ->
+            case M.move pos d maze of
+                Just nextTo -> M.Moving
+                    { from = pos
+                    , to = nextTo
+                    , dir = d
+                    , progress = 0
+                    , speedFactor = intent.speed
+                    , queuedIntent = M.QueuedNone
+                    , interactionStart = intent.interactionStart
+                    }
+                Nothing -> M.Idle pos
+        Nothing -> M.Idle pos
+
+updateMoving : Float -> M.MovingData -> IntentInfo -> Bool -> M.Maze -> M.PlayerState
+updateMoving dt m intent isRelease maze =
+    let
+        isOpposite = intent.dir == Just (M.oppositeDirection m.dir)
+        isCurrentInteraction = intent.interactionStart == m.interactionStart
+
+        newQueuedIntent =
+            if intent.isLong then M.QueuedNone
+            else if intent.isDeadzone then M.QueuedStop
+            else case intent.dir of
+                Just d ->
+                    if isOpposite then M.QueuedStop
+                    else if isCurrentInteraction && d == m.dir then m.queuedIntent
+                    else M.QueuedTurn d
+                Nothing -> m.queuedIntent
+
+        activeM =
+            if isOpposite && intent.isLong then
+                { from = m.to
+                , to = m.from
+                , dir = M.oppositeDirection m.dir
+                , progress = max 0 (1.0 - m.progress)
+                , speedFactor = intent.speed
+                , queuedIntent = newQueuedIntent
+                , interactionStart = intent.interactionStart
+                }
+            else
+                { m | speedFactor = if isRelease then 1.0 else intent.speed, queuedIntent = newQueuedIntent }
+
+        maxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
+        newProgress = activeM.progress + (dt * activeM.speedFactor / secondsPerStep)
+    in
+    if newProgress >= maxProgress then
+        let pos = activeM.to in
+        if pos == M.endPosition maze || activeM.queuedIntent == M.QueuedStop then M.Idle pos
+        else nextTile pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir intent maze (if isRelease then 1.0 else intent.speed)
+    else
+        M.Moving { activeM | progress = newProgress }
+
+nextTile : M.Position -> Float -> M.QueuedIntent -> M.Direction -> IntentInfo -> M.Maze -> Float -> M.PlayerState
+nextTile pos progress queuedIntent currentDir intent maze speedFactor =
+    let
+        exits = M.getExits pos maze
+        isJunction = M.isJunction pos maze
+
+        chosenDir =
+            Maybe.andThen (\(M.Intent a _) ->
+                if intent.isLong then findBestExit a exits
+                else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+            ) intent.intent
+
+        maybeMove d q iStart =
+            case M.move pos d maze of
+                Just nextTo -> M.Moving
+                    { from = pos
+                    , to = nextTo
+                    , dir = d
+                    , progress = progress
+                    , speedFactor = speedFactor
+                    , queuedIntent = q
+                    , interactionStart = iStart
+                    }
+                Nothing -> M.Idle pos
+    in
+    case chosenDir of
+        Just d -> maybeMove d M.QueuedNone intent.interactionStart
+        Nothing ->
+            case queuedIntent of
+                M.QueuedTurn d ->
+                    if isJunction then
+                        if List.member d exits
+                            then maybeMove d M.QueuedNone Nothing
+                            else M.Idle pos
+                    else
+                        continueInPath pos progress currentDir exits maze speedFactor queuedIntent Nothing
+                M.QueuedStop -> M.Idle pos
+                M.QueuedNone ->
+                    if intent.intent /= Nothing || not isJunction
+                        then continueInPath pos progress currentDir exits maze speedFactor M.QueuedNone intent.interactionStart
+                        else M.Idle pos
+
+continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maze -> Float -> M.QueuedIntent -> Maybe Duration -> M.PlayerState
+continueInPath pos progress currentDir exits maze speedFactor q iStart =
+    let
+        nextDir =
+            if List.member currentDir exits then
+                Just currentDir
+            else
+                case List.filter (\d -> d /= M.oppositeDirection currentDir) exits of
+                    [ d ] -> Just d
+                    _ -> Nothing
+    in
+    case nextDir of
+        Just d ->
+            case M.move pos d maze of
+                Just nextTo -> M.Moving
+                    { from = pos
+                    , to = nextTo
+                    , dir = d
+                    , progress = progress
+                    , speedFactor = speedFactor
+                    , queuedIntent = q
+                    , interactionStart = iStart
+                    }
+                Nothing -> M.Idle pos
+        Nothing -> M.Idle pos
+
+
+-- LOW-LEVEL HELPERS
+
+resolveDirection : Float -> M.Direction
+resolveDirection angle =
     let
         diff d = angleDiff angle (directionToAngle d)
-
-        validMoves = List.filterMap
-            (\d ->
-                -- pi/2 radians picks direction up to 90° away
-                -- 1.5 radians is about 86 angular degrees
-                if diff d < 1.5
-                    then M.move pos d maze |> Maybe.map (Tuple.pair d)
-                    else Nothing
-            )
-            M.allDirections
-
-        sortByDiff ( d1, _ ) ( d2, _ ) =
-            let
-                diff1 = diff d1
-                diff2 = diff d2
-            in
-            if diff1 < diff2 then LT
-            else if diff1 > diff2 then GT
-            else EQ
     in
-    validMoves
-        |> List.sortWith sortByDiff
+    M.allDirections
+        |> List.map (\d -> ( d, diff d ))
+        |> List.sortBy Tuple.second
+        |> List.head
+        |> Maybe.map Tuple.first
+        |> Maybe.withDefault M.SE
+
+findBestExit : Float -> List M.Direction -> Maybe M.Direction
+findBestExit angle dirs =
+    let
+        diff d = angleDiff angle (directionToAngle d)
+    in
+    dirs
+        |> List.filter (\d -> diff d < 1.3)
+        |> List.sortBy diff
         |> List.head
 
 directionToAngle : M.Direction -> Float
 directionToAngle dir =
     case dir of
-        M.NE -> -pi/4
-        M.NW -> -3*pi/4
-        M.SE -> pi/4
+        M.SE -> 1*pi/4
         M.SW -> 3*pi/4
+        M.NW -> 5*pi/4
+        M.NE -> 7*pi/4
 
 angleDiff : Float -> Float -> Float
 angleDiff a b =
-    let diff = abs (a - b) in
-    if diff > pi then 2*pi - diff else diff
+    acos (cos (a - b))
+
+isArrow : String -> Bool
+isArrow k =
+    k == "ArrowUp" || k == "ArrowDown" || k == "ArrowLeft" || k == "ArrowRight"
