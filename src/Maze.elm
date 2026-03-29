@@ -48,6 +48,13 @@ type alias Vector = Position
 
 type Direction = SE | SW | NE | NW
 
+type MovementIntent = Intent Float Float
+
+type QueuedIntent
+    = QueuedNone
+    | QueuedStop
+    | QueuedMove MovementIntent
+
 type PlayerState
     = Idle Position
     | Moving
@@ -56,6 +63,7 @@ type PlayerState
         , dir : Direction
         , progress : Float
         , speedFactor : Float
+        , queuedIntent : QueuedIntent
         }
 
 
@@ -268,6 +276,15 @@ move ( x, y, z ) dir maze =
         |> Maybe.Extra.filter identity
         |> Maybe.andThen (\_ -> newHeight)
         |> Maybe.map (\nz -> ( posX newPos2d, posY newPos2d, nz ))
+
+getExits : Position -> Maze -> List Direction
+getExits pos maze =
+    List.filter (\d -> move pos d maze /= Nothing) allDirections
+
+isJunction : Position -> Maze -> Bool
+isJunction pos maze =
+    let exits = getExits pos maze in
+    pos == endPosition maze || List.length exits /= 2
 
 
 -- Block
