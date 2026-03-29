@@ -4,9 +4,8 @@ import Maze as M
 import Set exposing (Set)
 import DocumentDecoders as DD
 
-joystickDeadzone = 10
+joystickDeadzone = 20
 joystickMaxDist = 80
-joystickMaxSpeedFactor = 1.5
 
 type MovementIntent = Intent Float Float
 
@@ -48,7 +47,7 @@ getIntentFromJoystick pointerStart pointerLast =
                 dx = last.x - start.x
                 dy = last.y - start.y
                 dist = sqrt (dx*dx + dy*dy)
-                speedFactor = min joystickMaxSpeedFactor ((dist / joystickMaxDist) * joystickMaxSpeedFactor)
+                speedFactor = min 1 (dist / joystickMaxDist)
             in
             if dist > joystickDeadzone
                 then Just (Intent (atan2 dy dx) speedFactor)

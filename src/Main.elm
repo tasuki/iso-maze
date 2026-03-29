@@ -30,7 +30,7 @@ import Url exposing (Url)
 import Url.Parser as UP exposing ((</>))
 
 defaultMaze = SM.ziggurat2
-secondsPerStep = 0.25
+secondsPerStep = 0.2
 leashDistance = 80.0
 
 
