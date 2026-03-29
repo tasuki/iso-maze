@@ -287,6 +287,12 @@ isJunction pos maze =
     let exits = getExits pos maze in
     pos == endPosition maze || List.length exits /= 2
 
+playerPos : PlayerState -> Position
+playerPos state =
+    case state of
+        Idle pos _ -> pos
+        Moving m -> m.from
+
 
 -- Block
 

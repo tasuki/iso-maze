@@ -520,6 +520,7 @@ updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.D
 updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
+        resolvedIntent = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent (M.Idle ( 0, 0, 0 ) Nothing |> M.playerPos) i maze)
         isOpposite intent dir =
             case intent of
                 M.Intent angle _ -> (Controls.angleDiff angle (Controls.directionToAngle (M.oppositeDirection dir))) < 0.1
@@ -547,7 +548,9 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
 
         M.Moving m ->
             let
-                isNewIntent = maybeIntent /= Nothing && maybeIntent /= m.lastIntent
+                lastDir = m.lastIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.from i maze) |> Maybe.map Tuple.first
+                currentDir = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent m.from i maze) |> Maybe.map Tuple.first
+                isNewIntent = maybeIntent /= Nothing && currentDir /= lastDir
                 newQueuedIntent =
                     if isNewIntent then
                         case maybeIntent of
