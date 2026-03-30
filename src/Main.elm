@@ -521,48 +521,65 @@ updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
     let
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
         intentSpeed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
+        intentDir = maybeIntent |> Maybe.map (\(M.Intent a _) -> Controls.resolveDirection a)
         resolvedDirAt pos = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent pos i maze |> Maybe.map Tuple.first)
 
         maybeMove pos progress queuedIntent currentDir allowAuto =
             let
                 activeDir = resolvedDirAt pos
-                intentToUse =
-                    activeDir
-                        |> Maybe.Extra.or
-                            (case queuedIntent of
-                                M.QueuedTurn d -> Just d
-                                _ -> Nothing
-                            )
+                isJunction = M.isJunction pos maze
             in
-            case intentToUse of
-                Just d ->
+            case ( activeDir, queuedIntent ) of
+                ( _, M.QueuedStop ) -> M.Idle pos
+                ( Just d, _ ) ->
                     case M.move pos d maze of
                         Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = intentSpeed, queuedIntent = M.QueuedNone }
                         Nothing -> M.Idle pos
-                Nothing ->
-                    if allowAuto && not (M.isJunction pos maze) then
-                        case List.filter (\d -> d /= M.oppositeDirection currentDir) (M.getExits pos maze) of
-                            [ nextDir ] ->
-                                case M.move pos nextDir maze of
-                                    Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
-                                    Nothing -> M.Idle pos
-                            _ -> M.Idle pos
-                    else M.Idle pos
+                ( Nothing, M.QueuedTurn d ) ->
+                    case M.move pos d maze of
+                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
+                        Nothing ->
+                            case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) of
+                                [ nextDir ] ->
+                                    case M.move pos nextDir maze of
+                                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = if d == nextDir then M.QueuedNone else M.QueuedTurn d }
+                                        Nothing -> M.Idle pos
+                                _ -> if isJunction then M.Idle pos
+                                     else case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) |> List.head of
+                                        Just nextDir ->
+                                            case M.move pos nextDir maze of
+                                                Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedTurn d }
+                                                Nothing -> M.Idle pos
+                                        Nothing -> M.Idle pos
+                ( Nothing, M.QueuedNone ) ->
+                    case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) of
+                        [ nextDir ] ->
+                            case M.move pos nextDir maze of
+                                Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
+                                Nothing -> M.Idle pos
+                        _ -> if allowAuto && not isJunction then M.Idle pos
+                             else if isJunction then M.Idle pos
+                             else case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) |> List.head of
+                                Just nextDir ->
+                                    case M.move pos nextDir maze of
+                                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
+                                        Nothing -> M.Idle pos
+                                Nothing -> M.Idle pos
     in
     case playerState of
         M.Idle pos -> maybeMove pos 0 M.QueuedNone M.SE False
         M.Moving m ->
             let
-                curDirAtDest = resolvedDirAt m.to
                 curDirFromHere = resolvedDirAt m.from
                 isOpposite = curDirFromHere == Just (M.oppositeDirection m.dir)
-                isDifferent = curDirAtDest /= Nothing && curDirAtDest /= Just m.dir
+                isStraight = curDirFromHere == Just m.dir
 
                 newQueuedIntent =
                     if isOpposite then M.QueuedStop
-                    else if isDifferent then curDirAtDest |> Maybe.map M.QueuedTurn |> Maybe.withDefault m.queuedIntent
-                    else if curDirFromHere == Just m.dir then M.QueuedNone
-                    else m.queuedIntent
+                    else if isStraight then M.QueuedNone
+                    else case intentDir of
+                        Just d -> if d /= m.dir then M.QueuedTurn d else m.queuedIntent
+                        Nothing -> m.queuedIntent
 
                 activeM = if isOpposite
                     then { from = m.to, to = m.from, dir = M.oppositeDirection m.dir, progress = max 0 (1.0 - m.progress), speedFactor = intentSpeed, queuedIntent = newQueuedIntent }
