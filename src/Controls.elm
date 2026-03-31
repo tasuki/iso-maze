@@ -57,33 +57,14 @@ resolveDirection angle =
         |> Maybe.map Tuple.first
         |> Maybe.withDefault M.SE
 
-
-resolveIntent : M.Position -> M.MovementIntent -> M.Maze -> Maybe ( M.Direction, M.Position )
-resolveIntent pos (M.Intent angle _) maze =
+findBestExit : Float -> Float -> List M.Direction -> Maybe M.Direction
+findBestExit threshold angle dirs =
     let
         diff d = angleDiff angle (directionToAngle d)
-
-        validMoves = List.filterMap
-            (\d ->
-                -- pi/2 radians picks direction up to 90° away
-                -- 1.5 radians is about 86 angular degrees
-                if diff d < 1.5
-                    then M.move pos d maze |> Maybe.map (Tuple.pair d)
-                    else Nothing
-            )
-            M.allDirections
-
-        sortByDiff ( d1, _ ) ( d2, _ ) =
-            let
-                diff1 = diff d1
-                diff2 = diff d2
-            in
-            if diff1 < diff2 then LT
-            else if diff1 > diff2 then GT
-            else EQ
     in
-    validMoves
-        |> List.sortWith sortByDiff
+    dirs
+        |> List.filter (\d -> diff d < threshold)
+        |> List.sortBy diff
         |> List.head
 
 directionToAngle : M.Direction -> Float

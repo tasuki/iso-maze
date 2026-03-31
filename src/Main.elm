@@ -560,7 +560,8 @@ isArrow : String -> Bool
 isArrow k = k == "ArrowUp" || k == "ArrowDown" || k == "ArrowLeft" || k == "ArrowRight"
 
 type alias IntentInfo =
-    { dir : Maybe M.Direction
+    { intent : Maybe M.MovementIntent
+    , dir : Maybe M.Direction
     , speed : Float
     , isLong : Bool
     , isDeadzone : Bool
@@ -572,7 +573,8 @@ analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
         intentDuration = interactionStart |> Maybe.map (\i -> currentTime |> Quantity.minus i.time |> Duration.inSeconds) |> Maybe.withDefault 0.0
     in
-    { dir = maybeIntent |> Maybe.map (\(M.Intent a _) -> Controls.resolveDirection a)
+    { intent = maybeIntent
+    , dir = maybeIntent |> Maybe.map (\(M.Intent a _) -> Controls.resolveDirection a)
     , speed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
     , isLong = intentDuration >= 0.4
     , isDeadzone = maybeIntent == Nothing && pointerStart /= Nothing
@@ -589,7 +591,16 @@ updatePlayerState dt keysDown pointerStart pointerLast interactionStart currentT
 
 updateIdle : M.Position -> IntentInfo -> M.Maze -> M.PlayerState
 updateIdle pos intent maze =
-    case intent.dir of
+    let
+        exits = M.getExits pos maze
+        chosenDir =
+            case intent.intent of
+                Just (M.Intent a _) ->
+                    if intent.isLong then Controls.findBestExit 1.5 a exits
+                    else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+                Nothing -> Nothing
+    in
+    case chosenDir of
         Just d ->
             case M.move pos d maze of
                 Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = 0, speedFactor = intent.speed, queuedIntent = M.QueuedNone }
@@ -622,19 +633,24 @@ updateMoving dt m intent isRelease maze =
     if newProgress >= maxProgress then
         let pos = activeM.to in
         if pos == M.endPosition maze || activeM.queuedIntent == M.QueuedStop then M.Idle pos
-        else nextTile pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir intent.dir maze (if isRelease then 1.0 else intent.speed)
+        else nextTile pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir intent maze (if isRelease then 1.0 else intent.speed)
     else
         M.Moving { activeM | progress = newProgress }
 
-nextTile : M.Position -> Float -> M.QueuedIntent -> M.Direction -> Maybe M.Direction -> M.Maze -> Float -> M.PlayerState
-nextTile pos progress queuedIntent currentDir maybeIntentDir maze speedFactor =
+nextTile : M.Position -> Float -> M.QueuedIntent -> M.Direction -> IntentInfo -> M.Maze -> Float -> M.PlayerState
+nextTile pos progress queuedIntent currentDir intent maze speedFactor =
     let
         exits = M.getExits pos maze
         isJunction = M.isJunction pos maze
 
-        activeDir = maybeIntentDir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+        chosenDir =
+            case intent.intent of
+                Just (M.Intent a _) ->
+                    if intent.isLong then Controls.findBestExit 1.5 a exits
+                    else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+                Nothing -> Nothing
 
-        maybeTurn = case (activeDir, queuedIntent) of
+        maybeTurn = case (chosenDir, queuedIntent) of
             (Just d, _) -> Just d
             (Nothing, M.QueuedTurn d) -> if isJunction && List.member d exits then Just d else Nothing
             _ -> Nothing
@@ -643,7 +659,7 @@ nextTile pos progress queuedIntent currentDir maybeIntentDir maze speedFactor =
             case maybeTurn of
                 Just d -> Just d
                 Nothing ->
-                    if maybeIntentDir /= Nothing || not isJunction then
+                    if intent.intent /= Nothing || not isJunction then
                         if List.member currentDir exits then Just currentDir
                         else case List.filter (\d -> d /= M.oppositeDirection currentDir) exits of
                             [ d ] -> Just d
