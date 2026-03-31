@@ -20,17 +20,15 @@ getIntent keysDown pointerStart pointerLast =
 getIntentFromKeyboard : Set String -> Maybe M.MovementIntent
 getIntentFromKeyboard keys =
     let
-        up = Set.member "ArrowUp" keys
-        down = Set.member "ArrowDown" keys
-        left = Set.member "ArrowLeft" keys
-        right = Set.member "ArrowRight" keys
+        up = if Set.member "ArrowUp" keys then -1.0 else 0.0
+        down = if Set.member "ArrowDown" keys then 1.0 else 0.0
+        left = if Set.member "ArrowLeft" keys then -1.0 else 0.0
+        right = if Set.member "ArrowRight" keys then 1.0 else 0.0
+        dx = left + right
+        dy = up + down
     in
-    case ( ( up, down ), ( left, right ) ) of
-        ( ( True, False ), _ ) -> Just (M.Intent (directionToAngle M.NW) 1.0)
-        ( ( False, True ), _ ) -> Just (M.Intent (directionToAngle M.SE) 1.0)
-        ( _, ( True, False ) ) -> Just (M.Intent (directionToAngle M.SW) 1.0)
-        ( _, ( False, True ) ) -> Just (M.Intent (directionToAngle M.NE) 1.0)
-        _ -> Nothing
+    if dx == 0 && dy == 0 then Nothing
+    else Just (M.Intent (atan2 dy dx) 1.0)
 
 getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
 getIntentFromJoystick pointerStart pointerLast =

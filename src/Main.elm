@@ -620,7 +620,7 @@ updatePlayerState dt keysDown pointerStart pointerLast interactionStart currentT
                                             [ d ] -> Just d
                                             _ -> Nothing
                                 in
-                                case corridorDir of
+                                case if allowAuto then corridorDir else Nothing of
                                     Just nextDir ->
                                         case M.move pos nextDir maze of
                                             Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = speedFactor, queuedIntent = queuedIntent }
@@ -631,7 +631,9 @@ updatePlayerState dt keysDown pointerStart pointerLast interactionStart currentT
     case playerState of
         M.Idle pos ->
             if maybeIntent /= Nothing then
-                maybeMove pos 0 M.QueuedNone M.SE False (if isRelease then 1.0 else intentSpeed)
+                case intentDir of
+                    Just d -> maybeMove pos 0 M.QueuedNone d False (if isRelease then 1.0 else intentSpeed)
+                    Nothing -> M.Idle pos
             else M.Idle pos
         M.Moving m ->
             let
