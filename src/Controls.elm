@@ -57,13 +57,13 @@ resolveDirection angle =
         |> Maybe.map Tuple.first
         |> Maybe.withDefault M.SE
 
-findBestExit : Float -> Float -> List M.Direction -> Maybe M.Direction
-findBestExit threshold angle dirs =
+findBestExit : Float -> List M.Direction -> Maybe M.Direction
+findBestExit angle dirs =
     let
         diff d = angleDiff angle (directionToAngle d)
     in
     dirs
-        |> List.filter (\d -> diff d < threshold)
+        |> List.filter (\d -> diff d < 1.3)
         |> List.sortBy diff
         |> List.head
 

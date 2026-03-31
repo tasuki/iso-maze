@@ -594,11 +594,10 @@ updateIdle pos intent maze =
     let
         exits = M.getExits pos maze
         chosenDir =
-            case intent.intent of
-                Just (M.Intent a _) ->
-                    if intent.isLong then Controls.findBestExit 1.5 a exits
-                    else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
-                Nothing -> Nothing
+            Maybe.andThen (\(M.Intent a _) ->
+                if intent.isLong then Controls.findBestExit a exits
+                else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+            ) intent.intent
     in
     case chosenDir of
         Just d ->
@@ -644,11 +643,10 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
         isJunction = M.isJunction pos maze
 
         chosenDir =
-            case intent.intent of
-                Just (M.Intent a _) ->
-                    if intent.isLong then Controls.findBestExit 1.5 a exits
-                    else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
-                Nothing -> Nothing
+            Maybe.andThen (\(M.Intent a _) ->
+                if intent.isLong then Controls.findBestExit a exits
+                else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+            ) intent.intent
 
         maybeTurn = case (chosenDir, queuedIntent) of
             (Just d, _) -> Just d
