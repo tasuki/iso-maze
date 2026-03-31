@@ -103,6 +103,7 @@ type alias Model =
     , performance : Performance
     , leashEnabled : Bool
     , analysis : Maybe Analyzer.Analysis
+    , interactionStart : Maybe { time : Duration, coords : Maybe DD.DocumentCoords }
     }
 
 type Msg
@@ -191,6 +192,7 @@ init flags url navKey =
             , performance = performanceFromString flags.performance
             , leashEnabled = flags.leashEnabled
             , analysis = Nothing
+            , interactionStart = Nothing
             }
 
         ( routedModel, routeCmd ) = changeRouteTo url model
@@ -303,6 +305,9 @@ updateModel message model =
                         updatePlayerState dt model.keysDown
                             (if model.dragging then model.pointerStart else Nothing)
                             (if model.dragging then model.pointerLast else Nothing)
+                            model.interactionStart
+                            model.elapsedTime
+                            False
                             model.maze model.playerState
                     else
                         model.playerState
@@ -365,6 +370,7 @@ updateModel message model =
                 | dragging = True
                 , pointerStart = Just dc
                 , pointerLast = Just dc
+                , interactionStart = Just { time = model.elapsedTime, coords = Just dc }
               }
             , Cmd.none
             )
@@ -382,11 +388,25 @@ updateModel message model =
             in
             ( { updatedModel | pointerLast = Just dc }, cmd )
 
-        Finished _ ->
-            ( { model | dragging = False }, Cmd.none )
+        Finished dc ->
+            let
+                dt = 0.0
+                newPlayerState =
+                    if model.mode == ME.Running && model.activeOverlay == Nothing then
+                        updatePlayerState dt model.keysDown
+                            model.pointerStart
+                            (Just dc)
+                            model.interactionStart
+                            model.elapsedTime
+                            True
+                            model.maze model.playerState
+                    else
+                        model.playerState
+            in
+            ( { model | dragging = False, playerState = newPlayerState, interactionStart = Nothing }, Cmd.none )
 
         Cancelled _ ->
-            ( { model | dragging = False }, Cmd.none )
+            ( { model | dragging = False, interactionStart = Nothing }, Cmd.none )
 
         VisibilityChange BE.Hidden ->
             ( { model | dragging = False }, Cmd.none )
@@ -445,7 +465,11 @@ updateModel message model =
                 Nothing ->
                     let
                         newKeysDown = Set.insert key model.keysDown
-                        newModel = { model | keysDown = newKeysDown }
+                        interactionStart =
+                            if isArrow key && model.interactionStart == Nothing then
+                                Just { time = model.elapsedTime, coords = Nothing }
+                            else model.interactionStart
+                        newModel = { model | keysDown = newKeysDown, interactionStart = interactionStart }
                     in
                     case (model.mode, key) of
                         (_, "e") -> updateModel ToggleMode newModel
@@ -458,7 +482,23 @@ updateModel message model =
                         _ -> (newModel, Cmd.none)
 
         KeyUp key ->
-            ( { model | keysDown = Set.remove key model.keysDown }, Cmd.none )
+            let
+                newKeysDown = Set.remove key model.keysDown
+                anyArrows = Set.foldl (\k acc -> acc || isArrow k) False newKeysDown
+                ( newPlayerState, interactionStart ) =
+                    if isArrow key && not anyArrows && model.mode == ME.Running && model.activeOverlay == Nothing then
+                        ( updatePlayerState 0.0 newKeysDown
+                            Nothing
+                            Nothing
+                            model.interactionStart
+                            model.elapsedTime
+                            True
+                            model.maze model.playerState
+                        , Nothing
+                        )
+                    else ( model.playerState, model.interactionStart )
+            in
+            ( { model | keysDown = newKeysDown, playerState = newPlayerState, interactionStart = interactionStart }, Cmd.none )
 
         SetDebugLevel level ->
             ( { model | debugLevel = level, staticUpdate = True } |> recomputeAnalysis, Cmd.none )
@@ -516,82 +556,107 @@ updateModel message model =
         _ ->
             ( model, Cmd.none )
 
-updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> M.Maze -> M.PlayerState -> M.PlayerState
-updatePlayerState dt keysDown pointerStart pointerLast maze playerState =
+isArrow : String -> Bool
+isArrow k = k == "ArrowUp" || k == "ArrowDown" || k == "ArrowLeft" || k == "ArrowRight"
+
+updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe { time : Duration, coords : Maybe DD.DocumentCoords } -> Duration -> Bool -> M.Maze -> M.PlayerState -> M.PlayerState
+updatePlayerState dt keysDown pointerStart pointerLast interactionStart currentTime isRelease maze playerState =
     let
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
+        intentDuration = interactionStart |> Maybe.map (\i -> currentTime |> Quantity.minus i.time |> Duration.inSeconds) |> Maybe.withDefault 0.0
+        isLong = intentDuration >= 0.4
+        isShortTap = isRelease && not isLong && (case interactionStart |> Maybe.andThen .coords of
+            Just start -> case pointerLast of
+                Just last ->
+                    let
+                        dx = last.x - start.x
+                        dy = last.y - start.y
+                    in
+                    (dx * dx + dy * dy) < 9
+                Nothing -> False
+            Nothing -> False)
+        isDeadzoneRelease = isRelease && maybeIntent == Nothing && pointerStart /= Nothing
+        isJoystickInDeadzone = not isRelease && maybeIntent == Nothing && pointerStart /= Nothing
         intentSpeed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
         intentDir = maybeIntent |> Maybe.map (\(M.Intent a _) -> Controls.resolveDirection a)
         resolvedDirAt pos = maybeIntent |> Maybe.andThen (\i -> Controls.resolveIntent pos i maze |> Maybe.map Tuple.first)
 
-        maybeMove pos progress queuedIntent currentDir allowAuto =
+        maybeMove pos progress queuedIntent currentDir allowAuto speedFactor =
             let
-                activeDir = resolvedDirAt pos
                 isJunction = M.isJunction pos maze
-            in
-            case ( activeDir, queuedIntent ) of
-                ( _, M.QueuedStop ) -> M.Idle pos
-                ( Just d, _ ) ->
-                    case M.move pos d maze of
-                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = intentSpeed, queuedIntent = M.QueuedNone }
-                        Nothing -> M.Idle pos
-                ( Nothing, M.QueuedTurn d ) ->
-                    case M.move pos d maze of
-                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
+                exits = M.getExits pos maze
+                activeDir = intentDir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+                effectiveDir =
+                    case activeDir of
+                        Just d -> Just ( d, M.QueuedNone )
                         Nothing ->
-                            case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) of
-                                [ nextDir ] ->
-                                    case M.move pos nextDir maze of
-                                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = if d == nextDir then M.QueuedNone else M.QueuedTurn d }
-                                        Nothing -> M.Idle pos
-                                _ -> if isJunction then M.Idle pos
-                                     else case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) |> List.head of
-                                        Just nextDir ->
-                                            case M.move pos nextDir maze of
-                                                Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedTurn d }
-                                                Nothing -> M.Idle pos
-                                        Nothing -> M.Idle pos
-                ( Nothing, M.QueuedNone ) ->
-                    case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) of
-                        [ nextDir ] ->
-                            case M.move pos nextDir maze of
-                                Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
-                                Nothing -> M.Idle pos
-                        _ -> if allowAuto && not isJunction then M.Idle pos
-                             else if isJunction then M.Idle pos
-                             else case List.filter (\di -> di /= M.oppositeDirection currentDir) (M.getExits pos maze) |> List.head of
-                                Just nextDir ->
-                                    case M.move pos nextDir maze of
-                                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = 1.0, queuedIntent = M.QueuedNone }
-                                        Nothing -> M.Idle pos
-                                Nothing -> M.Idle pos
+                            case queuedIntent of
+                                M.QueuedTurn d ->
+                                    if isJunction then
+                                        if List.member d exits then Just ( d, M.QueuedNone )
+                                        else Nothing
+                                    else Nothing
+                                _ -> Nothing
+            in
+            case ( effectiveDir, queuedIntent ) of
+                ( _, M.QueuedStop ) -> M.Idle pos
+                ( Just ( d, nextQ ), _ ) ->
+                    case M.move pos d maze of
+                        Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = speedFactor, queuedIntent = nextQ }
+                        Nothing -> M.Idle pos
+                ( Nothing, _ ) ->
+                    let
+                        shouldContinue =
+                            if maybeIntent /= Nothing then True
+                            else not isJunction
+                    in
+                    if shouldContinue then
+                        case M.move pos currentDir maze of
+                            Just nextTo -> M.Moving { from = pos, to = nextTo, dir = currentDir, progress = progress, speedFactor = speedFactor, queuedIntent = queuedIntent }
+                            Nothing ->
+                                let
+                                    corridorDir =
+                                        case List.filter (\di -> di /= M.oppositeDirection currentDir) exits of
+                                            [ d ] -> Just d
+                                            _ -> Nothing
+                                in
+                                case corridorDir of
+                                    Just nextDir ->
+                                        case M.move pos nextDir maze of
+                                            Just nextTo -> M.Moving { from = pos, to = nextTo, dir = nextDir, progress = progress, speedFactor = speedFactor, queuedIntent = queuedIntent }
+                                            Nothing -> M.Idle pos
+                                    Nothing -> M.Idle pos
+                    else M.Idle pos
     in
     case playerState of
-        M.Idle pos -> maybeMove pos 0 M.QueuedNone M.SE False
+        M.Idle pos ->
+            if maybeIntent /= Nothing then
+                maybeMove pos 0 M.QueuedNone M.SE False (if isRelease then 1.0 else intentSpeed)
+            else M.Idle pos
         M.Moving m ->
             let
                 curDirFromHere = resolvedDirAt m.from
                 isOpposite = curDirFromHere == Just (M.oppositeDirection m.dir)
                 isStraight = curDirFromHere == Just m.dir
-
                 newQueuedIntent =
-                    if isOpposite then M.QueuedStop
-                    else if isStraight then M.QueuedNone
+                    if isShortTap || isDeadzoneRelease || isJoystickInDeadzone then M.QueuedStop
+                    else if isOpposite then
+                        if isLong then M.QueuedNone else M.QueuedStop
+                    else if isStraight then
+                        if isLong then M.QueuedNone else m.queuedIntent
                     else case intentDir of
-                        Just d -> if d /= m.dir then M.QueuedTurn d else m.queuedIntent
+                        Just d -> if isLong then M.QueuedNone else M.QueuedTurn d
                         Nothing -> m.queuedIntent
-
-                activeM = if isOpposite
+                activeM = if isOpposite && isLong
                     then { from = m.to, to = m.from, dir = M.oppositeDirection m.dir, progress = max 0 (1.0 - m.progress), speedFactor = intentSpeed, queuedIntent = newQueuedIntent }
-                    else { m | speedFactor = intentSpeed, queuedIntent = newQueuedIntent }
-
+                    else { m | speedFactor = if isRelease then 1.0 else intentSpeed, queuedIntent = newQueuedIntent }
                 maxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
                 newProgress = activeM.progress + (dt * activeM.speedFactor / secondsPerStep)
             in
             if newProgress >= maxProgress then
                 let pos = activeM.to in
-                if pos == M.endPosition maze || (activeM.queuedIntent == M.QueuedStop && maybeIntent == Nothing) then M.Idle pos
-                else maybeMove pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir True
+                if pos == M.endPosition maze || activeM.queuedIntent == M.QueuedStop then M.Idle pos
+                else maybeMove pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir True (if isRelease then 1.0 else intentSpeed)
             else M.Moving { activeM | progress = newProgress }
 
 type Route
@@ -1018,7 +1083,6 @@ formatFloat val =
 viewArrowKeys : Model -> H.Html Msg
 viewArrowKeys model =
     let
-        isArrow k = k == "ArrowUp" || k == "ArrowDown" || k == "ArrowLeft" || k == "ArrowRight"
         anyPressed = Set.foldl (\k acc -> acc || isArrow k) False model.keysDown
         keyView label area key =
             H.div
