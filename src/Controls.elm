@@ -28,7 +28,7 @@ getIntentFromKeyboard keys =
         dy = up + down
     in
     if dx == 0 && dy == 0 then Nothing
-    else Just (M.Intent (atan2 dy dx) 1.0)
+    else Just (M.Intent (atan2 dy dx - 0.0001) 1.0)
 
 getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
 getIntentFromJoystick pointerStart pointerLast =
