@@ -89,12 +89,11 @@ resolveIntent pos (M.Intent angle _) maze =
 directionToAngle : M.Direction -> Float
 directionToAngle dir =
     case dir of
-        M.NE -> -pi/4
-        M.NW -> -3*pi/4
-        M.SE -> pi/4
+        M.SE -> 1*pi/4
         M.SW -> 3*pi/4
+        M.NW -> 5*pi/4
+        M.NE -> 7*pi/4
 
 angleDiff : Float -> Float -> Float
 angleDiff a b =
-    let diff = abs (a - b) in
-    if diff > pi then 2*pi - diff else diff
+    acos (cos (a - b))
