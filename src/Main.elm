@@ -648,26 +648,44 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
                 else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
             ) intent.intent
 
-        maybeTurn = case (chosenDir, queuedIntent) of
-            (Just d, _) -> Just d
-            (Nothing, M.QueuedTurn d) -> if isJunction && List.member d exits then Just d else Nothing
-            _ -> Nothing
-
-        nextDir =
-            case maybeTurn of
-                Just d -> Just d
-                Nothing ->
+        maybeMove d q =
+            case M.move pos d maze of
+                Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = speedFactor, queuedIntent = q }
+                Nothing -> M.Idle pos
+    in
+    case chosenDir of
+        Just d -> maybeMove d M.QueuedNone
+        Nothing ->
+            case queuedIntent of
+                M.QueuedTurn d ->
+                    if isJunction then
+                        if List.member d exits then maybeMove d M.QueuedNone
+                        else M.Idle pos
+                    else
+                        continueInPath pos progress currentDir exits maze speedFactor queuedIntent
+                M.QueuedStop -> M.Idle pos
+                M.QueuedNone ->
                     if intent.intent /= Nothing || not isJunction then
-                        if List.member currentDir exits then Just currentDir
-                        else case List.filter (\d -> d /= M.oppositeDirection currentDir) exits of
-                            [ d ] -> Just d
-                            _ -> Nothing
-                    else Nothing
+                        continueInPath pos progress currentDir exits maze speedFactor M.QueuedNone
+                    else
+                        M.Idle pos
+
+
+continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maze -> Float -> M.QueuedIntent -> M.PlayerState
+continueInPath pos progress currentDir exits maze speedFactor q =
+    let
+        nextDir =
+            if List.member currentDir exits then
+                Just currentDir
+            else
+                case List.filter (\d -> d /= M.oppositeDirection currentDir) exits of
+                    [ d ] -> Just d
+                    _ -> Nothing
     in
     case nextDir of
         Just d ->
             case M.move pos d maze of
-                Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = speedFactor, queuedIntent = M.QueuedNone }
+                Just nextTo -> M.Moving { from = pos, to = nextTo, dir = d, progress = progress, speedFactor = speedFactor, queuedIntent = q }
                 Nothing -> M.Idle pos
         Nothing -> M.Idle pos
 
