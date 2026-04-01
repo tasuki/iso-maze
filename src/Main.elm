@@ -103,7 +103,7 @@ type alias Model =
     , performance : Performance
     , leashEnabled : Bool
     , analysis : Maybe Analyzer.Analysis
-    , interactionStart : Maybe { time : Duration, coords : Maybe DD.DocumentCoords }
+    , interactionStart : Maybe Duration
     }
 
 type Msg
@@ -370,7 +370,7 @@ updateModel message model =
                 | dragging = True
                 , pointerStart = Just dc
                 , pointerLast = Just dc
-                , interactionStart = Just { time = model.elapsedTime, coords = Just dc }
+                , interactionStart = Just model.elapsedTime
               }
             , Cmd.none
             )
@@ -466,9 +466,9 @@ updateModel message model =
                     let
                         newKeysDown = Set.insert key model.keysDown
                         interactionStart =
-                            if isArrow key && model.interactionStart == Nothing then
-                                Just { time = model.elapsedTime, coords = Nothing }
-                            else model.interactionStart
+                            if isArrow key && model.interactionStart == Nothing
+                                then Just model.elapsedTime
+                                else model.interactionStart
                         newModel = { model | keysDown = newKeysDown, interactionStart = interactionStart }
                     in
                     case (model.mode, key) of
@@ -567,11 +567,11 @@ type alias IntentInfo =
     , isDeadzone : Bool
     }
 
-analyzeIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe { time : Duration, coords : Maybe DD.DocumentCoords } -> Duration -> IntentInfo
+analyzeIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe Duration -> Duration -> IntentInfo
 analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
     let
         maybeIntent = Controls.getIntent keysDown pointerStart pointerLast
-        intentDuration = interactionStart |> Maybe.map (\i -> currentTime |> Quantity.minus i.time |> Duration.inSeconds) |> Maybe.withDefault 0.0
+        intentDuration = interactionStart |> Maybe.map (\i -> currentTime |> Quantity.minus i |> Duration.inSeconds) |> Maybe.withDefault 0.0
     in
     { intent = maybeIntent
     , dir = maybeIntent |> Maybe.map (\(M.Intent a _) -> Controls.resolveDirection a)
@@ -580,7 +580,7 @@ analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
     , isDeadzone = maybeIntent == Nothing && pointerStart /= Nothing
     }
 
-updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe { time : Duration, coords : Maybe DD.DocumentCoords } -> Duration -> Bool -> M.Maze -> M.PlayerState -> M.PlayerState
+updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe Duration -> Duration -> Bool -> M.Maze -> M.PlayerState -> M.PlayerState
 updatePlayerState dt keysDown pointerStart pointerLast interactionStart currentTime isRelease maze playerState =
     let
         intent = analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime
