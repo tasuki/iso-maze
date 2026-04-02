@@ -55,16 +55,18 @@ type QueuedIntent
     | QueuedStop
     | QueuedTurn Direction
 
+type alias MovingData =
+    { from : Position
+    , to : Position
+    , dir : Direction
+    , progress : Float
+    , speedFactor : Float
+    , queuedIntent : QueuedIntent
+    }
+
 type PlayerState
     = Idle Position
-    | Moving
-        { from : Position
-        , to : Position
-        , dir : Direction
-        , progress : Float
-        , speedFactor : Float
-        , queuedIntent : QueuedIntent
-        }
+    | Moving MovingData
 
 
 -- Maze
