@@ -70,6 +70,7 @@ type alias IntentInfo =
     , speed : Float
     , isLong : Bool
     , isDeadzone : Bool
+    , interactionStart : Maybe Duration
     }
 
 analyzeIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe Duration -> Duration -> IntentInfo
@@ -85,6 +86,7 @@ analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
     , speed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
     , isLong = intentDuration >= 0.4
     , isDeadzone = maybeIntent == Nothing && pointerStart /= Nothing
+    , interactionStart = interactionStart
     }
 
 getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
@@ -148,6 +150,7 @@ updateIdle pos intent maze =
                     , progress = 0
                     , speedFactor = intent.speed
                     , queuedIntent = M.QueuedNone
+                    , interactionStart = intent.interactionStart
                     }
                 Nothing -> M.Idle pos
         Nothing -> M.Idle pos
@@ -156,12 +159,16 @@ updateMoving : Float -> M.MovingData -> IntentInfo -> Bool -> M.Maze -> M.Player
 updateMoving dt m intent isRelease maze =
     let
         isOpposite = intent.dir == Just (M.oppositeDirection m.dir)
+        isCurrentInteraction = intent.interactionStart == m.interactionStart
 
         newQueuedIntent =
             if intent.isLong then M.QueuedNone
             else if intent.isDeadzone then M.QueuedStop
             else case intent.dir of
-                Just d -> if isOpposite then M.QueuedStop else M.QueuedTurn d
+                Just d ->
+                    if isOpposite then M.QueuedStop
+                    else if isCurrentInteraction && d == m.dir then m.queuedIntent
+                    else M.QueuedTurn d
                 Nothing -> m.queuedIntent
 
         activeM =
@@ -172,6 +179,7 @@ updateMoving dt m intent isRelease maze =
                 , progress = max 0 (1.0 - m.progress)
                 , speedFactor = intent.speed
                 , queuedIntent = newQueuedIntent
+                , interactionStart = intent.interactionStart
                 }
             else
                 { m | speedFactor = if isRelease then 1.0 else intent.speed, queuedIntent = newQueuedIntent }
@@ -198,7 +206,7 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
                 else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
             ) intent.intent
 
-        maybeMove d q =
+        maybeMove d q iStart =
             case M.move pos d maze of
                 Just nextTo -> M.Moving
                     { from = pos
@@ -207,28 +215,29 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
                     , progress = progress
                     , speedFactor = speedFactor
                     , queuedIntent = q
+                    , interactionStart = iStart
                     }
                 Nothing -> M.Idle pos
     in
     case chosenDir of
-        Just d -> maybeMove d M.QueuedNone
+        Just d -> maybeMove d M.QueuedNone intent.interactionStart
         Nothing ->
             case queuedIntent of
                 M.QueuedTurn d ->
                     if isJunction then
                         if List.member d exits
-                            then maybeMove d M.QueuedNone
+                            then maybeMove d M.QueuedNone Nothing
                             else M.Idle pos
                     else
-                        continueInPath pos progress currentDir exits maze speedFactor queuedIntent
+                        continueInPath pos progress currentDir exits maze speedFactor queuedIntent Nothing
                 M.QueuedStop -> M.Idle pos
                 M.QueuedNone ->
                     if intent.intent /= Nothing || not isJunction
-                        then continueInPath pos progress currentDir exits maze speedFactor M.QueuedNone
+                        then continueInPath pos progress currentDir exits maze speedFactor M.QueuedNone intent.interactionStart
                         else M.Idle pos
 
-continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maze -> Float -> M.QueuedIntent -> M.PlayerState
-continueInPath pos progress currentDir exits maze speedFactor q =
+continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maze -> Float -> M.QueuedIntent -> Maybe Duration -> M.PlayerState
+continueInPath pos progress currentDir exits maze speedFactor q iStart =
     let
         nextDir =
             if List.member currentDir exits then
@@ -248,6 +257,7 @@ continueInPath pos progress currentDir exits maze speedFactor q =
                     , progress = progress
                     , speedFactor = speedFactor
                     , queuedIntent = q
+                    , interactionStart = iStart
                     }
                 Nothing -> M.Idle pos
         Nothing -> M.Idle pos

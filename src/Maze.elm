@@ -1,6 +1,7 @@
 module Maze exposing (..)
 
 import Array exposing (Array)
+import Duration exposing (Duration)
 import Maybe.Extra
 
 minHeight = 0
@@ -62,6 +63,7 @@ type alias MovingData =
     , progress : Float
     , speedFactor : Float
     , queuedIntent : QueuedIntent
+    , interactionStart : Maybe Duration
     }
 
 type PlayerState
