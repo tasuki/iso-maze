@@ -21,7 +21,6 @@ import Json.Decode as Decode
 import Maybe.Extra
 import Maze as M
 import MazeEdit as ME
-import Pixels
 import Quantity
 import SampleMazes as SM
 import Set exposing (Set)
@@ -300,13 +299,10 @@ updateModel message model =
                 newElapsedTime = model.elapsedTime |> Quantity.plus elapsed
                 newPlayerState =
                     if model.mode == ME.Running && model.activeOverlay == Nothing then
-                        Controls.updatePlayerState dt model.keysDown
+                        updatePlayerState model dt
                             (if model.dragging then model.pointerStart else Nothing)
                             (if model.dragging then model.pointerLast else Nothing)
-                            model.interactionStart
-                            model.elapsedTime
                             False
-                            model.maze model.playerState
                     else
                         model.playerState
 
@@ -395,13 +391,7 @@ updateModel message model =
                 dt = 0.0
                 newPlayerState =
                     if model.mode == ME.Running && model.activeOverlay == Nothing then
-                        Controls.updatePlayerState dt model.keysDown
-                            model.pointerStart
-                            (Just dc)
-                            model.interactionStart
-                            model.elapsedTime
-                            True
-                            model.maze model.playerState
+                        updatePlayerState model dt model.pointerStart (Just dc) True
                     else
                         model.playerState
             in
@@ -489,13 +479,7 @@ updateModel message model =
                 anyArrows = Set.foldl (\k acc -> acc || Controls.isArrow k) False newKeysDown
                 ( newPlayerState, interactionStart ) =
                     if Controls.isArrow key && not anyArrows && model.mode == ME.Running && model.activeOverlay == Nothing then
-                        ( Controls.updatePlayerState 0.0 model.keysDown
-                            Nothing
-                            Nothing
-                            model.interactionStart
-                            model.elapsedTime
-                            True
-                            model.maze model.playerState
+                        ( updatePlayerState model 0.0 Nothing Nothing True
                         , Nothing
                         )
                     else ( model.playerState, model.interactionStart )
@@ -557,6 +541,15 @@ updateModel message model =
 
         _ ->
             ( model, Cmd.none )
+
+updatePlayerState : Model -> Float -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Bool -> M.PlayerState
+updatePlayerState model dt pointerStart pointerLast isRelease =
+    let
+        intent = Controls.analyzeIntent model.keysDown pointerStart pointerLast model.interactionStart model.elapsedTime
+    in
+    case model.playerState of
+        M.Idle pos -> Controls.updateIdle pos intent model.maze
+        M.Moving m -> Controls.updateMoving dt m intent isRelease model.maze
 
 type Route
     = Home (Maybe M.Maze)

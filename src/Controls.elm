@@ -19,16 +19,6 @@ leashDistance = 80.0
 
 -- HIGH-LEVEL CONTROLS
 
-updatePlayerState : Float -> Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords
-    -> Maybe Duration -> Duration -> Bool -> M.Maze -> M.PlayerState -> M.PlayerState
-updatePlayerState dt keysDown pointerStart pointerLast interactionStart currentTime isRelease maze playerState =
-    let
-        intent = analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime
-    in
-    case playerState of
-        M.Idle pos -> updateIdle pos intent maze
-        M.Moving m -> updateMoving dt m intent isRelease maze
-
 applyLeash : Bool -> Maybe DD.DocumentCoords -> DD.DocumentCoords -> Maybe DD.DocumentCoords
 applyLeash leashEnabled pointerStart dc =
     case ( leashEnabled, pointerStart ) of
