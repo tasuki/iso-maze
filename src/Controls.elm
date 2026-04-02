@@ -156,14 +156,12 @@ updateMoving : Float -> M.MovingData -> IntentInfo -> Bool -> M.Maze -> M.Player
 updateMoving dt m intent isRelease maze =
     let
         isOpposite = intent.dir == Just (M.oppositeDirection m.dir)
-        isStraight = intent.dir == Just m.dir
 
         newQueuedIntent =
-            if intent.isDeadzone then M.QueuedStop
-            else if isOpposite then (if intent.isLong then M.QueuedNone else M.QueuedStop)
-            else if isStraight then (if intent.isLong then M.QueuedNone else m.queuedIntent)
+            if intent.isLong then M.QueuedNone
+            else if intent.isDeadzone then M.QueuedStop
             else case intent.dir of
-                Just d -> if intent.isLong then M.QueuedNone else M.QueuedTurn d
+                Just d -> if isOpposite then M.QueuedStop else M.QueuedTurn d
                 Nothing -> m.queuedIntent
 
         activeM =
