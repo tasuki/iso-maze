@@ -962,11 +962,36 @@ mazeDefs =
         """
       }
 
-    -- , { emoji = "🦅" -- 43
-    --   , name = "eagle"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🦅" -- 43
+      , name = "eagle"
+      , maze ="""
+        sz:30,24;st:9,23;end:25,1;mz:
+        x x x x o9o9o9zazbobobx x x x x x x x x x x x x x x x x x x
+        x x x o9o9o8o9o9o9sbobobZboax x x x x x x x x x x x x x x x
+        x x x o9o8o8s9oalaoao9zaoaoax x x x x x x x x x x x x x x x
+        x o9o9o9o8z9l9o9o9o9o9o8z9lao9x x x x x x x x x x x x x x x
+        x o9o2o2s8o7s8o7s9o7z8o8oaoao9o8o8o8o8x x x x x x x x x x x
+        x o0o2S3s7o7o7o7l8o7o9o9o9o9o9o8Z8o7l8o7x x x x x x x x x x
+        x o0o2S4o6o6o6o8o8o7z8o8o8o8o5z6z7o7o8o7x x x x x x x x x x
+        x o0s2o4z5o5o6o6s8o6o6o6o6o4l5o4o6o6o8o7o9x x x x x x x x x
+        o0o0o1o1o1o5o5o6l7o6o5l6o5o5o5o4o6z7l8o7o9x x x x x x x x x
+        o0z1o1S2o1o5z6z7o7o5o5o6o5o4o4o4o6o6s8o7o9o9o9x x x x x x x
+        x x o2o2o2o5o4o4z5o5s5o6o5o5o4z5o5o5s7o7z8z9o9x o6o6o6o6x x
+        x x o2z3z4o4o4s4o5o5s4s6o4l5o4o4o5z6o6o7o9o9o9o4o4o4o4o6x x
+        x x x x x o2z3o3o1o1s3o5o4o5o2o2z3o3o3o7o4z5o5l5o5l5z6o6x x
+        x x x x x s2o1o1o1z2o2s5s4o2o2o3o2o2o3z4o4o3o4s4s5o4o6o6z7o7
+        x x x x x o1o1o2o2z3z4o4o3l3o3o3s2o2o2o2o2o3o4o3o4o4o6o7o7o7
+        x x x x x x o0o0z1o1z2z3o3o2o2o1o1o1o1o2z3o3l4o3l4o3o6o7s7x
+        x x x x x x x x x o1o1o1o1z2o2o1o2o2o1l2o1o3o4o4o4o3o6o7o6x
+        x x x x x x x x x x o0o0o0o0z1o1o1o2o2o2o1o2o2o2z3o3o6l7o6x
+        x x x x x x x x x x x x x x x S2o1Z1o0o0l1o0o0o1o1o1o6o7x x
+        x x x x x x x x x x x x x x o0o2o1o1o1o1o1o1o1o1o2o1s6o7x x
+        x x x x x x x x x x x x x x o0o2o2o2o2o2o2l2o2o2o2o1o5o7x x
+        x x x x x x x x x x x x x x o0o0o0o0o0o0o0l1z1o1o1o1o5o7x x
+        x x x x x x x x x x x x x x x x o1l1o1o1o1o1z2o2o2o3o3o7x x
+        x x x x x x x x x x x x x x x x x o0o0o0o0o0o0z1z2z3o3x x x
+        """
+      }
 
     -- , { emoji = "🐊" -- 44
     --   , name = "croco"
