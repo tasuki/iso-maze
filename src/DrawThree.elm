@@ -342,8 +342,8 @@ drawBlock mode distances block =
 
 numStripes : Int -> ( Int, Int )
 numStripes dist =
-    ( dist // 10
-    , dist // 10 + (remainderBy 10 dist // 5)
+    ( dist // 20
+    , dist // 20 + (remainderBy 20 dist // 10)
     )
 
 drawStripes : Dict M.Position Int -> M.Position -> List Renderable

@@ -90,7 +90,7 @@ function getUnitPlane() {
     return geometryCache.get('unit_plane');
 }
 
-const MAX_INSTANCES = 5000;
+const MAX_INSTANCES = 50000;
 
 class BatchManager {
     constructor(scene, materials, baseRenderOrder = 0) {
