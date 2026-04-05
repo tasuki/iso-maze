@@ -993,17 +993,85 @@ mazeDefs =
         """
       }
 
-    -- , { emoji = "🐊" -- 44
-    --   , name = "croco"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🐊" -- 44
+      , name = "croco"
+      , maze ="""
+        sz:34,33;st:7,32;end:26,0;mz:
+        x x x x x o6z7o7z8o8x x x x x x x x x x x x x x x x x x x x x x x x
+        x x x x x o6o6o7o7l8o7x x x x x x x x x x x x x x x x x x x x x x x
+        x x x x o5z6o6l7o6o8o7z8o8x x x x x x x x x x x x x x x x x x x x x
+        x x x x s5o5o5o7o6s8o7o7l8o7x x x x x x x x x x x x x x x x x x x x
+        x x o3z4o4l5o4o7l7o7o6o6s8o7o6o6o6x x x x x x x x x x x x x x x x x
+        o1o1s3o2o2o5l5z6o6o6o6o7o7o7o6o5l6o5x x x x x x x x x x x x x x x x
+        o1z2o2o2o3z4o4o4z5o5o5o5z6o6o6o5o6o5x x x x x x x x x x x x x x x x
+        x o0s2o2l3o2s4o2o2z3z4l5o4o6o5o5o6o5z6o6o6x x x x x x x x x x x x x
+        x x o1o1o3s2o3o2o4o4z5o5o4s6s5o5o6o5o6o6s6x x x x x x x x x x x x x
+        x x x o1o1o1s3o2o2o3o3o3s4o5l5z6o6s5o6o5o5x x x x x x x x x x x x x
+        x x x x o2l2o2o1o2l3o2o3o3s5s4o3o4o4s6o4l5o4x x x x x x x x x x x x
+        x x x x x o1l2o1o2o3o2o4o4o4o3o3l4o3o5l5o5o4o5x x x x x x x x x x x
+        x x x x x x o2o2o2o3l3o3o3o3o3o4o4o3s5s4o5o4o5z6o6o6x x x x x x x x
+        x x x x x x x o1o1o3s2o4l4o4o4o4o3o3l4o3z4o4l5o4o4o6x x x x x x x x
+        x x x x x x x x o1o1o1s4o3o3o3o3o3o4o4s3o4o4o5o5o5o6x x x x x x x x
+        x x x x x x x x x o2o2s3o2l3o2o2o2s4o3l3o3o3z4z5o5l6o5x x x x x x x
+        x x x x x x x x x x o2o2o2s3o2o1o1s3o3o2o4o4z5z6o6o6s5x x x x x x x
+        x x x x x x x x x x x o1o1s2o2o1z2o2o3o2s4o2z3o3z4o4o4o4o4o4x x x x
+        x x x x x x x x x x x x o1o1o2o1o3o3o3o2o3o2o4o4z5l5o5o5o5s4x x x x
+        x x x x x x x x x x x x x o2o2l2z3o3o2o2o3o2o4o3o3s4o5o4o4l4z5o5x x
+        x x x x x x x x x x x x x x o1o1o2o2o2o3o3o2s4s3o3o3o4o4o3o3o5o5x x
+        x x x x x x x x x x x x x x x o2o2o1o1s3o3o2o3o2o2o2o4o3o3o4s5o5z6o6
+        x x x x x x x x x x x x x x x x o2o2o1s2s3o2o3o3o3o2o4o3o4o4o4o5o4o6
+        x x x x x x x x x x x x x x x x x o1o1o1l2o1z2z3o3o2s4s3o4o5l5o5o4o6
+        x x x x x x x x x x x x x x x x x x o2o2o2o1o2o2o2o2l3o2s4o5o4o4o4o6
+        x x x x x x x x x x x x x x x x x x x o1o1o1l2o1z2z3o3x o3s5o5o5z6o6
+        x x x x x x x x x x x x x x x x x x x x o2o2o2o1o0z1z2o2s3o4z5o5x x
+        x x x x x x x x x x x x x x x x x x x x x o1l2o1o0o0o0o2o2o4o4x x x
+        x x x x x x x x x x x x x x x x x x x x x x o2o1o0o1o0z1l2o1o4x x x
+        x x x x x x x x x x x x x x x x x x x x x x x o1o0o1l1z2o2o1x x x x
+        x x x x x x x x x x x x x x x x x x x x x x x x o0o1o0o2o2x x x x x
+        x x x x x x x x x x x x x x x x x x x x x x x x x o1o0o2x x x x x x
+        x x x x x x x x x x x x x x x x x x x x x x x x x x o0x x x x x x x
+        """
+      }
 
-    -- , { emoji = "🐺" -- 45
-    --   , name = "wolf"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🐺" -- 45
+      , name = "wolf"
+      , maze ="""
+        sz:35,33;st:5,32;end:29,1;mz:
+        x x x x x o7o7o7x x x x x x x x x x x x x x x x x x x x x x x x x x x
+        x x x o4o4o7s7o7o7o7o7x x x x x x x x x x x x x x x x x x x x x x x x
+        x x x o4o6l7o6o6o6o6o7o7x x x x x x x x x x x x x x x x x x x x x x x
+        x x o4o4s6o7o7o7o7o6o6o7o7x x x x x x x x x x x x x x x x x x x x x x
+        x o3o4z5o5o4z5z6l7z7l7z8l8o8x x x x x x x x x x x x x x x x x x x x x
+        x o3l4o3z4o4o5o5o7Z7o6o7o7o8Z8o7x x x x x x x x x x x x x x x x x x x
+        o1o3s4o2o2o2o5Z5o4z5l6z6o6s8o7o7o7x x x x x x x x x x x x x x x x x x
+        o1o3o3Z3o2z3o3o3o4o4s6o5o6s7o5o5z6o6x x x x x x x x x x x x x x x x x
+        o1o1o1z2o2Z2o1o3o3o4o5o5o6o6l6o6o7o6x x x x x x x x x x x x x x x x x
+        x x s1o0o0o0o1o2o3l4o3z4o4z5o5o6o7o6x x x x x x x x x x x x x x x x x
+        x x o0o0o1o1o1o2s3o4o4z5l5z6z7o7o7l7o7x x x x x x x x x x x x x x x x
+        x x x x x x s1o2o2Z2o1o1o4o4z5z6o6o6o7x x x x x x x x x x x x x x x x
+        x x x x x x o0o0o0o0z1o1o3o3z4z5o5o7o7x x x x x x x x x x x x x x x x
+        x x x x x x x o1o1z2o2l2z3o3o3o3o5o6l7z7o7x x x x x x x x x x x x x x
+        x x x x x x x x x o0o2o1o1o1s3o5o5o6s7o7o7o7x x x x x x x x x x x x x
+        x x x x x x x x x o0o2o2o2o2o2o5z6o6o6l7o6o7o7o7o7x x x x x x x x x x
+        x x x x x x x x x o0z1o1z2z3o3z4z5o5o6s7o6o7z8o8o7x x x x x x x x x x
+        x x x x x x x x x o0o0o0o0z1o1o1o1o5o5s6o6o5o5o8o7x x x x x x x x x x
+        x x x x x x x x x x x x x o2l2o2o1o5z6l6o6o5s5s8o7o6o6o6x x x x x x x
+        x x x x x x x x x x x x x o2o1o2z3o3o3s5o3z4o4o7o7o6s6o6o5z6o6x x x x
+        x x x x x x x x x x x x x o2o1o1o1o3z4o4o3o2o4o7o4z5o5o6o5o6o6o6o6x x
+        x x x x x x x x x x x x x o2o2o2o2l3z3o3o3o2o4o4o4o3o3s6s5o6o5o5o6x x
+        x x x x x x x x x x x x x x o1o1o1s3o1z2o2o2z3l4o3o3o5o5o4o6o5o6o6o5o5
+        x x x x x x x x x x x x x x x x o1s2o1o1o1o1o1o4s3o4l5o4o4s6o5o5o4z5o5
+        x x x x x x x x x x x x x x x x o1o1o1o2o2o2S2s4o2o4o5o5o4l5z5o5o4o5o5
+        x x x x x x x x x x x x x x x x x o0o0o0o2S3o2l3o2s4o3s5s4o5o5o5s4o5x
+        x x x x x x x x x x x x x x x x x x x o0o2o3o3o3o3o3o3o4o3o3o3o3s3s5x
+        x x x x x x x x x x x x x x x x x x x o0o2Z2o1o1o1o2o2s4o2o2o2l3o2o4x
+        x x x x x x x x x x x x x x x x x x x o0o0o0o0z1o1o2z3o3o2o3o3o3o2x x
+        x x x x x x x x x x x x x x x x x x x x x x o0o0o1o1o1o2o2o2o2o2s2x x
+        x x x x x x x x x x x x x x x x x x x x x x x o0o0o0l1z1z2o2o1l2o1x x
+        x x x x x x x x x x x x x x x x x x x x x x x x o1o1o1x x o0s1o2x x x
+        x x x x x x x x x x x x x x x x x x x x x x x x x x x x x o0o0x x x x
+        """
+      }
 
     -- , { emoji = "🐯" -- 46
     --   , name = "tiger"
