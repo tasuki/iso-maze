@@ -716,7 +716,15 @@ viewOverlay model overlay =
         content =
             case overlay of
                 Help ->
-                    [ H.text helpText ]
+                    [ H.text helpText
+                    , H.div [ HA.class "modal-footer" ]
+                        [ H.text "© "
+                        , H.a [ HA.href "https://tasuki.org" ] [ H.text "tasuki" ]
+                        , H.br [] []
+                        , H.text "report bugs to "
+                        , H.a [ HA.href "https://github.com/tasuki/iso-maze/issues" ] [ H.text "https://github.com/tasuki/iso-maze/issues" ]
+                        ]
+                    ]
 
                 Settings ->
                     [ H.div [ HA.class "modal-row" ]
