@@ -1073,11 +1073,40 @@ mazeDefs =
         """
       }
 
-    -- , { emoji = "🐯" -- 46
-    --   , name = "tiger"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🐯" -- 46
+      , name = "tiger"
+      , maze ="""
+        sz:32,28;st:6,27;end:20,2;mz:
+        x x o5z6o6z7o7o7o7o7o7o7o7x x x x x x x x x x x x x x x x x x x
+        x o4o5o5l6o5z6l7o6o7z8o8l8o8o8x x x x x x x x x x x x x x x x x
+        o0o4o4s5o6o5o7o7o6o6o6o6o7z8o8o6o6x x x x x x x x x x x x x x x
+        o0s4o4o4o6o5s7o5s6o6o5o5o4z5o5z6o6o5o5o5x x x x x x x x x x x x
+        S1o3o3o4o6l6o6o5o5o4z5o5o4o5o5o5o5o5s5o5x x x x x x x x x x x x
+        o1o1s3o4o4s5o3s5o3o4o4l5o4o3o3z4o4o4o4o6x x x x x x x x x x x x
+        o1z2o2o2o4o4o3l4o3s4o5o5o4o3o4z5o5l5z6o6x x x x x x x x x x x x
+        o1o1l2o1z2z3o3o4o4o3o3o4o4o3o4o3z4o4o4s6x x x x x x x x x x x x
+        x s1o2o2o1z2o2s4o2z3o3o4o3o3o4z5o5o4o5o5o5o5o5x x x x x x x x x
+        x o0o0o0o1o1o2s3s2o3o3o4o4o3o3z4l5o4o5o6o6o6o5o5o4o4o4x x x x x
+        x x x x s1o1o2o2o1o2o3o3o4o4z5o5o5o4o4z5z6o6s5o5o4o5o5o5x x x x
+        x x x x o0o1o1l2o1o2o3o5o5x x o5x o3o3o3o3z4o4o5o4o4o4o5x x x x
+        x x x x o0o0o0o2o2o2o3s5o5Z5o4o5o3o3o4o4o4z5l5o5o4s4o4o5o5x x x
+        x x x x x x o0o2o3l3o3l4o3z4o4o3o3s3s4o3o3z4o4o2z3o3l4o3o5x x x
+        x x x x x x x o2o2o2o3s4o2o2o2s3o1s2o3o3o1z2o2o2o4o4o4o3o5x x x
+        x x x x x x x x x s2o3o3l3o3o2o2o1o1o0z1o1o3l3o3s4x x o3o5o5x x
+        x x x x x x x x x o1o1o1o2Z2o1o1Z1o0o0o0o0o3o2o3o3o4o4o4o4o5o5x
+        x x x x x x x x x x x o1o1o0o0o0o1o1l1o1o1s3s2o3o2z3z4o4o5o5s5x
+        x x x x x x x x x x x x x o0o1o0o1o0o0o1z2o2l2o2o2o3o3l4o3o3o4o4
+        x x x x x x x x x x x x x o0o1o0o1l1z2o2x o1o1o1o1s3o4o4o3o4o4s4
+        x x x x x x x x x x x x x o0l1o0o0o0o0s2o0o0o0z1z2o2o4o2l3o2z3o3
+        x x x x x x x x x x x x x x o1o1o1o1o1o1l1o1o1o1o1l2z2o2o3o2x x
+        x x x x x x x x x x x x x x x x x x s1o0o0o2o2o2o2o2x x s3o2x x
+        x x x x x x x x x x x x x x x x x x o0o0o1s2o0o0o0z1o1o1s2o2x x
+        x x x x x x x x x x x x x x x x x x x x o1o1o0z1l1o1o0o1o1o2x x
+        x x x x x x x x x x x x x x x x x x x x o0o0z1o1o0o1o0o2o2o2x x
+        x x x x x x x x x x x x x x x x x x x x x x x o1o0l1o0o2x x x x
+        x x x x x x x x x x x x x x x x x x x x x x x o1o1o1o2o2x x x x
+        """
+      }
 
     -- , { emoji = "🦁" -- 47
     --   , name = "lion"
