@@ -59,7 +59,7 @@ type alias IntentInfo =
     , dir : Maybe M.Direction
     , speed : Float
     , isLong : Bool
-    , isDeadzone : Bool
+    , shouldStop : Bool
     , interactionStart : Maybe Duration
     }
 
@@ -75,7 +75,7 @@ analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
     , dir = maybeIntent |> Maybe.map (\(M.Intent a _) -> resolveDirection a)
     , speed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
     , isLong = intentDuration >= 0.4
-    , isDeadzone = maybeIntent == Nothing && pointerStart /= Nothing
+    , shouldStop = maybeIntent == Nothing && (pointerStart /= Nothing || (Set.member " " keysDown))
     , interactionStart = interactionStart
     }
 
@@ -153,7 +153,7 @@ updateMoving dt m intent isRelease maze =
 
         newQueuedIntent =
             if intent.isLong then M.QueuedNone
-            else if intent.isDeadzone then M.QueuedStop
+            else if intent.shouldStop then M.QueuedStop
             else case intent.dir of
                 Just d ->
                     if isOpposite then M.QueuedStop
