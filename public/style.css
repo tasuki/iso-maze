@@ -62,7 +62,7 @@ a { text-decoration: none; }
 .arrow-keys-container {
     position: absolute; right: 20px; bottom: 20px; z-index: 10;
     display: grid; grid-template-areas: ". up ." "left down right"; gap: 10px;
-    transform: rotate(-10deg); transition: opacity 1s; pointer-events: none;
+    transform: rotate(-25deg); transition: opacity 1s; pointer-events: none;
     opacity: 0;
 }
 .arrow-keys-container.visible { opacity: 1; transition: opacity 0s; }
