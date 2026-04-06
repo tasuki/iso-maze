@@ -1094,7 +1094,9 @@ mazeDefs =
     , { emoji = "🐯" -- 46
       , name = "tiger"
       , maze = """
-        sz:32,28;st:6,27;end:20,2;mz:
+        sz:32,30;st:6,27;end:20,2;mz:
+        x x x x x x x o8o8x x x x x x x x x x x x x x x x x x x x x x x
+        x x x x x x x s8o8o8o8o8x x x x x x x x x x x x x x x x x x x x
         x x o5z6o6z7o7o7o7o7o7o7o7x x x x x x x x x x x x x x x x x x x
         x o4o5o5l6o5z6l7o6o7z8o8l8o8o8x x x x x x x x x x x x x x x x x
         o0o4o4s5o6o5o7o7o6o6o6o6o7z8o8o6o6x x x x x x x x x x x x x x x
@@ -1116,10 +1118,10 @@ mazeDefs =
         x x x x x x x x x x x x x o0o1o0o1o0o0o1z2o2l2o2o2o3o3l4o3o3o4o4
         x x x x x x x x x x x x x o0o1o0o1l1z2o2x o1o1o1o1s3o4o4o3o4o4s4
         x x x x x x x x x x x x x o0l1o0o0o0o0s2o0o0o0z1z2o2o4o2l3o2z3o3
-        x x x x x x x x x x x x x x o1o1o1o1o1o1l1o1o1o1o1l2z2o2o3o2x x
-        x x x x x x x x x x x x x x x x x x s1o0o0o2o2o2o2o2x x s3o2x x
-        x x x x x x x x x x x x x x x x x x o0o0o1s2o0o0o0z1o1o1s2o2x x
-        x x x x x x x x x x x x x x x x x x x x o1o1o0z1l1o1o0o1o1o2x x
+        x x x x x x x x x x x x x x o1o1o1o1o1o1l1o1o1o1o1l2z2o2o3o2o3o3
+        x x x x x x x x x x x x x x x x x x s1o0o0o2o2o2o2o2x x s3o2o3x
+        x x x x x x x x x x x x x x x x x x o0o0o1s2o0o0o0z1o1o1s2o2o3x
+        x x x x x x x x x x x x x x x x x x x x o1o1o0z1l1o1o0o1o1o2o3x
         x x x x x x x x x x x x x x x x x x x x o0o0z1o1o0o1o0o2o2o2x x
         x x x x x x x x x x x x x x x x x x x x x x x o1o0l1o0o2x x x x
         x x x x x x x x x x x x x x x x x x x x x x x o1o1o1o2o2x x x x
