@@ -1108,17 +1108,80 @@ mazeDefs =
         """
       }
 
-    -- , { emoji = "🦁" -- 47
-    --   , name = "lion"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🦁" -- 47
+      , name = "lion"
+      , maze ="""
+        sz:31,30;st:8,29;end:18,1;mz:
+        x x x x x x o7z8o8x x x x x x x x x x x x x x x x x x x x x x
+        x x x o6o6z7o7o7l8o7x x x x x x x x x x x x x x x x x x x x x
+        x x x o6z7z8o8o8o8o7o7z8o8o8o8x x x x x x x x x x x x x x x x
+        x o4o4o6o6o6o6o6o6l7o6z7l8o7o8x x x x x x x x x x x x x x x x
+        x o4S5s6o5o5o5o5o5o7o6o8o8s7o8x x x x x x x x x x x x x x x x
+        o3o4o5o5o5o6l6o6o5s7s6s8o6o6s8o6o6o6x x x x x x x x x x x x x
+        o3o4o6o6o6o6o5o6o5o6o5o7o6o7o7o6o5l6o5o5x x x x x x x x x x x
+        o3o4z5l6o5o5o5o6o5l6o5z6o6o5z6o6o5o6o6o5o6o6o6x x x x x x x x
+        o3o3o6o6x o6l6o6o6o6o4o4z5o5o4z5o5o5o6l6z7o7o6x x x x x x x x
+        o4o3o3s6o4o4l5o4o4o4o4o3o3z4o4o3o3o5o5o5o7o7o6o5x x x x x x x
+        o4o4o3s5s4o5o5o5o3o3l4o3o2z3o3o3z4o4o4o4z5o5o6l6o6x x x x x x
+        s4o3o3l4o3o5o4Z4o3o4o4o2o2o4o4o4o5o5o5o5z6l6o6o5o6x x x x x x
+        o3o3z4o4o5o5o4o3o3s4o2o2o3l4o3o4o4z5o5o4o4l5z5o5s6o5x x x x x
+        x o3o3o4o4o4o4o2o2s3o2o4S4o4o3o3o3o3z4o4o5o5o4o5s5o5x x x x x
+        x x o3o3o3o3o3o3o2o2o2o4o4o4o4o4o4z5o5Z5l5o4o4l5o4o5o5o5x x x
+        x x x x o1z2o2l3o2o3o3o3o3o3o4o3o3o3o4z5o5o4o3s5o3z4z5o5x x x
+        x x x x o1o1o2o3o3o3o2o2z3z4o4o3s3o4o4o4s5o3o3o4o3o4o4l5o4z5o5
+        x x x x x x o2o2o2o2o2z3o3o3o3o3o2s4o2z3l4o3o4o4o3o4o3s5o4o5o5
+        x x x x x x x o0z1o1o1o1s3o1z2o2o2o3l3z4o4o3o4o3o3o4o3o4o4l5o4
+        x x x x x x x o0o0o0o0o1s2o1o1o1o2o2o2o1z2o2s4s3o3o4o3o4o3o5o4
+        x x x x x x x x x o0z1o1o1o1o0o0o0z1o1o1o1o2s3s2o3l4o3o4o3o5o4
+        x x x x x x x x x x x o0o0o0o0o1o1o1o1s1o1o2o2o1s3o4o3l4o3o5o4
+        x x x x x x x x x x x x x x x x o0o0o0o0o1o1l2o1o2s4s3o4z5o5o4
+        x x x x x x x x x x x x x x x o1o1o0o1o0o0o0o2x s2o3o2o3o3z4o4
+        x x x x x x x x x x x x x x x S2o1o2o1o1o1o1o1o1o1s3o2l3o2o2x
+        x x x x x x x x x x x x x x x o2l2o2o2o2o2o2o2o2o2o2o3o3x x x
+        x x x x x x x x x x x x x x x o2o1o1Z1o0o0o0o1o1o1s2o3x x x x
+        x x x x x x x x x x x x x x x o2o2Z2o1o1o1o0l1o0o1o1x x x x x
+        x x x x x x x x x x x x x x x x x x o0o0o0o0o1o0o0x x x x x x
+        x x x x x x x x x x x x x x x x x x x x x o1o1x x x x x x x x
+        """
+      }
 
-    -- , { emoji = "🐻" -- 48
-    --   , name = "bear"
-    --   , maze ="""
-    --     """
-    --   }
+    , { emoji = "🐻" -- 48
+      , name = "bear"
+      , maze ="""
+        sz:37,31;st:10,30;end:22,1;mz:
+        x x x x x x o7z8o8o8o8o8o8x x x x x x x x x x x x x x x x x x x x x x x x
+        x x x x x o6l7o6z7o7o7o7o8x x x x x x x x x x x x x x x x x x x x x x x x
+        x x x x o7o6s7o8o8o8o8l8o8o8x x x x x x x x x x x x x x x x x x x x x x x
+        x x x o4o7o6o6s8o7o7o7s7s8o8Z8o7o7x x x x x x x x x x x x x x x x x x x x
+        x x o3o4o7o7l7o7o7o6o7l7o7o5o5z6o6o6o6x x x x x x x x x x x x x x x x x x
+        x o1o3o4z5o5s6s7o6o6o5s6o4z5o5o6o6o5o6x x x x x x x x x x x x x x x x x x
+        x o1o3o4o4o5o5o6o6o5o5o5o4o6l6o6s6o5o6o6x x x x x x x x x x x x x x x x x
+        x o1o3o3s4s5o5o5o3s5o3z4o4o5o5o4s5o5o5o6x x x x x x x x x x x x x x x x x
+        o1o1s3o3o3l4z4o4o3s4s3o5o5o5o4o4o4z5o5o6o6o6o6x x x x x x x x x x x x x x
+        o1z2o2o2o3o4o4o4o3o3o2s5o5o4o4o3o3z4l5o4o4z5o5x x x x x x x x x x x x x x
+        x x o1s2o3o2z3l4o3o2o2o4o5o4o3o3o4z5o5o4Z4o3o5x x x x x x x x x x x x x x
+        x x o1o1o3o2o2s4o2o2o3s4s5o4l4o4o4o3o3o4o3o3o5o5o5o5x x x x x x x x x x x
+        x x x x o3o3o2l3o2o3o3o3o4o4o3o3o2z3o3o4o4l4o4o4z5o5o4o4x x x x x x x x x
+        x x x x x o3o3o3s2s3o1o1o1z2o2l3o2o2o3o2z3o3o2s4o2z3z4o4o3o3o3x x x x x x
+        x x x x x x o0z1o1l2o1o2o2z3o3o3o3o2s3s2o1z2o2l3o2o4o4o4l4o4o3x x x x x x
+        x x x x x x o0o0o1o2o2o2o1o1o1o2o3o2o2o1o1o3o3o3o4o4o3o3s3o4s3x x x x x x
+        x x x x x x x o0o1l2o1o1o1o2o2o2o3o2o1o1o2s3o1z2z3l4o3o2o2s4o2o2o2o2x x x
+        x x x x x x x x x o2o2o2o2o2o3o3o3o2o1o2o2o2o1o3z4o4o3o2o3o3o3l3o3o2x x x
+        x x x x x x x x x x o0o3o3o3o3o2o2o2o1o2o1o1o1s3o1o1s3o2o3o2o2o2o3o3o3o3x
+        x x x x x x x x x x o0o0o0o1o1l2o1o2o1o2o1o2o2o2o1z2o2o2o2o2o3o3o3z4o4o3x
+        x x x x x x x x x x x x o0o1z2o2s1o2o1o1o1o2o1o1o1o3o3o2o3o4S4o4o4o4o4o5x
+        x x x x x x x x x x x x o0o0o0o0o0o1o1z2o2o2o1o2o2z3o3l3o3o4o4o4o3o3o3o5o5
+        x x x x x x x x x x x x x x x x x s1o0o0o1o1o1o2s2o0o2o2o3o3o3o3o3z4l4z5o5
+        x x x x x x x x x x x x x x x x o0o0o0o1o1o0l1z1o1o0o2o1o1o1z2o2o2z3o3x x
+        x x x x x x x x x x x x x x x x o0o1o1o1o0o0o1o0l1o0o2l2o2o2o3o3o3o3o3x x
+        x x x x x x x x x x x x x x x x o0o0o0o1o0o1o1o0o1o0o1o1o0z1z2l3o2o2x x x
+        x x x x x x x x x x x x x x x x x x x o1o0s1o0o0o1o0l1o0o0o2z3o3x x x x x
+        x x x x x x x x x x x x x x x x x x x x o0o0o0o1o1o0o1o1o0s2o1o1x x x x x
+        x x x x x x x x x x x x x x x x x x x x x o1o1o1o0o0o0o1o0o1o1x x x x x x
+        x x x x x x x x x x x x x x x x x x x x x x o0o0z1o1l1o1o0o1x x x x x x x
+        x x x x x x x x x x x x x x x x x x x x x x x x x x o0o0o0x x x x x x x x
+        """
+      }
 
     -- , { emoji = "🐫" -- 49
     --   , name = "camel"
