@@ -1,5 +1,7 @@
-module Analyzer exposing (Analysis, analyze)
+port module Analyzer exposing (Analysis, analyze, formatFloat, main)
 
+import Campaign
+import Codec
 import Dict exposing (Dict)
 import Maze as M
 import Set exposing (Set)
@@ -259,6 +261,73 @@ analyze ( fx, fy, fz ) maze =
     , squares = numSquares
     , focusDistances = focusDistances
     }
+
+
+port output : String -> Cmd msg
+
+
+port input : (() -> msg) -> Sub msg
+
+
+type Msg
+    = RunAnalysis ()
+
+
+main : Program () () Msg
+main =
+    Platform.worker
+        { init = \_ -> ( (), Cmd.none )
+        , update = \msg _ ->
+            case msg of
+                RunAnalysis _ ->
+                    ( (), output (runAnalysis ()) )
+        , subscriptions = \_ -> input RunAnalysis
+        }
+
+
+runAnalysis : () -> String
+runAnalysis _ =
+    let
+        header = "Emoji,Name,Reachable,Occluding,Unreachable,Hanging,Total Cells,Shortest Path,Sol. Density,Stairs,Bridges,River Factor,Loop Count,Greenery,Holes,Squares"
+        rows = List.map analyzeMaze Campaign.mazeDefs
+    in
+    String.join "\n" (header :: rows)
+
+
+analyzeMaze : Campaign.MazeDef -> String
+analyzeMaze def =
+    let
+        maze = Codec.decode def.maze |> Maybe.withDefault M.emptyMaze
+        analysis = analyze (M.startPosition maze) maze
+    in
+    String.join ","
+        [ def.emoji
+        , "\"" ++ def.name ++ "\""
+        , if analysis.reachable then "1" else "0"
+        , String.fromInt (Set.size analysis.occluding)
+        , String.fromInt (Set.size analysis.unreachable)
+        , String.fromInt (Set.size analysis.hanging)
+        , String.fromInt analysis.totalCells
+        , analysis.shortestPathLength |> Maybe.map String.fromInt |> Maybe.withDefault "N/A"
+        , formatFloat analysis.solutionDensity
+        , formatFloat analysis.stairsProportion
+        , formatFloat analysis.bridgesProportion
+        , formatFloat analysis.riverFactor
+        , String.fromInt analysis.loopCount
+        , String.fromInt analysis.greenery
+        , String.fromInt analysis.holes
+        , String.fromInt analysis.squares
+        ]
+
+
+formatFloat : Float -> String
+formatFloat val =
+    let
+        rounded = toFloat (round (val * 100)) / 100
+        s = String.fromFloat rounded
+    in
+    if String.contains "." s then s
+    else s ++ ".0"
 
 
 bfs : M.Position -> (M.Position -> List M.Position) -> Dict M.Position Int

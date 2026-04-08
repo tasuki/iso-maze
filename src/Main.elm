@@ -911,13 +911,13 @@ viewAnalyzer a =
         , H.br [] []
         , H.text ("Shortest Path: " ++ (a.shortestPathLength |> Maybe.map String.fromInt |> Maybe.withDefault "N/A"))
         , H.br [] []
-        , H.text ("Sol. Density: " ++ formatFloat a.solutionDensity)
+        , H.text ("Sol. Density: " ++ Analyzer.formatFloat a.solutionDensity)
         , H.br [] []
-        , H.text ("Stairs: " ++ formatFloat a.stairsProportion)
+        , H.text ("Stairs: " ++ Analyzer.formatFloat a.stairsProportion)
         , H.br [] []
-        , H.text ("Bridges: " ++ formatFloat a.bridgesProportion)
+        , H.text ("Bridges: " ++ Analyzer.formatFloat a.bridgesProportion)
         , H.br [] []
-        , H.text ("River Factor: " ++ formatFloat a.riverFactor)
+        , H.text ("River Factor: " ++ Analyzer.formatFloat a.riverFactor)
         , H.br [] []
         , H.text ("Loop Count: " ++ String.fromInt a.loopCount)
         , H.br [] []
@@ -928,15 +928,6 @@ viewAnalyzer a =
         , H.text ("Squares: " ++ String.fromInt a.squares)
         ]
 
-
-formatFloat : Float -> String
-formatFloat val =
-    let
-        rounded = toFloat (round (val * 100)) / 100
-        s = String.fromFloat rounded
-    in
-    if String.contains "." s then s
-    else s ++ ".0"
 
 
 viewArrowKeys : Model -> H.Html Msg
