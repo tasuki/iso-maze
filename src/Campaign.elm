@@ -1298,3 +1298,15 @@ getNextUnsolvedLevel finishedLevels =
         |> List.filter (\m -> not (Set.member m.name finishedLevels))
         |> List.head
         |> Maybe.map .name
+
+
+getNextLevelRoute : Set String -> String
+getNextLevelRoute finishedLevels =
+    case getNextUnsolvedLevel finishedLevels of
+        Just name -> "/level/" ++ name
+        Nothing -> "/"
+
+
+getNextLevelEmoji : Set String -> String
+getNextLevelEmoji finishedLevels =
+    if getNextUnsolvedLevel finishedLevels == Nothing then "🚀🚀🚀" else "🚀"

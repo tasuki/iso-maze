@@ -448,9 +448,15 @@ updateModel message model =
 
         KeyDown key ->
             case model.activeOverlay of
-                Just _ ->
+                Just overlay ->
                     if key == "Escape" then
                         ( { model | activeOverlay = Nothing, keysDown = Set.empty }, Cmd.none )
+                    else if key == " " then
+                        case overlay of
+                            LevelComplete _ ->
+                                ( { model | keysDown = Set.empty }, Nav.pushUrl model.navKey (Campaign.getNextLevelRoute model.finishedLevels) )
+                            _ ->
+                                ( model, Cmd.none )
                     else
                         ( model, Cmd.none )
 
@@ -572,11 +578,10 @@ changeRouteTo url model =
                 Just maze ->
                     ( loadMaze maze Nothing model, Cmd.none )
                 Nothing ->
-                    case Campaign.getNextUnsolvedLevel model.finishedLevels of
-                        Just nextLevelName ->
-                            ( model, Nav.replaceUrl model.navKey ("/level/" ++ nextLevelName) )
-                        Nothing ->
-                            ( { model | activeOverlay = Just Campaign }, Cmd.none )
+                    if Campaign.getNextUnsolvedLevel model.finishedLevels == Nothing then
+                        ( { model | activeOverlay = Just Campaign }, Cmd.none )
+                    else
+                        ( model, Nav.replaceUrl model.navKey (Campaign.getNextLevelRoute model.finishedLevels) )
 
         Level name ->
             case List.filter (\m -> m.name == name) Campaign.mazeDefs |> List.head of
@@ -791,11 +796,8 @@ viewOverlay model overlay =
                     [ H.div [ HA.class "modal-row center" ] [ H.text "🏆👑😎" ]
                     , H.div [ HA.class "modal-row" ]
                         [ H.a [ HA.class "icon", HA.href ("/level/" ++ name) ] [ H.text "🔄" ]
-                        , case Campaign.getNextUnsolvedLevel model.finishedLevels of
-                            Just nextName ->
-                                H.a [ HA.class "icon", HA.href ("/level/" ++ nextName) ] [ H.text "🚀" ]
-                            Nothing ->
-                                H.div [ HA.class "icon", HE.onClick (ShowOverlay Campaign) ] [ H.text "🚀🚀🚀" ]
+                        , H.a [ HA.class "icon", HA.href (Campaign.getNextLevelRoute model.finishedLevels) ]
+                            [ H.text (Campaign.getNextLevelEmoji model.finishedLevels) ]
                         ]
                     ]
     in
