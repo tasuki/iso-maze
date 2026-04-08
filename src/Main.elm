@@ -447,14 +447,10 @@ updateModel message model =
         PlaceEnd -> updateMaze ME.placeEnd { model | currentLevel = Nothing }
 
         KeyDown key ->
-            case model.activeOverlay of
-                Just _ ->
-                    if key == "Escape" then
-                        ( { model | activeOverlay = Nothing, keysDown = Set.empty }, Cmd.none )
-                    else
-                        ( model, Cmd.none )
-
-                Nothing ->
+            case ( model.activeOverlay, key ) of
+                ( Just _, "Escape" ) -> ( { model | activeOverlay = Nothing, keysDown = Set.empty }, Cmd.none )
+                ( Just (LevelComplete _), " " ) -> ( { model | keysDown = Set.empty }, Nav.pushUrl model.navKey (Campaign.getNextLevelRoute model.finishedLevels) )
+                ( Nothing, _ ) ->
                     let
                         newKeysDown = Set.insert key model.keysDown
                         interactionStart =
@@ -463,15 +459,16 @@ updateModel message model =
                                 else model.interactionStart
                         newModel = { model | keysDown = newKeysDown, interactionStart = interactionStart }
                     in
-                    case (model.mode, key) of
-                        (_, "e") -> updateModel ToggleMode newModel
-                        (_, "c") -> updateModel CameraReset newModel
-                        (_, "`") -> updateModel CycleDebug newModel
-                        (ME.Editing, _) ->
+                    case ( model.mode, key ) of
+                        ( _, "e" ) -> updateModel ToggleMode newModel
+                        ( _, "c" ) -> updateModel CameraReset newModel
+                        ( _, "`" ) -> updateModel CycleDebug newModel
+                        ( ME.Editing, _ ) ->
                             let msg = keydown key in
-                            if msg == Noop then (newModel, Cmd.none)
+                            if msg == Noop then ( newModel, Cmd.none )
                             else updateModel msg newModel
-                        _ -> (newModel, Cmd.none)
+                        _ -> ( newModel, Cmd.none )
+                _ -> ( model, Cmd.none )
 
         KeyUp key ->
             let
@@ -572,11 +569,10 @@ changeRouteTo url model =
                 Just maze ->
                     ( loadMaze maze Nothing model, Cmd.none )
                 Nothing ->
-                    case Campaign.getNextUnsolvedLevel model.finishedLevels of
-                        Just nextLevelName ->
-                            ( model, Nav.replaceUrl model.navKey ("/level/" ++ nextLevelName) )
-                        Nothing ->
-                            ( { model | activeOverlay = Just Campaign }, Cmd.none )
+                    if Campaign.getNextUnsolvedLevel model.finishedLevels == Nothing then
+                        ( { model | activeOverlay = Just Campaign }, Cmd.none )
+                    else
+                        ( model, Nav.replaceUrl model.navKey (Campaign.getNextLevelRoute model.finishedLevels) )
 
         Level name ->
             case List.filter (\m -> m.name == name) Campaign.mazeDefs |> List.head of
@@ -791,11 +787,8 @@ viewOverlay model overlay =
                     [ H.div [ HA.class "modal-row center" ] [ H.text "🏆👑😎" ]
                     , H.div [ HA.class "modal-row" ]
                         [ H.a [ HA.class "icon", HA.href ("/level/" ++ name) ] [ H.text "🔄" ]
-                        , case Campaign.getNextUnsolvedLevel model.finishedLevels of
-                            Just nextName ->
-                                H.a [ HA.class "icon", HA.href ("/level/" ++ nextName) ] [ H.text "🚀" ]
-                            Nothing ->
-                                H.div [ HA.class "icon", HE.onClick (ShowOverlay Campaign) ] [ H.text "🚀🚀🚀" ]
+                        , H.a [ HA.class "icon", HA.href (Campaign.getNextLevelRoute model.finishedLevels) ]
+                            [ H.text (Campaign.getNextLevelEmoji model.finishedLevels) ]
                         ]
                     ]
     in
