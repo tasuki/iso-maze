@@ -93,7 +93,7 @@ mazeDefs =
         x x o2z3z4o4z5o5
         x o0o2o2o3z4o4s5
         o0o0S3x o3o3o4o4
-        S1o0o3o2o2o3l4o3
+        S1o0o3x o2o3l4o3
         o1z2l3o2o2o3o4o3
         o1o1o3o3l3z4o4o3
         o1Z1o0o1o2z3o3o3
@@ -607,7 +607,7 @@ mazeDefs =
         x x x x o3z4o4Z4o3x x x x x x x x x x x x
         x x x x o3o3o4x s3x x x x x x x x x x x x
         x x x o2z3o3l4o3l3o3x x x x x x x x x x x
-        x x o1l2o1o1s4o2o2o3o2o2o2x x x x x x x x
+        x x o1l2o1o1s4x o2o3o2o2o2x x x x x x x x
         x x s1s2o1o3o3o2o2l3o2o1o2x x x x x x x x
         x x o0o1o1o3o2o2o1s3s2o1o2o1o1o1x x x x x
         o0o0o0o0o1s3o1o2o1o2o1o1o2o1s1o1o1o1x x x
@@ -631,7 +631,7 @@ mazeDefs =
       , maze = """
         sz:18,18;st:6,17;end:11,0;mz:
         x x x x o3z4o4o4Z4o3x x x x x x x x
-        x x x o1s3o2s4o2o2s3x x x x x x x x
+        x x x o1s3o2s4x x s3x x x x x x x x
         x x o2l2o2o2o3o2o2o2o2x x x x x x x
         x o2o2o1s2o2o3l3o3o3o2x x x x x x x
         o2o2o1o1o1o2o3o2o2o3o2z3o3x x x x x
@@ -648,8 +648,8 @@ mazeDefs =
         x x x x x x x x x o0o0o0l1o0o1o1x x
         x x x x x x x x x x o1o1o1o1Z1o0x x
         x x x x x x x x x x x o0o0o0o0o0x x
-         """
-       }
+        """
+      }
 
     , { emoji = "🐷" -- 32
       , name = "pig"
@@ -685,7 +685,7 @@ mazeDefs =
         x x x x x o2z3o3x x x x x x x x x x x
         x x x x o0s2o1o3x x x x x x x x x x x
         x x x x o0o1o1s3x x x x x x x x x x x
-        x o1o1o1o0o0o1o2o2z3o3x x x x x x x x
+        x o1o1o1o0x o1o2o2z3o3x x x x x x x x
         x o1o0l1o0o0o1o2x x o3x x x x x x x x
         o0l1o0o1o1o0o1l2z2o2o3o3x x x x x x x
         o0o1x x o1o0o1s2x o2o2o3x x x x x x x
