@@ -49,7 +49,28 @@ nextTileTest =
                 in
                 case res of
                     M.Moving data ->
-                        Expect.equal M.NW data.dir
+                        Expect.all
+                            [ \d -> Expect.equal M.NW d.dir
+                            , \d -> Expect.equal M.QueuedNone d.queuedIntent
+                            ]
+                            data
                     _ ->
-                        Expect.fail "Expected Moving NW"
+                        Expect.fail "Expected Moving NW with QueuedNone"
+        , test "QueuedTurn is consumed when turning corner" <|
+            \_ ->
+                let
+                    pos = ( 2, 2, 0 )
+                    currentDir = M.SE
+                    exits = [ M.NW, M.NE ] -- A corner at (2,2)
+                    res = continueInPath pos 0.0 currentDir [ M.NE ] longPathMaze 1.0 (M.QueuedTurn M.NE) Nothing
+                in
+                case res of
+                    M.Moving data ->
+                        Expect.all
+                            [ \d -> Expect.equal M.NE d.dir
+                            , \d -> Expect.equal M.QueuedNone d.queuedIntent
+                            ]
+                            data
+                    _ ->
+                        Expect.fail "Expected turn consumed"
         ]

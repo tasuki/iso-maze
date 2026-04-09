@@ -3,6 +3,7 @@ module Controls exposing (..)
 import Angle exposing (Angle)
 import DocumentDecoders as DD
 import Duration exposing (Duration)
+import Maybe.Extra
 import Maze as M
 import Pixels
 import Quantity
@@ -198,21 +199,16 @@ updateMoving : Float -> M.MovingData -> IntentInfo -> Bool -> M.Maze -> M.Player
 updateMoving dt m intent isRelease maze =
     let
         isOpposite = intent.primaryDir == Just (M.oppositeDirection m.dir) || intent.secondaryDir == Just (M.oppositeDirection m.dir)
-        isCurrentInteraction = intent.interactionStart == m.interactionStart
 
         newQueuedIntent =
             if intent.isLong then M.QueuedNone
             else if intent.shouldStop then M.QueuedStop
             else
-                let
-                    qDir =
-                        if intent.primaryDir /= Just m.dir && intent.primaryDir /= Nothing then intent.primaryDir
-                        else if intent.secondaryDir /= Just m.dir && intent.secondaryDir /= Nothing then intent.secondaryDir
-                        else Nothing
-                in
+                let qDir = intent.primaryDir |> Maybe.Extra.or intent.secondaryDir in
                 case qDir of
                     Just d ->
                         if d == M.oppositeDirection m.dir then M.QueuedStop
+                        else if d == m.dir && intent.interactionStart == m.interactionStart then m.queuedIntent
                         else M.QueuedTurn d
                     Nothing -> m.queuedIntent
 
@@ -284,10 +280,10 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
             case queuedIntent of
                 M.QueuedTurn d ->
                     if isJunction then
-                        if List.member d exits then maybeMove d M.QueuedNone Nothing
+                        if List.member d exits then maybeMove d M.QueuedNone intent.interactionStart
                         else M.Idle pos
                     else
-                        continueInPath pos progress currentDir forwardExits maze speedFactor queuedIntent Nothing
+                        continueInPath pos progress currentDir forwardExits maze speedFactor queuedIntent intent.interactionStart
 
                 M.QueuedStop -> M.Idle pos
                 M.QueuedNone ->
@@ -299,8 +295,7 @@ continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maz
 continueInPath pos progress currentDir forwardExits maze speedFactor q iStart =
     let
         nextDir =
-            if List.member currentDir forwardExits then
-                Just currentDir
+            if List.member currentDir forwardExits then Just currentDir
             else
                 case forwardExits of
                     [ d ] -> Just d
@@ -308,6 +303,14 @@ continueInPath pos progress currentDir forwardExits maze speedFactor q iStart =
     in
     case nextDir of
         Just d ->
+            let
+                newQ =
+                    case q of
+                        M.QueuedTurn qd ->
+                            if qd == d then M.QueuedNone
+                            else q
+                        _ -> q
+            in
             case M.move pos d maze of
                 Just nextTo -> M.Moving
                     { from = pos
@@ -315,7 +318,7 @@ continueInPath pos progress currentDir forwardExits maze speedFactor q iStart =
                     , dir = d
                     , progress = progress
                     , speedFactor = speedFactor
-                    , queuedIntent = q
+                    , queuedIntent = newQ
                     , interactionStart = iStart
                     }
                 Nothing -> M.Idle pos
