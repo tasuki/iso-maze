@@ -37,7 +37,7 @@ hasPathTest =
             \_ -> Expect.equal True (hasPath 4 ( 2, 2, 0 ) M.NE longPathMaze)
         ]
 
-intent0 = { intent = Nothing, primaryDir = Nothing, secondaryDir = Nothing, isLong = False, shouldStop = False, interactionStart = Nothing }
+intent0 = { intent = Nothing, primaryDir = Nothing, secondaryDir = Nothing, primarySpeed = 0, secondarySpeed = 0, isLong = False, shouldStop = False, interactionStart = Nothing }
 
 nextTileTest =
     describe "nextTile tests"

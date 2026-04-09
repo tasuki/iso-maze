@@ -58,6 +58,8 @@ type alias IntentInfo =
     { intent : Maybe M.MovementIntent
     , primaryDir : Maybe M.Direction
     , secondaryDir : Maybe M.Direction
+    , primarySpeed : Float
+    , secondarySpeed : Float
     , isLong : Bool
     , shouldStop : Bool
     , interactionStart : Maybe Duration
@@ -70,29 +72,32 @@ analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
         intentDuration = interactionStart
             |> Maybe.map (\i -> currentTime |> Duration.inSeconds |> (\curr -> curr - (Duration.inSeconds i)))
             |> Maybe.withDefault 0.0
-        ( primary, secondary ) =
+
+        intentSummary =
             case maybeIntent of
                 Just (M.Intent axes) ->
                     let
-                        ne_sw = axes.ne_sw
-                        nw_se = axes.nw_se
-                        pDir =
-                            if abs ne_sw >= abs nw_se then
-                                if ne_sw > 0 then Just M.NE else if ne_sw < 0 then Just M.SW else Nothing
-                            else
-                                if nw_se > 0 then Just M.SE else if nw_se < 0 then Just M.NW else Nothing
-                        sDir =
-                            if abs ne_sw >= abs nw_se then
-                                if nw_se > 0 then Just M.SE else if nw_se < 0 then Just M.NW else Nothing
-                            else
-                                if ne_sw > 0 then Just M.NE else if ne_sw < 0 then Just M.SW else Nothing
+                        ne = if axes.ne_sw > 0 then axes.ne_sw else 0
+                        sw = if axes.ne_sw < 0 then -axes.ne_sw else 0
+                        se = if axes.nw_se > 0 then axes.nw_se else 0
+                        nw = if axes.nw_se < 0 then -axes.nw_se else 0
+
+                        dirs =
+                            [ ( M.NE, ne ), ( M.SW, sw ), ( M.SE, se ), ( M.NW, nw ) ]
+                                |> List.filter (\( _, s ) -> s > 0)
+                                |> List.sortBy (\( _, s ) -> -s)
                     in
-                    ( pDir, sDir )
-                Nothing -> ( Nothing, Nothing )
+                    case dirs of
+                        ( d1, s1 ) :: ( d2, s2 ) :: _ -> { primary = Just d1, secondary = Just d2, pSpeed = s1, sSpeed = s2 }
+                        [ ( d1, s1 ) ] -> { primary = Just d1, secondary = Nothing, pSpeed = s1, sSpeed = 0 }
+                        _ -> { primary = Nothing, secondary = Nothing, pSpeed = 0, sSpeed = 0 }
+                Nothing -> { primary = Nothing, secondary = Nothing, pSpeed = 0, sSpeed = 0 }
     in
     { intent = maybeIntent
-    , primaryDir = primary
-    , secondaryDir = secondary
+    , primaryDir = intentSummary.primary
+    , secondaryDir = intentSummary.secondary
+    , primarySpeed = intentSummary.pSpeed
+    , secondarySpeed = intentSummary.sSpeed
     , isLong = intentDuration >= 0.4
     , shouldStop = maybeIntent == Nothing && (pointerStart /= Nothing || (Set.member " " keysDown))
     , interactionStart = interactionStart
@@ -134,36 +139,12 @@ getIntentFromJoystick pointerStart pointerLast =
             in
             if dist > joystickDeadzone then
                 let
-                    -- In our isometric view:
-                    -- Right (dx > 0) is NE (+ne_sw, -nw_se) if we rotate 45 deg?
-                    -- Let's derive from the existing directionToAngle:
-                    -- SE: pi/4 (1, 1) in screen coords? No, wait.
-                    -- Looking at existing code:
-                    -- SE: 1*pi/4, SW: 3*pi/4, NW: 5*pi/4, NE: 7*pi/4
-                    -- Screen coords: X is right, Y is down.
-                    -- atan2 dy dx:
-                    -- SE (dx=1, dy=1) -> pi/4
-                    -- SW (dx=-1, dy=1) -> 3*pi/4
-                    -- NW (dx=-1, dy=-1) -> -3*pi/4 (or 5*pi/4)
-                    -- NE (dx=1, dy=-1) -> -pi/4 (or 7*pi/4)
-
-                    -- Projecting (dx, dy) onto these axes:
-                    -- Axis SE: (1, 1)/sqrt(2)
-                    -- Axis SW: (-1, 1)/sqrt(2)
-                    -- Axis NW: (-1, -1)/sqrt(2)
-                    -- Axis NE: (1, -1)/sqrt(2)
-
                     -- ne_sw axis is NE-SW. Vector NE is (1, -1). Vector SW is (-1, 1).
                     -- nw_se axis is NW-SE. Vector SE is (1, 1). Vector NW is (-1, -1).
-
-                    ne_sw_raw = dx - dy
-                    nw_se_raw = dx + dy
-
-                    speedFactor = 1.0 / joystickMaxDist
-                    -- We want 100% speed when the joystick is at joystickMaxDist along an axis.
-                    -- If we tilt 45 degrees between axes, we can have 100% in both.
+                    ne_sw = (dx - dy) / joystickMaxDist
+                    nw_se = (dx + dy) / joystickMaxDist
                 in
-                Just (M.Intent { ne_sw = ne_sw_raw * speedFactor, nw_se = nw_se_raw * speedFactor })
+                Just (M.Intent { ne_sw = clamp -1 1 ne_sw, nw_se = clamp -1 1 nw_se })
             else Nothing
         _ -> Nothing
 
@@ -177,9 +158,10 @@ updateIdle pos intent maze =
         chosenDir =
             intent.primaryDir |> Maybe.andThen (\p ->
                 if List.member p exits then Just p
-                else intent.secondaryDir |> Maybe.andThen (\s ->
-                    if List.member s exits then Just s else Nothing
-                )
+                else
+                    intent.secondaryDir |> Maybe.andThen (\s ->
+                        if List.member s exits then Just s else Nothing
+                    )
             )
     in
     case chosenDir of
@@ -201,11 +183,15 @@ getSpeedForDir : M.Direction -> Maybe M.MovementIntent -> Float
 getSpeedForDir dir intent =
     case intent of
         Just (M.Intent axes) ->
-            case dir of
-                M.NE -> max 0 axes.ne_sw
-                M.SW -> max 0 -axes.ne_sw
-                M.SE -> max 0 axes.nw_se
-                M.NW -> max 0 -axes.nw_se
+            let
+                ( axisSpeed, _ ) =
+                    case dir of
+                        M.NE -> ( axes.ne_sw, axes.ne_sw < 0 )
+                        M.SW -> ( -axes.ne_sw, axes.ne_sw > 0 )
+                        M.SE -> ( axes.nw_se, axes.nw_se < 0 )
+                        M.NW -> ( -axes.nw_se, axes.nw_se > 0 )
+            in
+            if axisSpeed > 0 then clamp 0 1 axisSpeed else 0.0
         Nothing -> 1.0
 
 updateMoving : Float -> M.MovingData -> IntentInfo -> Bool -> M.Maze -> M.PlayerState
@@ -244,7 +230,7 @@ updateMoving dt m intent isRelease maze =
                     , dir = oppDir
                     , progress = max 0 (1.0 - m.progress)
                     , speedFactor = oppSpeed
-                    , queuedIntent = newQueuedIntent
+                    , queuedIntent = M.QueuedNone
                     , interactionStart = intent.interactionStart
                     }
                 else
@@ -273,9 +259,10 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
         chosenDir =
             intent.primaryDir |> Maybe.andThen (\p ->
                 if List.member p exits then Just p
-                else intent.secondaryDir |> Maybe.andThen (\s ->
-                    if List.member s exits then Just s else Nothing
-                )
+                else
+                    intent.secondaryDir |> Maybe.andThen (\s ->
+                        if List.member s exits then Just s else Nothing
+                    )
             )
 
         maybeMove d q iStart =
@@ -285,7 +272,7 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
                     , to = nextTo
                     , dir = d
                     , progress = progress
-                    , speedFactor = if iStart == Nothing then 1.0 else getSpeedForDir d intent.intent
+                    , speedFactor = getSpeedForDir d intent.intent
                     , queuedIntent = q
                     , interactionStart = iStart
                     }
@@ -311,7 +298,7 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
 
                 M.QueuedStop -> M.Idle pos
                 M.QueuedNone ->
-                    if intent.intent /= Nothing || not effectiveJunction
+                    if not effectiveJunction
                         then continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone intent.interactionStart
                         else M.Idle pos
 
