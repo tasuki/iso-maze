@@ -253,8 +253,6 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
     let
         exits = M.getExits pos maze
         isJunction = M.isJunction pos maze
-        forwardLongExits = List.filter (\d -> d /= M.oppositeDirection currentDir && hasPath 4 pos d maze) exits
-        effectiveJunction = isJunction && List.length forwardLongExits /= 1
 
         chosenDir =
             intent.primaryDir |> Maybe.andThen (\p ->
@@ -278,27 +276,22 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
                     }
                 Nothing -> M.Idle pos
 
-        forwardExits =
-            if isJunction then forwardLongExits
-            else List.filter (\d -> d /= M.oppositeDirection currentDir) exits
+        forwardExits = List.filter (\d -> d /= M.oppositeDirection currentDir) exits
     in
     case chosenDir of
         Just d -> maybeMove d M.QueuedNone intent.interactionStart
         Nothing ->
             case queuedIntent of
                 M.QueuedTurn d ->
-                    if effectiveJunction then
-                        if List.member d exits && hasPath 4 pos d maze
-                            then maybeMove d M.QueuedNone Nothing
-                            else M.Idle pos
-                    else if isJunction then
-                        continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone Nothing
+                    if isJunction then
+                        if List.member d exits then maybeMove d M.QueuedNone Nothing
+                        else M.Idle pos
                     else
                         continueInPath pos progress currentDir forwardExits maze speedFactor queuedIntent Nothing
 
                 M.QueuedStop -> M.Idle pos
                 M.QueuedNone ->
-                    if not effectiveJunction
+                    if not isJunction
                         then continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone intent.interactionStart
                         else M.Idle pos
 
@@ -330,21 +323,6 @@ continueInPath pos progress currentDir forwardExits maze speedFactor q iStart =
 
 
 -- LOW-LEVEL HELPERS
-
-hasPath : Int -> M.Position -> M.Direction -> M.Maze -> Bool
-hasPath n pos dir maze =
-    case M.move pos dir maze of
-        Nothing -> False
-        Just nextPos ->
-            if n <= 1 then True
-            else
-                let
-                    exits = M.getExits nextPos maze
-                    backDir = M.oppositeDirection dir
-                    forwardExits = List.filter (\d -> d /= backDir) exits
-                in
-                List.any (\d -> hasPath (n - 1) nextPos d maze) forwardExits
-
 
 isArrow : String -> Bool
 isArrow k =
