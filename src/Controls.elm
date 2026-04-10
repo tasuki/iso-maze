@@ -284,7 +284,9 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
 
                 M.QueuedStop -> M.Idle pos
                 M.QueuedNone ->
-                    if intent.intent /= Nothing || not effectiveJunction
+                    if intent.isLong && intent.intent /= Nothing && chosenDir == Nothing then
+                        M.Idle pos
+                    else if intent.intent /= Nothing || not effectiveJunction
                         then continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone intent.interactionStart intent
                         else M.Idle pos
 
