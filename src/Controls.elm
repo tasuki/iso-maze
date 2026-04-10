@@ -187,7 +187,7 @@ updateMoving dt m intent isRelease maze =
                 case ( intent.intent, intent.dir ) of
                     ( Just (Intent _ speeds), Just d ) ->
                         if resolveSpeed m.dir speeds < 0 then M.QueuedStop
-                        else if isCurrentInteraction && d == m.dir then m.queuedIntent
+                        else if isCurrentInteraction then m.queuedIntent
                         else M.QueuedTurn d
                     _ -> m.queuedIntent
 

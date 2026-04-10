@@ -1,6 +1,7 @@
 module ControlsTest exposing (..)
 
 import Controls exposing (..)
+import Duration
 import Expect
 import Maze as M
 import Test exposing (..)
@@ -177,5 +178,41 @@ updateMovingTest =
                 case res of
                     M.Moving data ->
                         Expect.equal (M.QueuedTurn M.NW) data.queuedIntent
+                    _ -> Expect.fail "Expected Moving"
+        , test "When already moving, a new short swipe in the same direction queues a turn" <|
+            \_ ->
+                let
+                    m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedNone, interactionStart = Just (Quantity.zero) }
+                    -- Different interactionStart
+                    intent = { intent = Just (Intent 0.0 {nwse=1, nesw=1}), dir = Just M.NE, speed = 1.0, isLong = False, shouldStop = False, interactionStart = Just (Duration.milliseconds 500), isJoystick = True }
+                    res = updateMoving 0.016 m intent False simpleCorridor
+                in
+                case res of
+                    M.Moving data ->
+                        Expect.equal (M.QueuedTurn M.NE) data.queuedIntent
+                    _ -> Expect.fail "Expected Moving"
+        , test "When already moving, a new short swipe in a different direction queues a turn" <|
+            \_ ->
+                let
+                    m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedNone, interactionStart = Just (Quantity.zero) }
+                    -- Different interactionStart, direction NW
+                    intent = { intent = Just (Intent (5*pi/4) {nwse = -1, nesw = 0}), dir = Just M.NW, speed = 1.0, isLong = False, shouldStop = False, interactionStart = Just (Duration.milliseconds 500), isJoystick = True }
+                    res = updateMoving 0.016 m intent False simpleCorridor
+                in
+                case res of
+                    M.Moving data ->
+                        Expect.equal (M.QueuedTurn M.NW) data.queuedIntent
+                    _ -> Expect.fail "Expected Moving"
+        , test "When the short swipe started the movement, nothing is queued even if direction changes" <|
+            \_ ->
+                let
+                    m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedNone, interactionStart = Just (Quantity.zero) }
+                    -- SAME interactionStart, but direction changed to NW
+                    intent = { intent = Just (Intent (5*pi/4) {nwse = -1, nesw = 0}), dir = Just M.NW, speed = 1.0, isLong = False, shouldStop = False, interactionStart = Just (Quantity.zero), isJoystick = True }
+                    res = updateMoving 0.016 m intent False simpleCorridor
+                in
+                case res of
+                    M.Moving data ->
+                        Expect.equal M.QueuedNone data.queuedIntent
                     _ -> Expect.fail "Expected Moving"
         ]
