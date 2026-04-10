@@ -133,7 +133,7 @@ updateMovingTest =
                 let
                     m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedNone, interactionStart = Just (Quantity.zero) }
                     -- outside deadzone: maybeIntent is Just
-                    intent = { intent = Just (M.Intent 0.0 {nwse=1, nesw=1}), dir = Just M.NE, speed = 1.0, isLong = True, shouldStop = False, interactionStart = Just (Quantity.zero), isJoystick = True }
+                    intent = { intent = Just (Intent 0.0 {nwse=1, nesw=1}), dir = Just M.NE, speed = 1.0, isLong = True, shouldStop = False, interactionStart = Just (Quantity.zero), isJoystick = True }
                     res = updateMoving 0.016 m intent True simpleCorridor
                 in
                 case res of
@@ -171,7 +171,7 @@ updateMovingTest =
                 let
                     m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedTurn M.NW, interactionStart = Just (Quantity.zero) }
                     -- released outside deadzone
-                    intent = { intent = Just (M.Intent 0.0 {nwse=1, nesw=1}), dir = Just M.NE, speed = 1.0, isLong = False, shouldStop = False, interactionStart = Just (Quantity.zero), isJoystick = True }
+                    intent = { intent = Just (Intent 0.0 {nwse=1, nesw=1}), dir = Just M.NE, speed = 1.0, isLong = False, shouldStop = False, interactionStart = Just (Quantity.zero), isJoystick = True }
                     res = updateMoving 0.016 m intent True simpleCorridor
                 in
                 case res of
