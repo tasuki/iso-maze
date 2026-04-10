@@ -61,6 +61,7 @@ type alias IntentInfo =
     , isLong : Bool
     , shouldStop : Bool
     , interactionStart : Maybe Duration
+    , isJoystick : Bool
     }
 
 analyzeIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe Duration -> Duration -> IntentInfo
@@ -77,6 +78,7 @@ analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
     , isLong = intentDuration >= 0.4
     , shouldStop = maybeIntent == Nothing && (pointerStart /= Nothing || (Set.member " " keysDown))
     , interactionStart = interactionStart
+    , isJoystick = pointerStart /= Nothing
     }
 
 getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
@@ -167,7 +169,9 @@ updateMoving dt m intent isRelease maze =
         isCurrentInteraction = intent.interactionStart == m.interactionStart
 
         newQueuedIntent =
-            if intent.isLong then M.QueuedNone
+            if intent.isJoystick && intent.shouldStop then M.QueuedStop
+            else if isRelease then m.queuedIntent
+            else if intent.isLong then M.QueuedNone
             else if intent.shouldStop then M.QueuedStop
             else
                 case ( intent.intent, intent.dir ) of
@@ -197,7 +201,8 @@ updateMoving dt m intent isRelease maze =
                     Just (M.Intent _ s) ->
                         let sVal = resolveSpeed activeM.dir s in
                         if sVal < 0 then 1.0 else sVal
-                    Nothing -> 1.0
+                    Nothing ->
+                        if intent.isJoystick && intent.shouldStop && intent.isLong then 0.0 else 1.0
 
         maxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
         newProgress = activeM.progress + (dt * speed / secondsPerStep)
