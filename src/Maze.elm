@@ -49,7 +49,9 @@ type alias Vector = Position
 
 type Direction = SE | SW | NE | NW
 
-type MovementIntent = Intent Float Float
+type alias Speeds = { nwse : Float, nesw : Float }
+
+type MovementIntent = Intent Float Speeds
 
 type QueuedIntent
     = QueuedNone
