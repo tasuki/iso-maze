@@ -203,12 +203,13 @@ updateMoving dt m intent isRelease maze =
         newQueuedIntent =
             if intent.isLong then M.QueuedNone
             else if intent.shouldStop then M.QueuedStop
+            else if intent.interactionStart == m.interactionStart then
+                if isOpposite then M.QueuedStop else m.queuedIntent
             else
-                let qDir = intent.primaryDir |> Maybe.Extra.or intent.secondaryDir in
-                case qDir of
+                case intent.primaryDir |> Maybe.Extra.or intent.secondaryDir of
                     Just d ->
                         if d == M.oppositeDirection m.dir then M.QueuedStop
-                        else if d == m.dir && intent.interactionStart == m.interactionStart then m.queuedIntent
+                        else if d == m.dir then m.queuedIntent
                         else M.QueuedTurn d
                     Nothing -> m.queuedIntent
 
