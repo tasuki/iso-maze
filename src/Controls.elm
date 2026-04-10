@@ -169,10 +169,13 @@ updateMoving dt m intent isRelease maze =
         isCurrentInteraction = intent.interactionStart == m.interactionStart
 
         newQueuedIntent =
-            if intent.isJoystick && intent.shouldStop then M.QueuedStop
-            else if isRelease then m.queuedIntent
-            else if intent.isLong then M.QueuedNone
+            if isRelease then
+                if intent.isJoystick && intent.shouldStop && m.queuedIntent == M.QueuedNone then M.QueuedStop
+                else m.queuedIntent
+            else if intent.isJoystick && intent.shouldStop then
+                if intent.isLong then M.QueuedStop else m.queuedIntent
             else if intent.shouldStop then M.QueuedStop
+            else if intent.isLong then M.QueuedNone
             else
                 case ( intent.intent, intent.dir ) of
                     ( Just (M.Intent _ speeds), Just d ) ->

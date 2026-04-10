@@ -140,7 +140,7 @@ updateMovingTest =
                     M.Moving data ->
                         Expect.equal M.QueuedNone data.queuedIntent
                     _ -> Expect.fail "Expected Moving"
-        , test "Short tap in deadzone: should NOT stop in place (smooth move)" <|
+        , test "Short tap in deadzone: should NOT stop in place and should NOT queue stop (until release)" <|
             \_ ->
                 let
                     m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedNone, interactionStart = Just (Quantity.zero) }
@@ -149,12 +149,33 @@ updateMovingTest =
                 in
                 case res of
                     M.Moving data ->
-                        Expect.equal M.QueuedStop data.queuedIntent
-                        -- speed should be 1.0 for short tap in deadzone (once I fix it)
-                        -- Currently it's 0.0 in my buggy version.
+                        Expect.equal M.QueuedNone data.queuedIntent
                         |> Expect.all
-                            [ \_ -> Expect.equal M.QueuedStop data.queuedIntent
+                            [ \_ -> Expect.equal M.QueuedNone data.queuedIntent
                             , \_ -> Expect.within (Expect.Absolute 0.001) 0.58 data.progress
                             ]
+                    _ -> Expect.fail "Expected Moving"
+        , test "Short tap release in deadzone: should queue stop" <|
+            \_ ->
+                let
+                    m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedNone, interactionStart = Just (Quantity.zero) }
+                    intent = { intent = Nothing, dir = Nothing, speed = 1.0, isLong = False, shouldStop = True, interactionStart = Just (Quantity.zero), isJoystick = True }
+                    res = updateMoving 0.016 m intent True simpleCorridor
+                in
+                case res of
+                    M.Moving data ->
+                        Expect.equal M.QueuedStop data.queuedIntent
+                    _ -> Expect.fail "Expected Moving"
+        , test "Short swipe and release: should preserve QueuedTurn" <|
+            \_ ->
+                let
+                    m = { from = ( 0, 0, 0 ), to = ( 1, 0, 0 ), dir = M.NE, progress = 0.5, speedFactor = 1.0, queuedIntent = M.QueuedTurn M.NW, interactionStart = Just (Quantity.zero) }
+                    -- released outside deadzone
+                    intent = { intent = Just (M.Intent 0.0 {nwse=1, nesw=1}), dir = Just M.NE, speed = 1.0, isLong = False, shouldStop = False, interactionStart = Just (Quantity.zero), isJoystick = True }
+                    res = updateMoving 0.016 m intent True simpleCorridor
+                in
+                case res of
+                    M.Moving data ->
+                        Expect.equal (M.QueuedTurn M.NW) data.queuedIntent
                     _ -> Expect.fail "Expected Moving"
         ]
