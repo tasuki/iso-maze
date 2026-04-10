@@ -49,6 +49,10 @@ type alias Vector = Position
 
 type Direction = SE | SW | NE | NW
 
+{-| Speed components along the two isometric axes.
+    nwse: positive for SE, negative for NW.
+    nesw: positive for NE, negative for SW.
+-}
 type alias Speeds = { nwse : Float, nesw : Float }
 
 type MovementIntent = Intent Float Speeds
