@@ -49,8 +49,6 @@ type alias Vector = Position
 
 type Direction = SE | SW | NE | NW
 
-type MovementIntent = Intent Float Float
-
 type QueuedIntent
     = QueuedNone
     | QueuedStop
@@ -295,12 +293,6 @@ playerPos state =
     case state of
         Idle pos -> pos
         Moving m -> m.from
-
-playerDir : PlayerState -> Direction
-playerDir state =
-    case state of
-        Idle _ -> SE -- dummy
-        Moving m -> m.dir
 
 
 -- Block

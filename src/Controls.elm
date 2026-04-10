@@ -55,12 +55,13 @@ applyOrbit azimuth elevation pointerLast dc =
 -- INTENT ANALYSIS
 
 type alias IntentInfo =
-    { intent : Maybe M.MovementIntent
+    { intent : Maybe MovementIntent
     , dir : Maybe M.Direction
     , speed : Float
     , isLong : Bool
     , shouldStop : Bool
     , interactionStart : Maybe Duration
+    , isJoystick : Bool
     }
 
 analyzeIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe Duration -> Duration -> IntentInfo
@@ -72,14 +73,15 @@ analyzeIntent keysDown pointerStart pointerLast interactionStart currentTime =
             |> Maybe.withDefault 0.0
     in
     { intent = maybeIntent
-    , dir = maybeIntent |> Maybe.map (\(M.Intent a _) -> resolveDirection a)
-    , speed = maybeIntent |> Maybe.map (\(M.Intent _ s) -> s) |> Maybe.withDefault 1.0
+    , dir = maybeIntent |> Maybe.map (\(Intent a _) -> resolveDirection a)
+    , speed = maybeIntent |> Maybe.map (\(Intent a s) -> resolveSpeed (resolveDirection a) s) |> Maybe.withDefault 1.0
     , isLong = intentDuration >= 0.4
     , shouldStop = maybeIntent == Nothing && (pointerStart /= Nothing || (Set.member " " keysDown))
     , interactionStart = interactionStart
+    , isJoystick = pointerStart /= Nothing
     }
 
-getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
+getIntent : Set String -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
 getIntent keysDown pointerStart pointerLast =
     let
         joyIntent = getIntentFromJoystick pointerStart pointerLast
@@ -89,7 +91,7 @@ getIntent keysDown pointerStart pointerLast =
         Just _ -> joyIntent
         Nothing -> kbdIntent
 
-getIntentFromKeyboard : Set String -> Maybe M.MovementIntent
+getIntentFromKeyboard : Set String -> Maybe MovementIntent
 getIntentFromKeyboard keys =
     let
         up = if Set.member "ArrowUp" keys then -1.0 else 0.0
@@ -100,9 +102,9 @@ getIntentFromKeyboard keys =
         dy = up + down
     in
     if dx == 0 && dy == 0 then Nothing
-    else Just (M.Intent (atan2 dy dx - 0.0001) 1.0)
+    else Just (Intent (atan2 dy dx - 0.0001) { nwse = clamp -1 1 (dx + dy), nesw = clamp -1 1 (dx - dy) })
 
-getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe M.MovementIntent
+getIntentFromJoystick : Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Maybe MovementIntent
 getIntentFromJoystick pointerStart pointerLast =
     case ( pointerStart, pointerLast ) of
         ( Just start, Just last ) ->
@@ -110,25 +112,42 @@ getIntentFromJoystick pointerStart pointerLast =
                 dx = last.x - start.x
                 dy = last.y - start.y
                 dist = sqrt (dx * dx + dy * dy)
-                speedFactor = min 1 (dist / joystickMaxDist)
+                nwse = (dx + dy) / (sqrt 2 * joystickMaxDist) |> clamp -1 1
+                nesw = (dx - dy) / (sqrt 2 * joystickMaxDist) |> clamp -1 1
             in
             if dist > joystickDeadzone
-                then Just (M.Intent (atan2 dy dx) speedFactor)
+                then Just (Intent (atan2 dy dx) { nwse = nwse, nesw = nesw })
                 else Nothing
         _ -> Nothing
 
 
 -- MOVEMENT STATE MACHINE
 
+-- Speed components along the two isometric axes:
+-- nwse: positive for SE, negative for NW.
+-- nesw: positive for NE, negative for SW.
+type alias Speeds = { nwse : Float, nesw : Float }
+
+type MovementIntent = Intent Float Speeds
+
 updateIdle : M.Position -> IntentInfo -> M.Maze -> M.PlayerState
 updateIdle pos intent maze =
     let
         exits = M.getExits pos maze
         chosenDir =
-            Maybe.andThen (\(M.Intent a _) ->
-                if intent.isLong then findBestExit a exits
-                else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+            Maybe.andThen (\(Intent a speeds) ->
+                let
+                    best =
+                        if intent.isLong then findBestExit a exits
+                        else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+                in
+                best |> Maybe.andThen (\d -> if resolveSpeed d speeds > 0 then Just d else Nothing)
             ) intent.intent
+
+        speedFactor =
+            case ( intent.intent, chosenDir ) of
+                ( Just (Intent _ speeds), Just d ) -> resolveSpeed d speeds
+                _ -> intent.speed
     in
     case chosenDir of
         Just d ->
@@ -138,7 +157,7 @@ updateIdle pos intent maze =
                     , to = nextTo
                     , dir = d
                     , progress = 0
-                    , speedFactor = intent.speed
+                    , speedFactor = speedFactor
                     , queuedIntent = M.QueuedNone
                     , interactionStart = intent.interactionStart
                     }
@@ -148,18 +167,29 @@ updateIdle pos intent maze =
 updateMoving : Float -> M.MovingData -> IntentInfo -> Bool -> M.Maze -> M.PlayerState
 updateMoving dt m intent isRelease maze =
     let
-        isOpposite = intent.dir == Just (M.oppositeDirection m.dir)
+        speedFromIntent =
+            case intent.intent of
+                Just (Intent _ s) -> resolveSpeed m.dir s
+                Nothing -> 1.0
+
+        isOpposite = speedFromIntent < 0
         isCurrentInteraction = intent.interactionStart == m.interactionStart
 
         newQueuedIntent =
-            if intent.isLong then M.QueuedNone
+            if isRelease then
+                if intent.isJoystick && intent.shouldStop && m.queuedIntent == M.QueuedNone then M.QueuedStop
+                else m.queuedIntent
+            else if intent.isJoystick && intent.shouldStop then
+                if intent.isLong then M.QueuedStop else m.queuedIntent
             else if intent.shouldStop then M.QueuedStop
-            else case intent.dir of
-                Just d ->
-                    if isOpposite then M.QueuedStop
-                    else if isCurrentInteraction && d == m.dir then m.queuedIntent
-                    else M.QueuedTurn d
-                Nothing -> m.queuedIntent
+            else if intent.isLong then M.QueuedNone
+            else
+                case ( intent.intent, intent.dir ) of
+                    ( Just (Intent _ speeds), Just d ) ->
+                        if resolveSpeed m.dir speeds < 0 then M.QueuedStop
+                        else if isCurrentInteraction then m.queuedIntent
+                        else M.QueuedTurn d
+                    _ -> m.queuedIntent
 
         activeM =
             if isOpposite && intent.isLong then
@@ -167,22 +197,32 @@ updateMoving dt m intent isRelease maze =
                 , to = m.from
                 , dir = M.oppositeDirection m.dir
                 , progress = max 0 (1.0 - m.progress)
-                , speedFactor = intent.speed
+                , speedFactor = m.speedFactor
                 , queuedIntent = newQueuedIntent
                 , interactionStart = intent.interactionStart
                 }
             else
-                { m | speedFactor = if isRelease then 1.0 else intent.speed, queuedIntent = newQueuedIntent }
+                { m | queuedIntent = newQueuedIntent }
+
+        speed =
+            if isRelease then 1.0
+            else
+                case intent.intent of
+                    Just (Intent _ s) ->
+                        let sVal = resolveSpeed activeM.dir s in
+                        if sVal < 0 then 1.0 else sVal
+                    Nothing ->
+                        if intent.isJoystick && intent.shouldStop && intent.isLong then 0.0 else 1.0
 
         maxProgress = if activeM.to == M.endPosition maze then 4.0 else 1.0
-        newProgress = activeM.progress + (dt * activeM.speedFactor / secondsPerStep)
+        newProgress = activeM.progress + (dt * speed / secondsPerStep)
     in
     if newProgress >= maxProgress then
         let pos = activeM.to in
         if pos == M.endPosition maze || activeM.queuedIntent == M.QueuedStop then M.Idle pos
-        else nextTile pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir intent maze (if isRelease then 1.0 else intent.speed)
+        else nextTile pos (newProgress - maxProgress) activeM.queuedIntent activeM.dir intent maze (if isRelease then 1.0 else speed)
     else
-        M.Moving { activeM | progress = newProgress }
+        M.Moving { activeM | progress = newProgress, speedFactor = speed }
 
 nextTile : M.Position -> Float -> M.QueuedIntent -> M.Direction -> IntentInfo -> M.Maze -> Float -> M.PlayerState
 nextTile pos progress queuedIntent currentDir intent maze speedFactor =
@@ -193,19 +233,32 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
         effectiveJunction = isJunction && List.length forwardLongExits /= 1
 
         chosenDir =
-            Maybe.andThen (\(M.Intent a _) ->
-                if intent.isLong then findBestExit a exits
-                else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+            Maybe.andThen (\(Intent a speeds) ->
+                let
+                    best =
+                        if intent.isLong then findBestExit a exits
+                        else intent.dir |> Maybe.andThen (\d -> if List.member d exits then Just d else Nothing)
+                in
+                best |> Maybe.andThen (\d -> if resolveSpeed d speeds > 0 then Just d else Nothing)
             ) intent.intent
 
         maybeMove d q iStart =
-            case M.move pos d maze of
+            let
+                moveSpeed =
+                    case intent.intent of
+                        Just (Intent _ s) -> resolveSpeed d s
+                        Nothing -> speedFactor
+            in
+            if moveSpeed <= 0 && intent.intent /= Nothing then
+                M.Idle pos
+            else
+                case M.move pos d maze of
                 Just nextTo -> M.Moving
                     { from = pos
                     , to = nextTo
                     , dir = d
                     , progress = progress
-                    , speedFactor = speedFactor
+                    , speedFactor = moveSpeed
                     , queuedIntent = q
                     , interactionStart = iStart
                     }
@@ -225,18 +278,18 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
                             then maybeMove d M.QueuedNone Nothing
                             else M.Idle pos
                     else if isJunction then
-                        continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone Nothing
+                        continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone Nothing intent
                     else
-                        continueInPath pos progress currentDir forwardExits maze speedFactor queuedIntent Nothing
+                        continueInPath pos progress currentDir forwardExits maze speedFactor queuedIntent Nothing intent
 
                 M.QueuedStop -> M.Idle pos
                 M.QueuedNone ->
                     if intent.intent /= Nothing || not effectiveJunction
-                        then continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone intent.interactionStart
+                        then continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone intent.interactionStart intent
                         else M.Idle pos
 
-continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maze -> Float -> M.QueuedIntent -> Maybe Duration -> M.PlayerState
-continueInPath pos progress currentDir forwardExits maze speedFactor q iStart =
+continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maze -> Float -> M.QueuedIntent -> Maybe Duration -> IntentInfo -> M.PlayerState
+continueInPath pos progress currentDir forwardExits maze speedFactor q iStart intent =
     let
         nextDir =
             if List.member currentDir forwardExits then
@@ -248,13 +301,19 @@ continueInPath pos progress currentDir forwardExits maze speedFactor q iStart =
     in
     case nextDir of
         Just d ->
+            let
+                speed =
+                    case intent.intent of
+                        Just (Intent _ s) -> resolveSpeed d s
+                        Nothing -> speedFactor
+            in
             case M.move pos d maze of
                 Just nextTo -> M.Moving
                     { from = pos
                     , to = nextTo
                     , dir = d
                     , progress = progress
-                    , speedFactor = speedFactor
+                    , speedFactor = speed
                     , queuedIntent = q
                     , interactionStart = iStart
                     }
@@ -277,6 +336,15 @@ hasPath n pos dir maze =
                     forwardExits = List.filter (\d -> d /= backDir) exits
                 in
                 List.any (\d -> hasPath (n - 1) nextPos d maze) forwardExits
+
+
+resolveSpeed : M.Direction -> Speeds -> Float
+resolveSpeed dir speeds =
+    case dir of
+        M.SE -> speeds.nwse
+        M.NW -> -speeds.nwse
+        M.SW -> -speeds.nesw
+        M.NE -> speeds.nesw
 
 
 resolveDirection : Float -> M.Direction
