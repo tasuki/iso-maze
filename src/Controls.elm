@@ -277,16 +277,15 @@ nextTile pos progress queuedIntent currentDir intent maze speedFactor =
                         if List.member d exits && hasPath 4 pos d maze
                             then maybeMove d M.QueuedNone Nothing
                             else M.Idle pos
-                    else if isJunction then
-                        continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone Nothing intent
                     else
                         continueInPath pos progress currentDir forwardExits maze speedFactor queuedIntent Nothing intent
 
                 M.QueuedStop -> M.Idle pos
                 M.QueuedNone ->
-                    if intent.intent /= Nothing || not effectiveJunction
-                        then continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone intent.interactionStart intent
-                        else M.Idle pos
+                    if (intent.intent == Nothing && effectiveJunction) || (intent.intent /= Nothing && intent.isLong && chosenDir == Nothing) then
+                        M.Idle pos
+                    else
+                        continueInPath pos progress currentDir forwardExits maze speedFactor M.QueuedNone intent.interactionStart intent
 
 continueInPath : M.Position -> Float -> M.Direction -> List M.Direction -> M.Maze -> Float -> M.QueuedIntent -> Maybe Duration -> IntentInfo -> M.PlayerState
 continueInPath pos progress currentDir forwardExits maze speedFactor q iStart intent =
