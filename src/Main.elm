@@ -60,6 +60,27 @@ performanceFromString s =
         "rocket" -> Rocket
         _ -> Normal
 
+directionToString : M.Direction -> String
+directionToString dir =
+    case dir of
+        M.SE -> "SE"
+        M.SW -> "SW"
+        M.NW -> "NW"
+        M.NE -> "NE"
+
+queuedIntentToString : M.QueuedIntent -> String
+queuedIntentToString qi =
+    case qi of
+        M.QueuedNone -> "QueuedNone"
+        M.QueuedStop -> "QueuedStop"
+        M.QueuedTurn dir -> "(QueuedTurn " ++ directionToString dir ++ ")"
+
+maybeQueuedIntentToString : Maybe M.QueuedIntent -> String
+maybeQueuedIntentToString mqi =
+    case mqi of
+        Nothing -> "Nothing"
+        Just qi -> "Just " ++ queuedIntentToString qi
+
 type alias RenderUpdate =
     { duration : Float
     , staticMeshes : Int
@@ -850,13 +871,18 @@ view model =
             Nothing -> H.text ""
         , case model.debugLevel of
             DebugTechnical ->
+                let
+                    queuedIntent =
+                        case model.playerState of
+                            M.Moving m -> Just m.queuedIntent
+                            M.Idle _ -> Nothing
+                in
                 H.div [ HA.id "debug-info", HA.class "overlay" ]
-                    [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr)
+                    [ H.div [] [ H.text ("FPS: " ++ formatMs (fpsFromPeriod (avgDuration model.tickHistory)) ++ "\nFT: " ++ formatMs (avgDuration model.tickHistory) ++ "ms\nRT: " ++ formatMs (avgDuration model.renderHistory) ++ "ms\nDPR: " ++ String.fromFloat model.dpr) ]
                     , case model.lastRenderStats of
                         Just stats ->
                             H.div [ HA.style "font-size" "10px" ]
-                                [ H.br [] []
-                                , H.text ("Static Meshes: " ++ String.fromInt stats.staticMeshes)
+                                [ H.text ("Static Meshes: " ++ String.fromInt stats.staticMeshes)
                                 , H.text ("\nDynamic Meshes: " ++ String.fromInt stats.dynamicMeshes)
                                 , H.text ("\nStatic DC: " ++ String.fromInt stats.staticDrawCalls ++ " (" ++ String.fromInt stats.staticTriangles ++ " tris)")
                                 , H.text ("\nDynamic DC: " ++ String.fromInt stats.dynamicDrawCalls ++ " (" ++ String.fromInt stats.dynamicTriangles ++ " tris)")
@@ -866,6 +892,7 @@ view model =
 
                         Nothing ->
                             H.text ""
+                    , H.div [] [ H.text ("Queued Intent: " ++ maybeQueuedIntentToString queuedIntent) ]
                     ]
 
             DebugOff ->
