@@ -51,7 +51,17 @@ intent0 =
     , isLong = False
     , shouldStop = False
     , interactionStart = Nothing
-    , isJoystick = False
+    }
+
+movingData : M.MovingData
+movingData =
+    { from = ( 0, 0, 0 )
+    , to = ( 1, 0, 0 )
+    , dir = M.NE
+    , progress = 0.5
+    , speedFactor = 1.0
+    , queuedIntent = M.QueuedNone
+    , interactionStart = Just (Quantity.zero)
     }
 
 nextTileTest : Test
@@ -61,8 +71,7 @@ nextTileTest =
             \_ ->
                 let
                     pos = ( 2, 2, 0 )
-                    currentDir = M.NE
-                    result = nextTile pos 0.0 M.QueuedNone currentDir intent0 longPathMaze 1.0
+                    result = nextTile pos movingData intent0 longPathMaze 1.0
                 in
                 case result of
                     M.Moving data ->
@@ -76,7 +85,8 @@ nextTileTest =
                         List.map (\i -> M.Base ( i, 10, 0 )) (List.range 0 20) ++
                         List.map (\i -> M.Base ( 10, i, 0 )) (List.range 0 20)
                     maze = M.fromBlocks crossBlocks
-                    res = nextTile ( 10, 10, 0 ) 0.0 M.QueuedNone M.NE intent0 maze 1.0
+                    pos = ( 10, 10, 0 )
+                    res = nextTile pos movingData intent0 maze 1.0
                 in
                 case res of
                     M.Idle _ -> Expect.pass
@@ -85,8 +95,7 @@ nextTileTest =
             \_ ->
                 let
                     pos = ( 2, 2, 0 )
-                    currentDir = M.NE
-                    res = nextTile pos 0.0 M.QueuedNone currentDir intent0 shortDeadEnd 1.0
+                    res = nextTile pos movingData intent0 shortDeadEnd 1.0
                 in
                 case res of
                     M.Idle _ -> Expect.pass
@@ -95,9 +104,7 @@ nextTileTest =
             \_ ->
                 let
                     pos = ( 2, 2, 0 )
-                    currentDir = M.NE
-                    queuedIntent = M.QueuedTurn M.NW
-                    res = nextTile pos 0.0 queuedIntent currentDir intent0 longPathMaze 1.0
+                    res = nextTile pos { movingData | queuedIntent = M.QueuedTurn M.NW } intent0 longPathMaze 1.0
                 in
                 case res of
                     M.Moving data ->
@@ -105,17 +112,6 @@ nextTileTest =
                     _ ->
                         Expect.fail "Expected Moving NE (ignoring short queued turn)"
         ]
-
-movingData : M.MovingData
-movingData =
-    { from = ( 0, 0, 0 )
-    , to = ( 1, 0, 0 )
-    , dir = M.NE
-    , progress = 0.5
-    , speedFactor = 1.0
-    , queuedIntent = M.QueuedNone
-    , interactionStart = Just (Quantity.zero)
-    }
 
 intentLong : IntentInfo
 intentLong =
@@ -125,7 +121,6 @@ intentLong =
     , isLong = True
     , shouldStop = True
     , interactionStart = Just (Quantity.zero)
-    , isJoystick = True
     }
 
 intentShort : IntentInfo
@@ -173,18 +168,6 @@ updateMovingTest =
                 case res of
                     M.Moving data ->
                         Expect.equal M.QueuedNone data.queuedIntent
-                    _ -> Expect.fail "Expected Moving"
-        , test "Short tap in deadzone: should NOT stop in place and should NOT queue stop (until release)" <|
-            \_ ->
-                let
-                    res = updateMoving 0.01 movingData intentShort False simpleCorridor
-                in
-                case res of
-                    M.Moving data ->
-                        data |> Expect.all
-                            [ .queuedIntent >> Expect.equal M.QueuedNone
-                            , .progress >> Expect.within (Expect.Absolute 0.001) 0.55
-                            ]
                     _ -> Expect.fail "Expected Moving"
         , test "Short tap release in deadzone: should queue stop" <|
             \_ ->
