@@ -4,7 +4,8 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "test": "elm-test"
+        "test": "elm-test",
+        "analyze": "node run-analyzer.js"
     },
     "dependencies": {
         "n8ao": "^1.10.1",
