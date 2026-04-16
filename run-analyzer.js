@@ -17,6 +17,11 @@ try {
 
     // Subscribe to the output port
     app.ports.output.subscribe((csv) => {
+        if (csv.startsWith('ERROR:')) {
+            console.error(csv);
+            if (fs.existsSync(JS_FILE)) fs.unlinkSync(JS_FILE);
+            process.exit(1);
+        }
         console.log(csv);
         // Clean up and exit after receiving the result
         if (fs.existsSync(JS_FILE)) fs.unlinkSync(JS_FILE);
@@ -26,7 +31,8 @@ try {
     // Trigger the analysis after a short delay to ensure the subscription is ready
     setTimeout(() => {
         if (app.ports.input) {
-            app.ports.input.send(null);
+            const mazeStr = process.argv[2] || null;
+            app.ports.input.send(mazeStr);
         } else {
             console.error('Error: input port not found');
             process.exit(1);

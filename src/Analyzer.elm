@@ -266,11 +266,11 @@ analyze ( fx, fy, fz ) maze =
 port output : String -> Cmd msg
 
 
-port input : (() -> msg) -> Sub msg
+port input : (Maybe String -> msg) -> Sub msg
 
 
 type Msg
-    = RunAnalysis ()
+    = RunAnalysis (Maybe String)
 
 
 main : Program () () Msg
@@ -279,19 +279,34 @@ main =
         { init = \_ -> ( (), Cmd.none )
         , update = \msg _ ->
             case msg of
-                RunAnalysis _ ->
-                    ( (), output (runAnalysis ()) )
+                RunAnalysis maybeMaze ->
+                    ( (), output (runAnalysis maybeMaze) )
         , subscriptions = \_ -> input RunAnalysis
         }
 
 
-runAnalysis : () -> String
-runAnalysis _ =
+runAnalysis : Maybe String -> String
+runAnalysis maybeMaze =
     let
         header = "Emoji,Name,Reachable,Occluding,Unreachable,Hanging,Total Cells,Shortest Path,Sol. Density,Stairs,Bridges,River Factor,Loop Count,Greenery,Holes,Squares"
-        rows = List.map analyzeMaze Campaign.mazeDefs
     in
-    String.join "\n" (header :: rows)
+    case maybeMaze of
+        Nothing ->
+            let
+                rows = List.map analyzeMaze Campaign.mazeDefs
+            in
+            String.join "\n" (header :: rows)
+
+        Just mazeStr ->
+            case Codec.decode mazeStr of
+                Just _ ->
+                    let
+                        row = analyzeMaze { emoji = "📥", name = "Custom", maze = mazeStr }
+                    in
+                    String.join "\n" [ header, row ]
+
+                Nothing ->
+                    "ERROR: Failed to decode maze string"
 
 
 analyzeMaze : Campaign.MazeDef -> String
