@@ -208,8 +208,8 @@ nextTile movingData intent maze speedFactor =
             if isJunction then forwardLongExits
             else List.filter (\d -> d /= M.oppositeDirection movingData.dir) exits
 
-        maybeMove : M.Direction -> M.QueuedIntent -> Maybe (Duration) -> M.PlayerState
-        maybeMove d q iStart =
+        hardMove : M.Direction -> M.PlayerState
+        hardMove d =
             case M.move pos d maze of
                 Nothing -> M.Idle pos
                 Just nextTo -> M.Moving
@@ -218,28 +218,19 @@ nextTile movingData intent maze speedFactor =
                     , dir = d
                     , progress = movingData.progress
                     , speedFactor = speedFactor
-                    , queuedIntent = q
-                    , interactionStart = iStart
+                    , queuedIntent = M.QueuedNone
+                    , interactionStart = intent.interactionStart
                     }
     in
-    case chosenDir of
-        Just d -> maybeMove d M.QueuedNone intent.interactionStart
-        Nothing ->
-            case movingData.queuedIntent of
-                M.QueuedTurn d ->
-                    if effectiveJunction then
-                        if List.member d exits && hasPath 4 pos d maze
-                            then maybeMove d M.QueuedNone Nothing
-                            else M.Idle pos
-                    else
-                        continueInPath maze pos forwardExits { movingData | interactionStart = Nothing }
-
-                M.QueuedStop -> M.Idle pos
-                M.QueuedNone ->
-                    if (intent.intent == Nothing && effectiveJunction) || (intent.intent /= Nothing && intent.isLong && chosenDir == Nothing) then
-                        M.Idle pos
-                    else
-                        continueInPath maze pos forwardExits { movingData | queuedIntent = M.QueuedNone, interactionStart = intent.interactionStart }
+    case ( intent.isLong, chosenDir ) of
+        ( True, Just d ) -> hardMove d
+        ( True, Nothing ) -> M.Idle pos
+        ( False, _ ) ->
+            case ( movingData.queuedIntent, effectiveJunction ) of
+                ( M.QueuedStop, _ ) -> M.Idle pos
+                ( M.QueuedTurn d, True ) -> hardMove d
+                ( _, True ) -> M.Idle pos
+                ( _, _ ) -> continueInPath maze pos forwardExits movingData
 
 continueInPath : M.Maze -> M.Position -> List M.Direction -> M.MovingData -> M.PlayerState
 continueInPath maze pos forwardExits movingData =
