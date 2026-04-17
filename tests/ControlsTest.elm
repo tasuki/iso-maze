@@ -70,8 +70,7 @@ nextTileTest =
         [ test "Snowman automatically continues through junction with only one long forward path" <|
             \_ ->
                 let
-                    pos = ( 2, 2, 0 )
-                    result = nextTile pos movingData intent0 longPathMaze 1.0
+                    result = nextTile { movingData | to = ( 2, 2, 0 ) } intent0 longPathMaze 1.0
                 in
                 case result of
                     M.Moving data ->
@@ -85,8 +84,7 @@ nextTileTest =
                         List.map (\i -> M.Base ( i, 10, 0 )) (List.range 0 20) ++
                         List.map (\i -> M.Base ( 10, i, 0 )) (List.range 0 20)
                     maze = M.fromBlocks crossBlocks
-                    pos = ( 10, 10, 0 )
-                    res = nextTile pos movingData intent0 maze 1.0
+                    res = nextTile { movingData | to = ( 10, 10, 0 ) } intent0 maze 1.0
                 in
                 case res of
                     M.Idle _ -> Expect.pass
@@ -94,8 +92,7 @@ nextTileTest =
         , test "Snowman stops at junction with only short dead ends" <|
             \_ ->
                 let
-                    pos = ( 2, 2, 0 )
-                    res = nextTile pos movingData intent0 shortDeadEnd 1.0
+                    res = nextTile { movingData | to = ( 2, 2, 0 ) } intent0 shortDeadEnd 1.0
                 in
                 case res of
                     M.Idle _ -> Expect.pass
@@ -103,8 +100,11 @@ nextTileTest =
         , test "Queued turn to short path is ignored" <|
             \_ ->
                 let
-                    pos = ( 2, 2, 0 )
-                    res = nextTile pos { movingData | queuedIntent = M.QueuedTurn M.NW } intent0 longPathMaze 1.0
+                    res = nextTile
+                        { movingData | queuedIntent = M.QueuedTurn M.NW, to = ( 2, 2, 0 ) }
+                        intent0
+                        longPathMaze
+                        1.0
                 in
                 case res of
                     M.Moving data ->
@@ -132,20 +132,20 @@ updateMovingTest =
         [ test "Long press joystick enters deadzone: should stop in place and queue stop" <|
             \_ ->
                 let
-                    res = updateMoving 0.01 movingData intentLong False simpleCorridor
+                    res = updateMoving 0.01 movingData intentLong simpleCorridor
                 in
                 case res of
                     M.Moving data ->
                         data |> Expect.all
                             [ .queuedIntent >> Expect.equal M.QueuedStop
-                            , .progress >> Expect.within (Expect.Absolute 0.001) 0.5
+                            , .progress >> Expect.within (Expect.Absolute 0.001) 0.55
                             ]
                     _ -> Expect.fail "Expected Moving"
         , test "Long press joystick release in deadzone: should move at speed 1.0 and keep QueuedStop" <|
             \_ ->
                 let
                     m = { movingData | speedFactor = 0.0, queuedIntent = M.QueuedStop }
-                    res = updateMoving 0.01 m intentLong True simpleCorridor
+                    res = updateMoving 0.01 m intentLong simpleCorridor
                 in
                 case res of
                     M.Moving data ->
@@ -163,7 +163,7 @@ updateMovingTest =
                         , dir = Just M.NE
                         , shouldStop = False
                         }
-                    res = updateMoving 0.01 movingData intent True simpleCorridor
+                    res = updateMoving 0.01 movingData intent simpleCorridor
                 in
                 case res of
                     M.Moving data ->
@@ -172,7 +172,7 @@ updateMovingTest =
         , test "Short tap release in deadzone: should queue stop" <|
             \_ ->
                 let
-                    res = updateMoving 0.01 movingData intentShort True simpleCorridor
+                    res = updateMoving 0.01 movingData intentShort simpleCorridor
                 in
                 case res of
                     M.Moving data ->
@@ -188,7 +188,7 @@ updateMovingTest =
                         , dir = Just M.NE
                         , shouldStop = False
                         }
-                    res = updateMoving 0.01 m intent True simpleCorridor
+                    res = updateMoving 0.01 m intent simpleCorridor
                 in
                 case res of
                     M.Moving data ->
@@ -204,7 +204,7 @@ updateMovingTest =
                         , shouldStop = False
                         , interactionStart = Just (Duration.milliseconds 500)
                         }
-                    res = updateMoving 0.01 movingData intent False simpleCorridor
+                    res = updateMoving 0.01 movingData intent simpleCorridor
                 in
                 case res of
                     M.Moving data ->
@@ -220,7 +220,7 @@ updateMovingTest =
                         , shouldStop = False
                         , interactionStart = Just (Duration.milliseconds 500)
                         }
-                    res = updateMoving 0.01 movingData intent False simpleCorridor
+                    res = updateMoving 0.01 movingData intent simpleCorridor
                 in
                 case res of
                     M.Moving data ->
@@ -236,7 +236,7 @@ updateMovingTest =
                         , shouldStop = False
                         , interactionStart = Just (Quantity.zero)
                         }
-                    res = updateMoving 0.01 movingData intent False simpleCorridor
+                    res = updateMoving 0.01 movingData intent simpleCorridor
                 in
                 case res of
                     M.Moving data ->

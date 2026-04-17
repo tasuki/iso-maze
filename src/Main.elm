@@ -113,7 +113,6 @@ type Msg
     | Started DD.DocumentCoords
     | Moved DD.DocumentCoords
     | Finished DD.DocumentCoords
-    | Cancelled DD.DocumentCoords
     | KeyDown String
     | KeyUp String
     | CameraReset
@@ -258,11 +257,10 @@ update message model =
                     , performance = performanceToString preModel.performance
                     , analysis = preModel.analysis
                     , joystick =
-                        if preModel.dragging && preModel.mode == ME.Running then
+                        if preModel.mode == ME.Running then
                             case ( preModel.pointerStart, preModel.pointerLast ) of
                                 ( Just start, Just last ) ->
                                     Just { dx = last.x - start.x, dy = last.y - start.y }
-
                                 _ ->
                                     Nothing
                         else
@@ -300,9 +298,6 @@ updateModel message model =
                 newPlayerState =
                     if model.mode == ME.Running && model.activeOverlay == Nothing then
                         updatePlayerState model dt
-                            (if model.dragging then model.pointerStart else Nothing)
-                            (if model.dragging then model.pointerLast else Nothing)
-                            False
                     else
                         model.playerState
 
@@ -379,26 +374,25 @@ updateModel message model =
                                 _ -> ( model, Cmd.none )
                         else
                             case Controls.applyOrbit model.azimuth model.elevation model.pointerLast dc of
-                                Just (azimuth, elevation) -> ( { model | azimuth = azimuth, elevation = elevation, staticUpdate = True }, Cmd.none )
+                                Just ( azimuth, elevation ) ->
+                                    ( { model | azimuth = azimuth, elevation = elevation, staticUpdate = True }
+                                    , Cmd.none
+                                    )
                                 _ -> ( model, Cmd.none )
                     else
                         ( model, Cmd.none )
             in
             ( { updatedModel | pointerLast = Just dc }, cmd )
 
-        Finished dc ->
-            let
-                dt = 0.0
-                newPlayerState =
-                    if model.mode == ME.Running && model.activeOverlay == Nothing then
-                        updatePlayerState model dt model.pointerStart (Just dc) True
-                    else
-                        model.playerState
-            in
-            ( { model | dragging = False, playerState = newPlayerState, interactionStart = Nothing }, Cmd.none )
-
-        Cancelled _ ->
-            ( { model | dragging = False, interactionStart = Nothing }, Cmd.none )
+        Finished _ ->
+            ( { model
+                | dragging = False
+                , pointerStart = Nothing
+                , pointerLast = Nothing
+                , interactionStart = Nothing
+              }
+            , Cmd.none
+            )
 
         VisibilityChange BE.Hidden ->
             ( { model | dragging = False }, Cmd.none )
@@ -473,12 +467,9 @@ updateModel message model =
         KeyUp key ->
             let
                 newKeysDown = Set.remove key model.keysDown
-                anyArrows = Set.foldl (\k acc -> acc || Controls.isArrow k) False newKeysDown
                 ( newPlayerState, interactionStart ) =
-                    if Controls.isArrow key && not anyArrows && model.mode == ME.Running && model.activeOverlay == Nothing then
-                        ( updatePlayerState model 0.0 Nothing Nothing True
-                        , Nothing
-                        )
+                    if Controls.isArrow key && model.mode == ME.Running && model.activeOverlay == Nothing then
+                        ( updatePlayerState model 0.0, Nothing )
                     else ( model.playerState, model.interactionStart )
             in
             ( { model | keysDown = newKeysDown, playerState = newPlayerState, interactionStart = interactionStart }, Cmd.none )
@@ -539,14 +530,16 @@ updateModel message model =
         _ ->
             ( model, Cmd.none )
 
-updatePlayerState : Model -> Float -> Maybe DD.DocumentCoords -> Maybe DD.DocumentCoords -> Bool -> M.PlayerState
-updatePlayerState model dt pointerStart pointerLast isRelease =
+updatePlayerState : Model -> Float -> M.PlayerState
+updatePlayerState model dt =
     let
-        intent = Controls.analyzeIntent model.keysDown pointerStart pointerLast model.interactionStart model.elapsedTime
+        intent = Controls.analyzeIntent
+            model.keysDown model.pointerStart model.pointerLast
+            model.interactionStart model.elapsedTime
     in
     case model.playerState of
         M.Idle pos -> Controls.updateIdle pos intent model.maze
-        M.Moving m -> Controls.updateMoving dt m intent isRelease model.maze
+        M.Moving m -> Controls.updateMoving dt m intent model.maze
 
 type Route
     = Home (Maybe M.Maze)
@@ -823,7 +816,7 @@ view model =
         alwaysWatch =
             [ HE.on "pointerdown" <| DD.decodePrimary Started
             , HE.on "pointerup" <| DD.decodePrimary Finished
-            , HE.on "pointercancel" <| DD.decodePrimary Cancelled
+            , HE.on "pointercancel" <| DD.decodePrimary Finished
             ]
         watchNow =
             if (model.mode == ME.Editing && model.dragging) || model.mode == ME.Running then
