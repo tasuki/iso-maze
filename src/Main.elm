@@ -305,7 +305,7 @@ updateModel message model =
                     case newPlayerState of
                         M.Idle pos ->
                             if pos == M.endPosition model.maze && model.activeOverlay == Nothing then
-                                Just (model.currentLevel |> Maybe.map .name |> Maybe.withDefault "")
+                                model.currentLevel |> Maybe.map .name
                             else Nothing
                         _ -> Nothing
 
@@ -792,8 +792,8 @@ viewOverlay model overlay =
 viewCampaignLevel : Campaign.Level -> H.Html Msg
 viewCampaignLevel level =
     H.a
-        [ HA.class ("campaign-level" ++ (if level.finished then " finished" else ""))
-        , HA.href ("/level/" ++ level.name)
+        [ HA.href ("/level/" ++ level.name)
+        , HA.classList [ ("campaign-level", True), ("finished", level.finished) ]
         ]
         [ H.text level.emoji ]
 
